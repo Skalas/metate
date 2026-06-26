@@ -1,0 +1,45 @@
+# .metate/profile.yml — metate dogfooding itself.
+# Bash + markdown repo: gates are the Makefile, implementer is single-vendor claude.
+
+# --- gates ---------------------------------------------------------------
+fastGate: "make check"     # bash -n + shellcheck, each review round
+shipGate: "make verify"    # check + metadata/installer sanity, mirrors CI
+
+# --- implementer (the only writer) ---------------------------------------
+implementer:
+  backend: claude          # single-vendor: no heavy codegen here, one auth/model
+  model: ""                # blank = adapter default
+
+sessionFile: ".metate/session.json"
+isolation: none
+
+# --- review (metate-review) ----------------------------------------------
+reviewFocus: |
+  - install.sh works from BOTH a local checkout and `curl … | bash` (GitHub clone path);
+    neither path regresses — local must not clone, piped must fetch the right ref.
+  - shell scripts pass `bash -n` and stay set -euo pipefail clean; placeholder gates fail loudly.
+  - bootstrap.sh stays idempotent: never clobbers an existing profile.yml; .gitignore append is one-shot.
+  - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
+  - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
+    ONLY writer (metate-review stays read-only: Read/Bash/Agent, no Write/Edit).
+
+# --- prep (metate-prep) --------------------------------------------------
+prep:
+  baseBranch: main         # no dev branch on this repo
+  readingOrder: ["README.md"]
+  techDebtFile: ""
+
+# --- smoke (metate-smoke) ------------------------------------------------
+smoke:
+  command: "make verify"   # no e2e suite; the gate IS the smoke for a tooling repo
+  seedCommand: ""
+
+# --- aftercare (metate-aftercare) ----------------------------------------
+aftercare:
+  deliverables: ["README.md"]
+
+# --- ship (metate-ship) --------------------------------------------------
+ship:
+  prTarget: main
+  commitStyle: "conventional, bisectable, one per concern"
+  issueCloseKeyword: "Closes"
