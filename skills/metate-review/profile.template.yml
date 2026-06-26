@@ -1,4 +1,4 @@
-# .corte/profile.yml — per-repo config for the `corte` pipeline.
+# .metate/profile.yml — per-repo config for the `metate` pipeline.
 # The skill engines are codebase-agnostic; everything project-specific lives here.
 # bootstrap.sh fills in the gates from detected tooling — adjust everything else.
 
@@ -11,10 +11,10 @@ implementer:
   backend: cursor          # cursor | codex | claude | gemini
   model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
 
-sessionFile: ".corte/session.json"
+sessionFile: ".metate/session.json"
 isolation: none            # none | worktree
 
-# --- review (corte-review) -----------------------------------------------
+# --- review (metate-review) -----------------------------------------------
 # What the read-only sub-agents must scrutinize in THIS codebase. Replace with
 # your real invariants — the difference between a generic review and one that
 # catches your domain's actual failure modes.
@@ -23,23 +23,23 @@ reviewFocus: |
   - <invariant 2, e.g. money math at the cent in the payment path>
   - <invariant 3, e.g. state transitions go through the domain guard>
 
-# --- prep (corte-prep) ---------------------------------------------------
+# --- prep (metate-prep) ---------------------------------------------------
 prep:
   baseBranch: main         # branch new work from here
   readingOrder: []         # docs to read before building, in order
   techDebtFile: ""         # e.g. docs/TECH-DEBT.md
 
-# --- smoke (corte-smoke) -------------------------------------------------
+# --- smoke (metate-smoke) -------------------------------------------------
 smoke:
   command: ""              # e.g. pnpm e2e   (how to run the e2e/smoke suite)
   seedCommand: ""          # e.g. pnpm db:seed   (must be idempotent)
 
-# --- aftercare (corte-aftercare) -----------------------------------------
+# --- aftercare (metate-aftercare) -----------------------------------------
 # Deliverables to create/update at sprint close. Use {N} for the sprint number.
 aftercare:
   deliverables: []         # e.g. ["docs/handoff/post-sprint-{N}.md", "CHANGELOG.md"]
 
-# --- ship (corte-ship) ---------------------------------------------------
+# --- ship (metate-ship) ---------------------------------------------------
 ship:
   prTarget: main
   commitStyle: "conventional, bisectable, one per layer"

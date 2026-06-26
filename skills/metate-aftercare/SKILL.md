@@ -1,11 +1,11 @@
 ---
-name: corte-aftercare
+name: metate-aftercare
 version: 1.0.0
 description: |
-  Stage 4 (Aftercare) of the `corte` pipeline. From the branch diff, creates or
+  Stage 4 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
   updates the project's required close-out deliverables (handoff notes, coverage
   docs, roadmap, tech-debt with triggers, next-sprint pointers). Reads the
-  deliverable list from `.corte/profile.yml`. Codebase-agnostic; docs only.
+  deliverable list from `.metate/profile.yml`. Codebase-agnostic; docs only.
 license: MIT
 compatibility: claude-code
 allowed-tools:
@@ -15,12 +15,12 @@ allowed-tools:
   - Bash
 ---
 
-# corte-aftercare — sync the documentation
+# metate-aftercare — sync the documentation
 
 Runs after Smoke is green, on the same branch, so the docs ship in the sprint PR.
 
 ## Step 0 — load the profile
-Read `.corte/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` for the sprint
+Read `.metate/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` for the sprint
 number). If empty, ask the user for the close-out doc set.
 
 ## Steps
@@ -36,4 +36,4 @@ number). If empty, ask the user for the close-out doc set.
 
 ## Output
 List the deliverables updated and the one-line change to each. These commit on the branch
-and ship in the PR (never direct to the base branch). Hand off to `corte-ship`.
+and ship in the PR (never direct to the base branch). Hand off to `metate-ship`.

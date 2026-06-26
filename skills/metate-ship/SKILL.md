@@ -1,10 +1,10 @@
 ---
-name: corte-ship
+name: metate-ship
 version: 1.0.0
 description: |
-  Stage 5 (Ship) of the `corte` pipeline. Restructures the branch into
+  Stage 5 (Ship) of the `metate` pipeline. Restructures the branch into
   bisectable commits, runs the full ship gate, and opens the PR with issue
-  auto-close wiring — only after the gate is green. Reads `.corte/profile.yml`.
+  auto-close wiring — only after the gate is green. Reads `.metate/profile.yml`.
   Codebase-agnostic. Commits/pushes/PRs only on explicit user confirmation.
 license: MIT
 compatibility: claude-code
@@ -14,13 +14,13 @@ allowed-tools:
   - Agent
 ---
 
-# corte-ship — land it
+# metate-ship — land it
 
 Last ceremony. Only runs after Review + Smoke are green. **Push/PR only when the user
 explicitly says so.**
 
 ## Step 0 — load the profile
-Read `.corte/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
+Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
 `ship.issueCloseKeyword`.
 
 ## Steps

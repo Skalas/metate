@@ -1,10 +1,10 @@
 ---
-name: corte-smoke
+name: metate-smoke
 version: 1.0.0
 description: |
-  Stage 3 (Smoke) of the `corte` pipeline. Runs the project's e2e/smoke suite
+  Stage 3 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
   bound to the DoD test matrix (T1…Tn) on seeded data, checks seed idempotency,
-  and leaves only aesthetic/UX approval to the human. Reads `.corte/profile.yml`.
+  and leaves only aesthetic/UX approval to the human. Reads `.metate/profile.yml`.
   Codebase-agnostic.
 license: MIT
 compatibility: claude-code
@@ -14,12 +14,12 @@ allowed-tools:
   - Agent
 ---
 
-# corte-smoke — prove behavior on real data
+# metate-smoke — prove behavior on real data
 
 Tests do the cent-level checking; the human only approves look-and-feel.
 
 ## Step 0 — load the profile
-Read `.corte/profile.yml` → `smoke.command`, `smoke.seedCommand`. If `smoke.command` is
+Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`. If `smoke.command` is
 empty, ask the user how the e2e/smoke suite runs.
 
 ## Steps

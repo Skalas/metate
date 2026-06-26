@@ -1,12 +1,12 @@
 ---
-name: corte-build
+name: metate-build
 version: 1.0.0
 description: |
-  Stage 1 (Build) of the `corte` pipeline. Starts a RESUMABLE implementer
+  Stage 1 (Build) of the `metate` pipeline. Starts a RESUMABLE implementer
   session (cursor/codex/claude) and writes the session handoff to
-  `.corte/session.json` so later review rounds resume the same thread and keep
+  `.metate/session.json` so later review rounds resume the same thread and keep
   the implementer's rationale. The implementer is the only writer; this skill
-  drives it and records the session id. Reads `.corte/profile.yml`.
+  drives it and records the session id. Reads `.metate/profile.yml`.
 license: MIT
 compatibility: claude-code
 allowed-tools:
@@ -15,15 +15,15 @@ allowed-tools:
   - Bash
 ---
 
-# corte-build — start the build session (and capture it)
+# metate-build — start the build session (and capture it)
 
 The implementer writes the code. This skill's job is to start it as a **resumable
 session** and persist the handle, closing the gap that would otherwise force the review
 stage to open a fresh (amnesiac) session.
 
 ## Step 0 — load the profile
-Read `.corte/profile.yml`: `implementer.backend`, `implementer.model`, `sessionFile`,
-`isolation`. Adapter commands: read the `corte-review` skill's `IMPLEMENTERS.md`.
+Read `.metate/profile.yml`: `implementer.backend`, `implementer.model`, `sessionFile`,
+`isolation`. Adapter commands: read the `metate-review` skill's `IMPLEMENTERS.md`.
 
 ## Steps
 1. **Start a resumable session** per the backend's `start` command (see IMPLEMENTERS.md).
@@ -42,7 +42,7 @@ Read `.corte/profile.yml`: `implementer.backend`, `implementer.model`, `sessionF
 
 ## Output
 Confirm `sessionFile` written (so review can resume), the layers built, and the fast-gate
-result. Hand off to `corte-review`.
+result. Hand off to `metate-review`.
 
 ## Note
 If you build interactively in a GUI instead of the CLI, you must still write

@@ -1,7 +1,7 @@
 {
-  "name": "corte",
+  "name": "metate",
   "version": "1.0.0",
-  "description": "Full development pipeline as Claude Code skills: prep -> build -> review -> smoke -> aftercare -> ship. The implementer (cursor/codex/claude/gemini) is the only writer and its build session is resumed across review rounds. Project specifics live in .corte/profile.yml; the skills are codebase-agnostic.",
+  "description": "Full development pipeline as Claude Code skills: prep -> build -> review -> smoke -> aftercare -> ship. The implementer (cursor/codex/claude/gemini) is the only writer and its build session is resumed across review rounds. Project specifics live in .metate/profile.yml; the skills are codebase-agnostic.",
   "author": "Miguel Angel Escalante Serrato",
   "license": "MIT",
   "keywords": ["pipeline", "code-review", "ceremony", "implementer", "cursor", "codex", "ways-of-working"]

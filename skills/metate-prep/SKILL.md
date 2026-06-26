@@ -1,11 +1,11 @@
 ---
-name: corte-prep
+name: metate-prep
 version: 1.0.0
 description: |
-  Stage 0 (Prep) of the `corte` pipeline. Reads the project's handoff docs in
+  Stage 0 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
   order, triages tech debt, fixes the sprint mode (REDUCE/HOLD/EXPAND), and cuts
   the working branch from the base branch — before any code is written. Reads
-  config from `.corte/profile.yml`. Codebase-agnostic; produces no edits beyond
+  config from `.metate/profile.yml`. Codebase-agnostic; produces no edits beyond
   the branch.
 license: MIT
 compatibility: claude-code
@@ -15,12 +15,12 @@ allowed-tools:
   - Agent
 ---
 
-# corte-prep — prepare the terrain
+# metate-prep — prepare the terrain
 
 First ceremony. No implementation here — just orient, decide scope, branch.
 
 ## Step 0 — load the profile
-Read `.corte/profile.yml`. Use the `prep:` block:
+Read `.metate/profile.yml`. Use the `prep:` block:
 - `prep.readingOrder` — docs to read first, in order.
 - `prep.techDebtFile` — the debt ledger to triage.
 - `prep.baseBranch` — branch new work from here.

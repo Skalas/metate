@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Installer for the `corte` pipeline skills.
+# Installer for the `metate` pipeline skills.
 #
 #   ./install.sh --user              install the skills globally (~/.claude/skills),
-#                                    then leave a per-project initializer (`corte-init`)
+#                                    then leave a per-project initializer (`metate-init`)
 #   ./install.sh --project [PATH]    install the skills into a project's .claude/skills
 #                                    AND run the bootstrap for that project right away
 #
@@ -31,31 +31,31 @@ copy_skills() {  # $1 = destination skills root
     rm -rf "$root/$name"
     cp -R "$dir" "$root/$name"
   done
-  [ -f "$root/corte-review/bootstrap.sh" ] && chmod +x "$root/corte-review/bootstrap.sh"
+  [ -f "$root/metate-review/bootstrap.sh" ] && chmod +x "$root/metate-review/bootstrap.sh"
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
 }
 
-# The bootstrap + profile template ship inside the corte-review skill dir.
-BOOTSTRAP_REL="corte-review/bootstrap.sh"
+# The bootstrap + profile template ship inside the metate-review skill dir.
+BOOTSTRAP_REL="metate-review/bootstrap.sh"
 
 if [ "$SCOPE" = "user" ]; then
-  echo "▸ installing corte skills at USER level"
+  echo "▸ installing metate skills at USER level"
   copy_skills "$HOME/.claude/skills"
 
   # Leave a per-project initializer on PATH that runs the global bootstrap.
   BIN="$HOME/.local/bin"; mkdir -p "$BIN"
-  cat > "$BIN/corte-init" <<'EOF'
+  cat > "$BIN/metate-init" <<'EOF'
 #!/usr/bin/env bash
-# Per-project initializer for corte (skills installed user-level).
-exec bash "$HOME/.claude/skills/corte-review/bootstrap.sh" "$@"
+# Per-project initializer for metate (skills installed user-level).
+exec bash "$HOME/.claude/skills/metate-review/bootstrap.sh" "$@"
 EOF
-  chmod +x "$BIN/corte-init"
-  echo "  ✓ per-project initializer → $BIN/corte-init"
+  chmod +x "$BIN/metate-init"
+  echo "  ✓ per-project initializer → $BIN/metate-init"
   echo ""
-  echo "Skills are global. In ANY project run:  corte-init"
+  echo "Skills are global. In ANY project run:  metate-init"
   echo "(ensure $BIN is on your PATH; otherwise: bash ~/.claude/skills/$BOOTSTRAP_REL)"
 else
-  echo "▸ installing corte skills into PROJECT: $PROJECT"
+  echo "▸ installing metate skills into PROJECT: $PROJECT"
   copy_skills "$PROJECT/.claude/skills"
   echo "▸ running bootstrap for this project"
   ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" )
