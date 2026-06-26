@@ -16,6 +16,10 @@ rounds**, so it keeps the rationale behind its own code instead of re-deriving i
 
 ## The ceremonies
 
+Start with **`metate`** — the entry-point skill that orients you, fills
+`.metate/profile.yml` with autodetected defaults on first run, and routes you to the
+right stage. The six stage skills do the actual work:
+
 | # | Skill | What it does |
 |---|---|---|
 | 0 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, cut the branch |
