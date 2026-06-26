@@ -14,8 +14,6 @@ license: MIT
 compatibility: claude-code
 allowed-tools:
   - Read
-  - Write
-  - Edit
   - Bash
   - Agent
 ---
@@ -43,7 +41,8 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 
 ## Inputs
 
-- **Diff under review:** `git diff main...HEAD` (or staged changes if mid-build).
+- **Diff under review:** `git diff <baseBranch>...HEAD` (`prep.baseBranch` from the
+  profile; or staged changes if mid-build).
 - **Implement session:** read `sessionFile`
   `{ "implementer": "...", "sessionId": "<id|--last>" }`.
   Build writes it (see `IMPLEMENTERS.md` §Build handshake). If missing, STOP — do **not**

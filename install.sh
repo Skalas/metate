@@ -18,7 +18,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --user)    SCOPE="user"; shift ;;
     --project) SCOPE="project"; shift; [ $# -gt 0 ] && [[ "$1" != --* ]] && { PROJECT="$1"; shift; } ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
@@ -28,6 +28,8 @@ copy_skills() {  # $1 = destination skills root
   mkdir -p "$root"
   for dir in "$SRC"/*/; do
     local name; name="$(basename "$dir")"
+    # Intentionally replaces any same-named skill in the destination. All metate
+    # skills are `metate-`prefixed, so this only clobbers prior metate installs.
     rm -rf "$root/$name"
     cp -R "$dir" "$root/$name"
   done

@@ -25,7 +25,7 @@ reviewFocus: |
 
 # --- prep (metate-prep) ---------------------------------------------------
 prep:
-  baseBranch: main         # branch new work from here
+  baseBranch: main         # branch new work from here (set to `dev` if you gitflow)
   readingOrder: []         # docs to read before building, in order
   techDebtFile: ""         # e.g. docs/TECH-DEBT.md
 
@@ -41,6 +41,6 @@ aftercare:
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:
-  prTarget: main
+  prTarget: main           # PR target; set to `dev` if you gitflow (match baseBranch)
   commitStyle: "conventional, bisectable, one per layer"
   issueCloseKeyword: "Closes"   # PR body keyword for auto-close
