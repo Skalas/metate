@@ -1,41 +1,57 @@
-# three-round-review
+# corte
 
-A portable, codebase-agnostic **cut ceremony** for Claude Code.
-
-Claude Code orchestrates up to **3 rounds** of parallel read-only sub-agent review
-(correctness · security · elegance), categorizes findings (blocker / warning / DESIGN),
-and applies **only blockers** by driving an **external implementer CLI** — resuming the
-*same build session* so the implementer keeps the rationale behind its own code. The
-project's fast gate runs after each round; it stops at 0 blockers or after round 3.
-
-The implementer is **pluggable**: `cursor-agent` · `codex` · `claude` · `gemini`.
-The single writer is always the implementer — Claude's sub-agents are read-only.
-
-## Architecture
+A portable, codebase-agnostic **development pipeline** for Claude Code — the
+*ceremonias de corte*. Six ceremonies, each a skill; the three-round review engine is one
+of them.
 
 ```
-engine (generic, install once)            profile (per-repo, versioned with code)
-└─ skills/three-round-review/             └─ .review/profile.yml
-   ├─ SKILL.md          orchestration        ├─ fastGate / shipGate  (your commands)
-   ├─ IMPLEMENTERS.md   CLI adapters          ├─ implementer.backend  (cursor/codex/…)
-   ├─ profile.template  scaffold              ├─ reviewFocus          (your invariants)
-   └─ bootstrap.sh      per-project init      └─ sessionFile / isolation
+corte-prep → (build) → corte-review → corte-smoke → corte-aftercare → corte-ship
+   0            1            2              3              4               5
 ```
 
-Nothing project-specific lives in the engine. Porting to a new codebase = one
-`bootstrap.sh` run + editing `reviewFocus`.
+Across the whole pipeline the **implementer** (an external CLI — `cursor-agent` ·
+`codex` · `claude` · `gemini`) is the **only writer**. Claude Code orchestrates and its
+sub-agents are read-only. The implementer's **build session is resumed across review
+rounds**, so it keeps the rationale behind its own code instead of re-deriving it.
+
+## The ceremonies
+
+| # | Skill | What it does |
+|---|---|---|
+| 0 | `corte-prep` | read handoff docs in order, triage tech debt, fix sprint mode, cut the branch |
+| 1 | `corte-build` | start a **resumable** implementer session, write `.corte/session.json`, build in layers, fast gate |
+| 2 | `corte-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
+| 3 | `corte-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn) on seeded data; human approves UX only |
+| 4 | `corte-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
+| 5 | `corte-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
+
+## Architecture: engine vs profile
+
+```
+skills (generic, install once)        .corte/profile.yml (per-repo, versioned)
+├─ corte-prep/                         ├─ fastGate / shipGate     (your commands)
+├─ corte-build/                        ├─ implementer.backend     (cursor/codex/…)
+├─ corte-review/   ← review engine     ├─ reviewFocus             (your invariants)
+│   ├─ IMPLEMENTERS.md  (CLI adapters) ├─ prep / smoke / aftercare / ship blocks
+│   ├─ profile.template.yml            └─ sessionFile / isolation
+│   └─ bootstrap.sh
+├─ corte-smoke/ · corte-aftercare/ · corte-ship/
+```
+
+Nothing project-specific lives in the skills. Porting to a new codebase = one
+`bootstrap.sh` run + editing the profile (above all, `reviewFocus`).
 
 ## Install
 
-**User level** (engine global, available in every project; leaves a `trr-init` you run per project):
+**User level** (skills global, available in every project; leaves a `corte-init` you run per project):
 
 ```bash
 ./install.sh --user
 # then, inside any repo:
-trr-init
+corte-init
 ```
 
-**Project level** (engine vendored into the repo; bootstraps that project immediately):
+**Project level** (skills vendored into the repo; bootstraps that project immediately):
 
 ```bash
 ./install.sh --project /path/to/repo
@@ -43,25 +59,24 @@ trr-init
 
 **As a Claude Code plugin** (for teams): this repo is also a valid plugin
 (`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
-`claude plugin install three-round-review`, then run `trr-init`/`bootstrap.sh` per project.
+`claude plugin install corte`, then run `corte-init` per project.
 
 ## Per-project setup
 
 `bootstrap.sh` autodetects your gate (pnpm / npm / yarn / python / cargo / go) and writes
-`.review/profile.yml`. Then:
+`.corte/profile.yml`. Then:
 
-1. Set `reviewFocus` to your real invariants — this is what makes the review catch your
-   domain's failure modes instead of generic ones.
-2. Pick `implementer.backend` + `model`.
-3. Build through that implementer CLI so it writes `.review/session.json` (see
-   `IMPLEMENTERS.md` §Build handshake).
-4. Invoke the `three-round-review` skill in Claude Code after Build.
+1. Set `reviewFocus` to your real invariants — what makes the review catch your domain's
+   failure modes instead of generic ones.
+2. Fill the `prep` / `smoke` / `aftercare` / `ship` blocks (reading order, e2e command,
+   deliverables, PR target).
+3. Pick `implementer.backend` + `model`.
+4. Run the ceremonies in order in Claude Code.
 
 ## Adding an implementer
 
-Add a row + start/resume commands to `IMPLEMENTERS.md`. The contract: `start → sessionId`,
-`resume(sessionId, prompt)` headless with write access, a fast model. See the verification
-table for what's tested.
+Add a row + start/resume commands to `corte-review/IMPLEMENTERS.md`. The contract:
+`start → sessionId`, `resume(sessionId, prompt)` headless with write access, a fast model.
 
 ## License
 

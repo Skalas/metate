@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Per-project bootstrap for the three-round-review ceremony.
-# Scaffolds .review/profile.yml (gates autodetected) and updates .gitignore.
-# Self-contained: works whether the skill is installed user-level or per-project.
+# Per-project bootstrap for the `corte` pipeline.
+# Scaffolds .corte/profile.yml (gates autodetected) and updates .gitignore.
+# Self-contained: works whether the skills are installed user-level or per-project.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-REVIEW_DIR="$PROJECT_ROOT/.review"
-PROFILE="$REVIEW_DIR/profile.yml"
+CORTE_DIR="$PROJECT_ROOT/.corte"
+PROFILE="$CORTE_DIR/profile.yml"
 
-echo "▸ bootstrapping three-round-review in: $PROJECT_ROOT"
+echo "▸ bootstrapping corte in: $PROJECT_ROOT"
 
 # --- detect the fast + ship gates from project tooling ---------------------
-fast="echo 'set fastGate in .review/profile.yml' && false"
+fast="echo 'set fastGate in .corte/profile.yml' && false"
 ship="$fast"
 has_make_verify() { [ -f "$PROJECT_ROOT/Makefile" ] && grep -qE '^verify:' "$PROJECT_ROOT/Makefile"; }
 
@@ -37,7 +37,7 @@ echo "  detected fastGate: $fast"
 # --- write the profile (never clobber an existing one) ---------------------
 # Escape chars that are special in a sed replacement (\, &) and our | delimiter.
 sed_escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
-mkdir -p "$REVIEW_DIR"
+mkdir -p "$CORTE_DIR"
 if [ -f "$PROFILE" ]; then
   echo "  ✓ $PROFILE already exists — leaving it untouched"
 else
@@ -48,15 +48,16 @@ fi
 
 # --- gitignore the session handoff -----------------------------------------
 GI="$PROJECT_ROOT/.gitignore"
-if ! { [ -f "$GI" ] && grep -qE '^\.review/session\.json' "$GI"; }; then
-  { echo ""; echo "# three-round-review session handoff"; echo ".review/session.json"; } >> "$GI"
-  echo "  ✓ added .review/session.json to .gitignore"
+if ! { [ -f "$GI" ] && grep -qE '^\.corte/session\.json' "$GI"; }; then
+  { echo ""; echo "# corte session handoff"; echo ".corte/session.json"; } >> "$GI"
+  echo "  ✓ added .corte/session.json to .gitignore"
 fi
 
 cat <<EOF
 
-✓ bootstrap complete.
-  1. Edit .review/profile.yml → set reviewFocus to your real invariants, pick the implementer.
-  2. Build through the implementer CLI so it writes .review/session.json (see IMPLEMENTERS.md).
-  3. Run the 'three-round-review' skill in Claude Code after Build.
+✓ bootstrap complete. Next:
+  1. Edit .corte/profile.yml → reviewFocus (your invariants), implementer, prep/smoke/aftercare/ship.
+  2. Run the pipeline ceremonies in Claude Code, in order:
+       corte-prep → (build via implementer) → corte-review → corte-smoke → corte-aftercare → corte-ship
+  3. Build through the implementer CLI so it writes .corte/session.json (see corte-review/IMPLEMENTERS.md).
 EOF

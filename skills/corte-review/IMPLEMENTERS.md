@@ -11,8 +11,8 @@ the rationale behind its own code instead of re-deriving it.
 
 ## Build handshake
 
-Build writes the session handoff (path = `sessionFile` in `.review/profile.yml`, default
-`.review/session.json`) so the review skill knows how to resume:
+Build writes the session handoff (path = `sessionFile` in `.corte/profile.yml`, default
+`.corte/session.json`) so the review skill knows how to resume:
 
 ```json
 { "implementer": "cursor", "sessionId": "44ca13f5-...", "model": "composer-2.5" }

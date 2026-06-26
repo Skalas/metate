@@ -1,14 +1,15 @@
 ---
-name: three-round-review
+name: corte-review
 version: 1.0.0
 description: |
-  Testing/review ceremony. Orchestrates up to 3 rounds of parallel read-only
-  sub-agent review (correctness · security · elegance) and applies ONLY blocker
-  fixes through a pluggable implementer CLI (cursor-agent · codex · claude ·
-  gemini), resuming the SAME implement session so the implementer keeps the
-  rationale behind its own code. Re-runs the project's fast gate each round;
-  stops when 0 blockers remain or after round 3. Project-specific settings live
-  in `.review/profile.yml` — this engine is codebase-agnostic.
+  Stage 2 (Review) of the `corte` pipeline — the three-round review engine.
+  Orchestrates up to 3 rounds of parallel read-only sub-agent review
+  (correctness · security · elegance) and applies ONLY blocker fixes through a
+  pluggable implementer CLI (cursor-agent · codex · claude · gemini), resuming
+  the SAME implement session so the implementer keeps the rationale behind its
+  own code. Re-runs the project's fast gate each round; stops when 0 blockers
+  remain or after round 3. Project-specific settings live in `.corte/profile.yml`
+  — this engine is codebase-agnostic.
 license: MIT
 compatibility: claude-code
 allowed-tools:
@@ -30,13 +31,13 @@ Adapter registry + verified commands per backend: **read `IMPLEMENTERS.md`** (ne
 
 ## Step 0 — load the project profile
 
-Read `.review/profile.yml` from the repo root. If absent, STOP and tell the user to run
+Read `.corte/profile.yml` from the repo root. If absent, STOP and tell the user to run
 the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 
 - `fastGate` — command run after each patch round (quick loop).
 - `shipGate` — full pre-PR gate (mirrors CI); informational here, enforced at Ship.
 - `implementer.backend` / `implementer.model` — which adapter + model to drive.
-- `sessionFile` — path to the implement-session handoff (default `.review/session.json`).
+- `sessionFile` — path to the implement-session handoff (default `.corte/session.json`).
 - `isolation` — `none` | `worktree`.
 - `reviewFocus` — the invariants the sub-agents must scrutinize in THIS codebase.
 

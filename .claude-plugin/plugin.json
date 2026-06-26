@@ -1,8 +1,8 @@
 {
-  "name": "three-round-review",
+  "name": "corte",
   "version": "1.0.0",
-  "description": "Pluggable cut ceremony: up to 3 rounds of parallel read-only sub-agent review that patches only blockers through an external implementer CLI (cursor/codex/claude/gemini), resuming the build session. Project specifics live in .review/profile.yml.",
+  "description": "Full development pipeline as Claude Code skills: prep -> build -> review -> smoke -> aftercare -> ship. The implementer (cursor/codex/claude/gemini) is the only writer and its build session is resumed across review rounds. Project specifics live in .corte/profile.yml; the skills are codebase-agnostic.",
   "author": "Miguel Angel Escalante Serrato",
   "license": "MIT",
-  "keywords": ["code-review", "ceremony", "implementer", "cursor", "codex"]
+  "keywords": ["pipeline", "code-review", "ceremony", "implementer", "cursor", "codex", "ways-of-working"]
 }

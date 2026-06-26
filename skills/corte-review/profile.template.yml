@@ -1,0 +1,46 @@
+# .corte/profile.yml — per-repo config for the `corte` pipeline.
+# The skill engines are codebase-agnostic; everything project-specific lives here.
+# bootstrap.sh fills in the gates from detected tooling — adjust everything else.
+
+# --- gates ---------------------------------------------------------------
+fastGate: "__FASTGATE__"   # quick loop, run after each review round
+shipGate: "__SHIPGATE__"   # full pre-PR gate (mirrors CI)
+
+# --- implementer (the only writer) ---------------------------------------
+implementer:
+  backend: cursor          # cursor | codex | claude | gemini
+  model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
+
+sessionFile: ".corte/session.json"
+isolation: none            # none | worktree
+
+# --- review (corte-review) -----------------------------------------------
+# What the read-only sub-agents must scrutinize in THIS codebase. Replace with
+# your real invariants — the difference between a generic review and one that
+# catches your domain's actual failure modes.
+reviewFocus: |
+  - <invariant 1, e.g. tenant/scope isolation on every transactional query>
+  - <invariant 2, e.g. money math at the cent in the payment path>
+  - <invariant 3, e.g. state transitions go through the domain guard>
+
+# --- prep (corte-prep) ---------------------------------------------------
+prep:
+  baseBranch: main         # branch new work from here
+  readingOrder: []         # docs to read before building, in order
+  techDebtFile: ""         # e.g. docs/TECH-DEBT.md
+
+# --- smoke (corte-smoke) -------------------------------------------------
+smoke:
+  command: ""              # e.g. pnpm e2e   (how to run the e2e/smoke suite)
+  seedCommand: ""          # e.g. pnpm db:seed   (must be idempotent)
+
+# --- aftercare (corte-aftercare) -----------------------------------------
+# Deliverables to create/update at sprint close. Use {N} for the sprint number.
+aftercare:
+  deliverables: []         # e.g. ["docs/handoff/post-sprint-{N}.md", "CHANGELOG.md"]
+
+# --- ship (corte-ship) ---------------------------------------------------
+ship:
+  prTarget: main
+  commitStyle: "conventional, bisectable, one per layer"
+  issueCloseKeyword: "Closes"   # PR body keyword for auto-close
