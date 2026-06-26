@@ -12,7 +12,6 @@ compatibility: claude-code
 allowed-tools:
   - Read
   - Bash
-  - Agent
 ---
 
 # metate-prep — prepare the terrain

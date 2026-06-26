@@ -19,8 +19,7 @@ ship="$fast"
 has_make_verify() { [ -f "$PROJECT_ROOT/Makefile" ] && grep -qE '^verify:' "$PROJECT_ROOT/Makefile"; }
 
 if   [ -f "$PROJECT_ROOT/pnpm-lock.yaml" ]; then
-  fast="pnpm lint && pnpm test && pnpm build"
-  ship=$(has_make_verify && echo "make verify" || echo "pnpm verify")
+  fast="pnpm lint && pnpm test && pnpm build"; ship="pnpm verify"
 elif [ -f "$PROJECT_ROOT/yarn.lock" ]; then
   fast="yarn lint && yarn test && yarn build"; ship="yarn verify"
 elif [ -f "$PROJECT_ROOT/package-lock.json" ]; then
@@ -32,6 +31,8 @@ elif [ -f "$PROJECT_ROOT/Cargo.toml" ]; then
 elif [ -f "$PROJECT_ROOT/go.mod" ]; then
   fast="go vet ./... && go test ./... && go build ./..."; ship="$fast"
 fi
+# A `make verify` target is the canonical CI mirror — prefer it for any toolchain.
+has_make_verify && ship="make verify"
 echo "  detected fastGate: $fast"
 
 # --- write the profile (never clobber an existing one) ---------------------
