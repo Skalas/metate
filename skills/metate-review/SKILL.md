@@ -38,6 +38,9 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `sessionFile` — path to the implement-session handoff (default `.metate/session.json`).
 - `isolation` — `none` | `worktree`.
 - `reviewFocus` — the invariants the sub-agents must scrutinize in THIS codebase.
+- `review.autoFix` — which buckets get routed to the implementer. One of:
+  `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
+  Reporting is unconditional regardless of this setting (see Output).
 
 ## Inputs
 
@@ -67,32 +70,57 @@ Merge, dedupe by `file:line`, bucket each finding:
 - **warning** — real but non-blocking (low-blast-radius edge case).
 - **suggestion / DESIGN** — elegance, naming, structure.
 
-Only **blockers** are auto-fixed. `warning` + `DESIGN` are listed for the user to decide —
-Claude does not silently rewrite working code.
+Which buckets get auto-fixed is governed by `review.autoFix` from the profile
+(default `blockers`):
+
+| `review.autoFix`    | auto-fixed (routed to implementer) | reported only       |
+|---------------------|------------------------------------|---------------------|
+| `blockers`          | blocker                            | warning · DESIGN    |
+| `blockers+warnings` | blocker · warning                  | DESIGN              |
+| `all`               | blocker · warning · DESIGN         | —                   |
+
+Whatever is **not** auto-fixed is still **always reported** (see Output) — Claude never
+silently rewrites working code beyond the configured scope, and never silently drops a
+finding either.
 
 ### 3. Patch via the implementer (resume same session)
-If blockers exist, hand them to the implementer through its resume command (see
-`IMPLEMENTERS.md`, using `implementer.backend`/`model` from the profile). The prompt must:
-- address **only** the listed blockers, by `file:line` + one-line fix intent;
+Let **fixable** = the buckets selected by `review.autoFix`. If any fixable findings exist,
+hand them to the implementer through its resume command (see `IMPLEMENTERS.md`, using
+`implementer.backend`/`model` from the profile). The prompt must:
+- address **only** the listed fixable findings, by `file:line` + one-line fix intent;
 - forbid touching anything else ("do not refactor, do not change unrelated code");
 - remind it this is its own code and to respect prior deliberate decisions.
 
-Zero blockers → skip patching; the loop is done.
+When `autoFix` includes warnings or DESIGN, label each handed-off finding with its bucket so
+the implementer can weigh a low-blast-radius warning or an elegance nit against the deliberate
+decision it may be overturning — these are softer than blockers, so it may decline with a
+one-line rationale rather than churn working code.
+
+Zero fixable findings → skip patching; the loop is done (remaining findings are reported).
 
 ### 4. Fast gate
-After patching, run `fastGate` from the profile. Failures become blockers for the next round.
+After patching, run `fastGate` from the profile. Failures become **blockers** for the next round
+— regardless of which bucket's fix introduced them.
 
 ### Exit criteria
-- **0 blockers and gate green** → ✅ done.
+Convergence is anchored on **blockers** — the objective signal. Auto-fixed warnings/DESIGN are
+attempted opportunistically each round but never by themselves force another round (subjective
+findings would never converge).
+
+- **0 blockers and gate green** → ✅ done. Any unfixed (or implementer-declined)
+  warning/DESIGN findings are reported, not looped on.
 - **Blockers remain after round 3** → 🛑 STOP. Summarize survivors; hand back to the user.
 
 ## Output
-Per round → findings by bucket, what was patched, gate result. End with the verdict
-(done / stopped) and the surviving `warning`+`DESIGN` list.
+Reporting is **unconditional** — every finding surfaces regardless of `review.autoFix`.
+Per round → findings by bucket (blocker · warning · DESIGN), which were routed to the
+implementer vs. report-only, any the implementer declined (with its rationale), and the gate
+result. End with the verdict (done / stopped) and the full surviving `warning`+`DESIGN` list
+so nothing the auto-fix scope skipped is lost.
 
 ## Guardrails
 - Implementer write mode is auto-approving. If `isolation: worktree`, run the implementer
   in an isolated git worktree and show the diff before merging back (see `IMPLEMENTERS.md`).
-- Never let a sub-agent write. Route every fix through the implementer as a blocker.
+- Never let a sub-agent write. Route every fix through the implementer, tagged with its bucket.
 - Adversarially verify a finding before calling it a blocker — a plausible-but-wrong "bug"
   wastes a round and risks the implementer breaking working code.

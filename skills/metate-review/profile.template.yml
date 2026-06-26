@@ -23,6 +23,14 @@ reviewFocus: |
   - <invariant 2, e.g. money math at the cent in the payment path>
   - <invariant 3, e.g. state transitions go through the domain guard>
 
+# Which buckets the implementer auto-fixes each round. Reporting is unconditional —
+# whatever isn't auto-fixed is still surfaced for you to decide.
+#   blockers           — only blockers fixed; warnings + DESIGN reported  (safest, default)
+#   blockers+warnings  — blockers + warnings fixed; DESIGN reported
+#   all                — blockers + warnings + DESIGN fixed (most churn; may rewrite working code)
+review:
+  autoFix: blockers
+
 # --- prep (metate-prep) ---------------------------------------------------
 prep:
   baseBranch: main         # branch new work from here (set to `dev` if you gitflow)

@@ -23,6 +23,10 @@ reviewFocus: |
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
     ONLY writer (metate-review stays read-only: Read/Bash/Agent, no Write/Edit).
 
+# Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
+review:
+  autoFix: blockers
+
 # --- prep (metate-prep) --------------------------------------------------
 prep:
   baseBranch: main         # no dev branch on this repo
