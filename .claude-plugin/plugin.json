@@ -1,0 +1,8 @@
+{
+  "name": "three-round-review",
+  "version": "1.0.0",
+  "description": "Pluggable cut ceremony: up to 3 rounds of parallel read-only sub-agent review that patches only blockers through an external implementer CLI (cursor/codex/claude/gemini), resuming the build session. Project specifics live in .review/profile.yml.",
+  "author": "Miguel Angel Escalante Serrato",
+  "license": "MIT",
+  "keywords": ["code-review", "ceremony", "implementer", "cursor", "codex"]
+}

@@ -1,0 +1,21 @@
+# .review/profile.yml — per-repo config for the three-round-review ceremony.
+# The skill engine is codebase-agnostic; everything project-specific lives here.
+# bootstrap.sh fills in the gates from detected tooling — adjust as needed.
+
+fastGate: "__FASTGATE__"   # quick loop, run after each review round
+shipGate: "__SHIPGATE__"   # full pre-PR gate (mirrors CI)
+
+implementer:
+  backend: cursor          # cursor | codex | claude | gemini
+  model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
+
+sessionFile: ".review/session.json"
+isolation: none            # none | worktree
+
+# What the read-only sub-agents must scrutinize in THIS codebase.
+# Replace with your real invariants — these are the difference between a generic
+# review and one that catches your domain's actual failure modes.
+reviewFocus: |
+  - <invariant 1, e.g. tenant/scope isolation on every transactional query>
+  - <invariant 2, e.g. money math at the cent in the payment path>
+  - <invariant 3, e.g. state transitions go through the domain guard>
