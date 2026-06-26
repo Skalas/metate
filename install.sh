@@ -6,22 +6,42 @@
 #   ./install.sh --project [PATH]    install the skills into a project's .claude/skills
 #                                    AND run the bootstrap for that project right away
 #
+# Run from a local checkout, or straight from GitHub:
+#   curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
+#
 # Default scope is --user.
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC="$REPO_DIR/skills"
+REPO_URL="${METATE_REPO:-https://github.com/Skalas/metate.git}"
+REPO_REF="${METATE_REF:-main}"
 SCOPE="user"
 PROJECT="$PWD"
+
+# Where do the skills come from? A local checkout if this script sits next to a
+# skills/ dir; otherwise we clone from GitHub (so `curl … | bash` works).
+SELF="${BASH_SOURCE[0]:-$0}"
+SELF_DIR="$(cd "$(dirname "$SELF")" 2>/dev/null && pwd || true)"
+SRC=""
+[ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/skills" ] && SRC="$SELF_DIR/skills"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --user)    SCOPE="user"; shift ;;
     --project) SCOPE="project"; shift; [ $# -gt 0 ] && [[ "$1" != --* ]] && { PROJECT="$1"; shift; } ;;
-    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
+    -h|--help) { [ -r "$SELF" ] && sed -n '2,12p' "$SELF"; } || echo "usage: install.sh [--user | --project [PATH]]"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
+
+# No local skills/ → fetch them from GitHub into a temp checkout.
+if [ -z "$SRC" ]; then
+  command -v git >/dev/null 2>&1 || { echo "git is required to install from GitHub" >&2; exit 1; }
+  echo "▸ fetching metate ($REPO_REF) from $REPO_URL"
+  TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+  git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$TMP/metate" >/dev/null 2>&1 \
+    || { echo "clone failed: $REPO_URL ($REPO_REF)" >&2; exit 1; }
+  SRC="$TMP/metate/skills"
+fi
 
 copy_skills() {  # $1 = destination skills root
   local root="$1"

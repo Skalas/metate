@@ -43,7 +43,19 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
 
 ## Install
 
-**User level** (skills global, available in every project; leaves a `metate-init` you run per project):
+The model is **install once globally, then init per project** — the same shape as a
+user-level skill.
+
+**From GitHub, one line** (no clone; the installer fetches itself):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
+```
+
+Or hand the line to an agent like Claude Code — "install metate user-level from GitHub"
+and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed version.
+
+**From a local checkout — user level** (skills global, available in every project; leaves a `metate-init` you run per project):
 
 ```bash
 ./install.sh --user
@@ -61,17 +73,33 @@ metate-init
 (`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
 `claude plugin install metate`, then run `metate-init` per project.
 
-## Per-project setup
+## First run in a project — the decisions you make
 
-`bootstrap.sh` autodetects your gate (pnpm / npm / yarn / python / cargo / go) and writes
-`.metate/profile.yml`. Then:
+`metate-init` (or `bootstrap.sh`) autodetects your toolchain (pnpm / npm / yarn / python /
+cargo / go), writes `.metate/profile.yml`, and gitignores the session handoff. It never
+clobbers an existing profile. Everything else is decisions **you** make by editing that
+file — the bootstrap only guesses the gates. In order of importance:
 
-1. Set `reviewFocus` to your real invariants — what makes the review catch your domain's
-   failure modes instead of generic ones.
-2. Fill the `prep` / `smoke` / `aftercare` / `ship` blocks (reading order, e2e command,
-   deliverables, PR target).
-3. Pick `implementer.backend` + `model`.
-4. Run the ceremonies in order in Claude Code.
+1. **`reviewFocus`** *(the one that matters)* — your real invariants, e.g. "tenant scope on
+   every transactional query", "money math at the cent", "state changes go through the
+   domain guard". This is the difference between a generic review and one that catches your
+   domain's actual failure modes. The template ships with placeholders you must replace.
+2. **`implementer.backend` + `model`** — who writes the code: `cursor` (verified end-to-end),
+   `codex`, `claude`, or `gemini` (probe first). Blank model = adapter default. See
+   `metate-review/IMPLEMENTERS.md` for the per-backend commands and verification status.
+3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
+   (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
+4. **`prep`** — `baseBranch` (set to `dev` if you gitflow), `readingOrder` (handoff docs to
+   read before building), `techDebtFile`.
+5. **`smoke`** — `command` (your e2e/smoke suite) and an idempotent `seedCommand`.
+6. **`aftercare.deliverables`** — close-out docs to update from the diff (handoff, coverage,
+   roadmap, debt ledger). `{N}` interpolates the sprint number.
+7. **`ship`** — `prTarget` (match `baseBranch`), `commitStyle`, `issueCloseKeyword`.
+8. **`isolation`** — `none`, or `worktree` to run the auto-approving implementer in an
+   isolated git worktree and review the diff before merging back.
+
+Then run the ceremonies in order in Claude Code:
+`metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
 
 ## Adding an implementer
 
