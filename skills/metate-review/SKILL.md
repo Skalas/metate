@@ -41,6 +41,11 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `review.autoFix` — which buckets get routed to the implementer. One of:
   `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
   Reporting is unconditional regardless of this setting (see Output).
+- `codebaseMemory` — optional structural context provider (codebase-memory-mcp).
+  When `enabled: true`, sub-agents prefer the knowledge graph over grep/Read and the
+  loop re-indexes between rounds. Absent or `enabled: false` ⇒ behave exactly as before
+  (no graph calls, no re-index step). Read `reindex` (`git`|`always`|`manual`) and
+  `indexCommand` only when enabled.
 
 ## Inputs
 
@@ -61,6 +66,17 @@ Spawn these sub-agents **in one message** so they run concurrently; each gets th
   listed in `reviewFocus`.
 - `security-auditor` — authz/tenant isolation, secrets, PII in payloads/logs, injection.
 - `refactorer` — DESIGN/elegance/DRY. **Informational only** — never auto-applied.
+
+**When `codebaseMemory.enabled`**, each sub-agent prompt must instruct it to prefer the
+codebase-memory-mcp graph over grep/Read for structural reach (sub-agents do not inherit
+this preference — restate it). Concretely:
+- compute the **impact of the diff** — `trace_path` the changed symbols to find callers the
+  diff doesn't show (a changed signature breaking an off-diff caller is a classic blocker);
+- trace each `reviewFocus` invariant through the call graph rather than grepping for it;
+- `security-auditor` uses cross-service tracing for authz/tenant isolation across repos;
+- `refactorer` uses dead-code/high-fan-out queries for DESIGN findings.
+Fall back to grep/Read for string literals, configs, non-code files, or when the graph
+returns too little. If `enabled: false`, skip this — review proceeds grep-only as before.
 
 ### 2. Aggregate + categorize
 Merge, dedupe by `file:line`, bucket each finding:
@@ -101,6 +117,13 @@ Zero fixable findings → skip patching; the loop is done (remaining findings ar
 ### 4. Fast gate
 After patching, run `fastGate` from the profile. Failures become **blockers** for the next round
 — regardless of which bucket's fix introduced them.
+
+**Re-index (only when `codebaseMemory.enabled`).** The implementer just changed the tree, so
+the graph is stale — refresh it before the next round's fan-out, or impact analysis lies:
+- `reindex: git` — let the auto_index git watcher pick up the change (no action; the cheapest path);
+- `reindex: always` — run `indexCommand` (or `index_repository` on the repo root) explicitly;
+- `reindex: manual` — skip; the operator refreshes out of band.
+Skip this step entirely when disabled.
 
 ### Exit criteria
 Convergence is anchored on **blockers** — the objective signal. Auto-fixed warnings/DESIGN are
