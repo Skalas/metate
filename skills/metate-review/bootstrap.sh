@@ -20,6 +20,8 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
+# cursor-rule.mdc and codex-rule.md carry the same codebase-memory tool-priority
+# list for two audiences — keep them in sync when those tool names change.
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
 
@@ -96,7 +98,7 @@ GI="$PROJECT_ROOT/.gitignore"
 
 # Append a gitignore rule once (idempotent), then stop tracking anything it now
 # covers that a previous install committed. The pattern doubles as a git pathspec.
-gi_ignore_untrack() {  # $1 = pattern, $2 = comment
+gi_ignore_untrack() {
   local pat="$1" comment="$2"
   if ! { [ -f "$GI" ] && grep -qxF "$pat" "$GI"; }; then
     { echo "# $comment"; echo "$pat"; } >> "$GI"
@@ -110,6 +112,9 @@ gi_ignore_untrack() {  # $1 = pattern, $2 = comment
   fi
 }
 
+# Per-sprint local state: these files are runtime-only and never committed, so
+# they need the .gitignore entry but no untrack pass — hence hand-rolled rather
+# than routed through gi_ignore_untrack (whose untrack step would be a no-op).
 if ! { [ -f "$GI" ] && grep -qE '^\.metate/session\.json' "$GI"; }; then
   { echo ""; echo "# metate session handoff"; echo ".metate/session.json"; } >> "$GI"
   echo "  ✓ added .metate/session.json to .gitignore"
@@ -127,8 +132,9 @@ fi
 # metate repo — don't track them, or every skill update is noise in this project.
 # (.metate/profile.yml stays tracked: it's this project's config.) Skipped for
 # user-level installs, where the skills live in ~/.claude/skills, not the project.
-compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1 \
-  && gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
+if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
+  gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
+fi
 
 # --- codebase-memory-mcp: detect, configure if present, suggest if not ------
 # cbm gives review sub-agents a structural knowledge graph (prefer it over grep).
@@ -163,9 +169,12 @@ if [ -n "$CBM_BIN" ]; then
     fi
   fi
   # The Cursor rule is a vendored copy of cursor-rule.mdc — ignore (and untrack)
-  # it like the skills, so its source of truth stays the metate repo.
-  [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ] \
-    && gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
+  # it like the skills, so its source of truth stays the metate repo. The guard is
+  # the file's existence, NOT whether Cursor is installed: that single path is owned
+  # by codebase-memory, so untracking it is safe however it got there.
+  if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
+    gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
+  fi
 
   # Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
   # managed, marker-delimited block: append once, leave untouched if present.
@@ -185,6 +194,8 @@ if [ -n "$CBM_BIN" ]; then
         cat "$CODEX_RULE"
         echo "<!-- metate:codebase-memory end -->"; } >> "$AGENTS"
       echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex)"
+    else
+      echo "  • AGENTS.md guidance skipped — codex-rule.md not found at $CODEX_RULE" >&2
     fi
   fi
 
