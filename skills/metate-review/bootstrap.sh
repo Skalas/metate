@@ -20,6 +20,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
+CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 METATE_DIR="$PROJECT_ROOT/.metate"
@@ -61,8 +62,10 @@ trap 'rm -f "$FILLED" "$MERGED" "$AWKERR"' EXIT
 sed -e "s|__FASTGATE__|$(sed_escape "$fast")|" \
     -e "s|__SHIPGATE__|$(sed_escape "$ship")|" "$TEMPLATE" > "$FILLED"
 
+FRESH=0
 if [ ! -s "$PROFILE" ]; then   # missing or empty → fresh write
   cp "$FILLED" "$PROFILE"
+  FRESH=1
   echo "  ✓ wrote $PROFILE"
 elif [ "$UPDATE" = 1 ]; then
   # Reconcile: added keys go to stdout→$MERGED, the key list to stderr→$AWKERR.
@@ -100,6 +103,47 @@ fi
 if ! { [ -f "$GI" ] && grep -qE '^\.metate/.*\.bak' "$GI"; }; then
   { echo "# metate profile reconcile backups"; echo ".metate/*.bak"; } >> "$GI"
   echo "  ✓ added .metate/*.bak to .gitignore"
+fi
+
+# --- codebase-memory-mcp: detect, configure if present, suggest if not ------
+# cbm gives review sub-agents a structural knowledge graph (prefer it over grep).
+# Present  → enable it in a freshly-written profile + drop the Cursor rule.
+# Absent   → leave codebaseMemory.enabled:false and suggest the install one-liner.
+CBM_BIN="$(command -v codebase-memory-mcp 2>/dev/null || true)"
+[ -z "$CBM_BIN" ] && [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && CBM_BIN="$HOME/.local/bin/codebase-memory-mcp"
+
+if [ -n "$CBM_BIN" ]; then
+  echo "  ✓ codebase-memory-mcp detected: $CBM_BIN"
+
+  # Enable in the profile only on a fresh write — never clobber a tuned value.
+  if [ "$FRESH" = 1 ]; then
+    # Single `enabled:` key in the template lives under codebaseMemory.
+    sed -i.bak 's/^\(  enabled:\)[[:space:]]*false/\1 true/' "$PROFILE" && rm -f "$PROFILE.bak"
+    echo "  ✓ set codebaseMemory.enabled: true"
+  else
+    grep -qE '^\s*enabled:\s*true' "$PROFILE" \
+      || echo "  • existing profile left untouched — set codebaseMemory.enabled: true to use the graph"
+  fi
+
+  # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
+  if [ -d "$HOME/.cursor" ]; then
+    RULE_DIR="$PROJECT_ROOT/.cursor/rules"
+    RULE_DEST="$RULE_DIR/codebase-memory.mdc"
+    if [ -f "$RULE_DEST" ]; then
+      echo "  ✓ Cursor rule already present — left untouched"
+    elif [ -f "$CURSOR_RULE" ]; then
+      mkdir -p "$RULE_DIR"
+      cp "$CURSOR_RULE" "$RULE_DEST"
+      echo "  ✓ installed Cursor rule: .cursor/rules/codebase-memory.mdc"
+    fi
+  fi
+
+  echo "  → index this repo so the graph isn't empty: $CBM_BIN cli index_repository '{\"path\":\"$PROJECT_ROOT\"}'"
+else
+  echo "  • codebase-memory-mcp not found — review falls back to grep (fine, just slower/coarser)."
+  echo "    Install it to give review a structural knowledge graph:"
+  echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash"
+  echo "    Then re-run this bootstrap to wire it in."
 fi
 
 cat <<EOF
