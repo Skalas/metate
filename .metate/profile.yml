@@ -14,6 +14,14 @@ sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
 isolation: none
 
+# --- codebase memory (structural context provider) -----------------------
+# Review sub-agents prefer the codebase-memory-mcp knowledge graph over grep/Read.
+# Mostly bash+markdown here, so the graph's payoff is modest — but dogfooded on.
+codebaseMemory:
+  enabled: true
+  reindex: git
+  indexCommand: ""
+
 # --- review (metate-review) ----------------------------------------------
 reviewFocus: |
   - install.sh works from BOTH a local checkout and `curl … | bash` (GitHub clone path);
