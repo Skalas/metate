@@ -105,7 +105,12 @@ hand them to the implementer through its resume command (see `IMPLEMENTERS.md`, 
 `implementer.backend`/`model` from the profile). The prompt must:
 - address **only** the listed fixable findings, by `file:line` + one-line fix intent;
 - forbid touching anything else ("do not refactor, do not change unrelated code");
-- remind it this is its own code and to respect prior deliberate decisions.
+- remind it this is its own code and to respect prior deliberate decisions;
+- **when `codebaseMemory.enabled`**, prepend the tool-priority clause (see
+  `IMPLEMENTERS.md` → "Code Discovery clause") so the implementer uses `trace_path` to
+  check the **impact** of each fix before editing, instead of grepping. The `claude`
+  backend does NOT inherit this from ambient CLAUDE.md in `-p` mode; `cursor`/`codex` get
+  it from their file-based rules — the prompt is the only path to the claude backend.
 
 When `autoFix` includes warnings or DESIGN, label each handed-off finding with its bucket so
 the implementer can weigh a low-blast-radius warning or an elegance nit against the deliberate

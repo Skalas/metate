@@ -20,6 +20,31 @@ Build writes the session handoff (path = `sessionFile` in `.metate/profile.yml`,
 
 For backends that support "resume most-recent", `sessionId` may be the literal `"--last"`.
 
+## Code Discovery clause
+
+When `codebaseMemory.enabled` in the profile, `metate-build` and `metate-review` prepend
+this block to the implementer prompt (build prompt and resume/fix prompt alike). Backends
+differ in how they otherwise learn the preference — see the per-backend table below — so the
+prompt is the **only** path that reaches the `claude` backend in `-p` mode.
+
+```
+Code Discovery — prefer the codebase-memory-mcp knowledge graph over grep/Read for
+structural reach. Before editing, trace the IMPACT of each change:
+  - search_graph — find the symbol you're about to touch by name/label/pattern;
+  - trace_path — who calls it / what it calls, so a changed signature doesn't break an
+    off-diff caller;
+  - get_code_snippet — exact symbol source by qualified name.
+Fall back to grep/Read for string literals, configs, and non-code files. If the repo
+isn't indexed yet, run index_repository first.
+```
+
+| backend | how it learns the tool-priority |
+|---|---|
+| cursor  | `.cursor/rules/codebase-memory.mdc` (file-based) **+** prompt clause |
+| codex   | `AGENTS.md` block (file-based) **+** prompt clause |
+| claude  | **prompt clause ONLY** — `-p` headless does not act on ambient CLAUDE.md the way the interactive loop does |
+| gemini  | prompt clause only (no file-based rule wired) |
+
 ---
 
 ## cursor  ✅ verified (continuity tested end-to-end)
@@ -65,6 +90,11 @@ claude -p --resume "<SESSION_ID>" "<blocker fixes>"
 ```
 
 Single-vendor loop, or fallback implementer.
+
+> ⚠️ Unlike `cursor`/`codex`, the `claude` backend has **no file-based rule** wiring the
+> knowledge graph. In `-p` headless mode it will grep/Read by default (burning tokens on
+> structural reach) unless the prompt carries the **Code Discovery clause** above. When
+> `codebaseMemory.enabled`, build and review MUST prepend it — for claude it's the only path.
 
 ## gemini  ⛔ probe before use
 

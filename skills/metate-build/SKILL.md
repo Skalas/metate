@@ -37,6 +37,11 @@ Read `.metate/profile.yml`: `implementer.backend`, `implementer.model`, `session
    ```
 3. **Build in layers** — domain → application → infrastructure → presentation. Pass the
    plan + DoD from Prep to the implementer. Honor project invariants (`reviewFocus`).
+   **When `codebaseMemory.enabled`**, prepend the tool-priority clause (see
+   `metate-review/IMPLEMENTERS.md` → "Code Discovery clause") to the build prompt: a
+   `claude`-backed implementer does NOT pick this up from ambient CLAUDE.md the way the
+   interactive loop does, and `cursor`/`codex` get it from their file-based rules — so the
+   prompt is the only path that reaches the claude backend. Skip when `enabled: false`.
 4. **Fast gate** — when the layer set is done, run `fastGate` from the profile. Fix before
    handing off to review.
 
