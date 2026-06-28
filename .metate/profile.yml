@@ -11,6 +11,7 @@ implementer:
   model: ""                # blank = adapter default
 
 sessionFile: ".metate/session.json"
+issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
 isolation: none
 
 # --- review (metate-review) ----------------------------------------------
@@ -32,6 +33,12 @@ prep:
   baseBranch: main         # no dev branch on this repo
   readingOrder: ["README.md"]
   techDebtFile: ""
+  issues:                  # file the ledger at sprint start from the text plan
+    create: true           # false = skip issue filing entirely
+    tracker: github        # gh CLI
+    granularity: test-matrix  # one issue per DoD test-matrix item (T1…Tn)
+    labels: ["sprint"]     # applied to every filed issue
+    milestone: ""          # blank = none
 
 # --- smoke (metate-smoke) ------------------------------------------------
 smoke:

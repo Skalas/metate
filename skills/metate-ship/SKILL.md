@@ -21,7 +21,7 @@ explicitly says so.**
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
-`ship.issueCloseKeyword`.
+`ship.issueCloseKeyword`, and the top-level `issueLedger` (the issues prep filed).
 
 ## Steps
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
@@ -32,7 +32,10 @@ Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
    scoped). Don't bury a refactor inside a feature commit.
 4. **Open the PR** → `ship.prTarget`, with a commit table, verification evidence,
    out-of-scope notes, and one `<issueCloseKeyword> #N` line **per issue** in the body
-   (not ranges/lists). Confirm auto-close wiring after creation.
+   (not ranges/lists). Read the numbers from `issueLedger` — emit one line per ledger
+   entry so the merge auto-closes every issue prep filed; on merge to the default branch
+   GitHub closes them automatically. If the ledger is absent (prep skipped filing), fall
+   back to the issues referenced on the branch/PR. Confirm auto-close wiring after creation.
 5. **Milestone** — if the project uses one, remind the user to close it manually at merge
    (it does not auto-close).
 

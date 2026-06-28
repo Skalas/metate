@@ -47,11 +47,15 @@ else
   echo "  ✓ wrote $PROFILE"
 fi
 
-# --- gitignore the session handoff -----------------------------------------
+# --- gitignore the per-sprint local state ----------------------------------
 GI="$PROJECT_ROOT/.gitignore"
 if ! { [ -f "$GI" ] && grep -qE '^\.metate/session\.json' "$GI"; }; then
   { echo ""; echo "# metate session handoff"; echo ".metate/session.json"; } >> "$GI"
   echo "  ✓ added .metate/session.json to .gitignore"
+fi
+if ! { [ -f "$GI" ] && grep -qE '^\.metate/issues\.json' "$GI"; }; then
+  { echo "# metate issue ledger"; echo ".metate/issues.json"; } >> "$GI"
+  echo "  ✓ added .metate/issues.json to .gitignore"
 fi
 
 cat <<EOF

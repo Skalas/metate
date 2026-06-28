@@ -22,7 +22,7 @@ right stage. The six stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, cut the branch |
+| 0 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
 | 1 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
 | 2 | `metate-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
 | 3 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn) on seeded data; human approves UX only |
@@ -94,7 +94,8 @@ file — the bootstrap only guesses the gates. In order of importance:
 3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
    (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
 4. **`prep`** — `baseBranch` (set to `dev` if you gitflow), `readingOrder` (handoff docs to
-   read before building), `techDebtFile`.
+   read before building), `techDebtFile`, and `issues` (file one issue per test-matrix item
+   from the text plan → the ledger that `ship` auto-closes; set `issues.create: false` to opt out).
 5. **`smoke`** — `command` (your e2e/smoke suite) and an idempotent `seedCommand`.
 6. **`aftercare.deliverables`** — close-out docs to update from the diff (handoff, coverage,
    roadmap, debt ledger). `{N}` interpolates the sprint number.

@@ -12,6 +12,7 @@ implementer:
   model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
 
 sessionFile: ".metate/session.json"
+issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
 isolation: none            # none | worktree
 
 # --- review (metate-review) -----------------------------------------------
@@ -36,6 +37,12 @@ prep:
   baseBranch: main         # branch new work from here (set to `dev` if you gitflow)
   readingOrder: []         # docs to read before building, in order
   techDebtFile: ""         # e.g. docs/TECH-DEBT.md
+  issues:                  # file the issue ledger from the text plan at sprint start
+    create: true           # false = ledger is managed outside metate
+    tracker: github        # gh CLI
+    granularity: test-matrix  # one issue per DoD test-matrix item (T1…Tn)
+    labels: ["sprint"]     # applied to every filed issue
+    milestone: ""          # blank = none
 
 # --- smoke (metate-smoke) -------------------------------------------------
 smoke:
