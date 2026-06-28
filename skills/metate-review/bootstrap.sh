@@ -21,6 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
+CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 METATE_DIR="$PROJECT_ROOT/.metate"
@@ -90,8 +91,25 @@ else
   echo "  ✓ $PROFILE already exists — leaving it untouched (use --update to reconcile)"
 fi
 
-# --- gitignore the per-sprint local state ----------------------------------
+# --- gitignore: per-sprint local state + vendored tooling -------------------
 GI="$PROJECT_ROOT/.gitignore"
+
+# Append a gitignore rule once (idempotent), then stop tracking anything it now
+# covers that a previous install committed. The pattern doubles as a git pathspec.
+gi_ignore_untrack() {  # $1 = pattern, $2 = comment
+  local pat="$1" comment="$2"
+  if ! { [ -f "$GI" ] && grep -qxF "$pat" "$GI"; }; then
+    { echo "# $comment"; echo "$pat"; } >> "$GI"
+    echo "  ✓ added $pat to .gitignore"
+  fi
+  if [ -n "$(git -C "$PROJECT_ROOT" ls-files "$pat" 2>/dev/null)" ]; then
+    # Pipe -z straight to xargs — capturing it in $() strips the null separators.
+    git -C "$PROJECT_ROOT" ls-files -z "$pat" \
+      | xargs -0 git -C "$PROJECT_ROOT" rm -r --cached --quiet -- \
+      && echo "  ✓ untracked previously-committed $pat (commit to finish)"
+  fi
+}
+
 if ! { [ -f "$GI" ] && grep -qE '^\.metate/session\.json' "$GI"; }; then
   { echo ""; echo "# metate session handoff"; echo ".metate/session.json"; } >> "$GI"
   echo "  ✓ added .metate/session.json to .gitignore"
@@ -104,6 +122,13 @@ if ! { [ -f "$GI" ] && grep -qE '^\.metate/.*\.bak' "$GI"; }; then
   { echo "# metate profile reconcile backups"; echo ".metate/*.bak"; } >> "$GI"
   echo "  ✓ added .metate/*.bak to .gitignore"
 fi
+
+# Project-level skill installs are vendored tooling whose source of truth is the
+# metate repo — don't track them, or every skill update is noise in this project.
+# (.metate/profile.yml stays tracked: it's this project's config.) Skipped for
+# user-level installs, where the skills live in ~/.claude/skills, not the project.
+compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1 \
+  && gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
 
 # --- codebase-memory-mcp: detect, configure if present, suggest if not ------
 # cbm gives review sub-agents a structural knowledge graph (prefer it over grep).
@@ -135,6 +160,31 @@ if [ -n "$CBM_BIN" ]; then
       mkdir -p "$RULE_DIR"
       cp "$CURSOR_RULE" "$RULE_DEST"
       echo "  ✓ installed Cursor rule: .cursor/rules/codebase-memory.mdc"
+    fi
+  fi
+  # The Cursor rule is a vendored copy of cursor-rule.mdc — ignore (and untrack)
+  # it like the skills, so its source of truth stays the metate repo.
+  [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ] \
+    && gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
+
+  # Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
+  # managed, marker-delimited block: append once, leave untouched if present.
+  # AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
+  if command -v codex >/dev/null 2>&1; then
+    AGENTS="$PROJECT_ROOT/AGENTS.md"
+    # Defer to any existing block — ours OR the codebase-memory-mcp installer's
+    # (global ~/.codex/AGENTS.md uses the `codebase-memory-mcp:` marker), so a
+    # project that already carries either doesn't get duplicate guidance.
+    if [ -f "$AGENTS" ] && grep -qE 'metate:codebase-memory|codebase-memory-mcp:' "$AGENTS"; then
+      echo "  ✓ Codex AGENTS.md guidance already present — left untouched"
+    elif [ -f "$CODEX_RULE" ]; then
+      # Separate from existing content with a blank line — but only if the file is
+      # already non-empty (the >> below would otherwise create it first).
+      [ -s "$AGENTS" ] && echo "" >> "$AGENTS"
+      { echo "<!-- metate:codebase-memory start -->"
+        cat "$CODEX_RULE"
+        echo "<!-- metate:codebase-memory end -->"; } >> "$AGENTS"
+      echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex)"
     fi
   fi
 

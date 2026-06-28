@@ -64,6 +64,7 @@ copy_skills() {  # $1 = destination skills root
 }
 
 # The bootstrap + profile template ship inside the metate-review skill dir.
+# (bootstrap also gitignores project-level skill installs — see metate-review/bootstrap.sh)
 BOOTSTRAP_REL="metate-review/bootstrap.sh"
 
 VERB="installing"; [ "$UPDATE" = 1 ] && VERB="updating"
