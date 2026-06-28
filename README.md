@@ -77,6 +77,22 @@ metate-init
 (`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
 `claude plugin install metate`, then run `metate-init` per project.
 
+## Updating
+
+Refresh an existing install to a newer metate without losing your tuned profile:
+
+```bash
+./install.sh --update --user              # refresh the global skills
+metate-init --update                      # in each project: reconcile its profile
+# or, project-vendored skills + profile in one step:
+./install.sh --update --project /path/to/repo
+```
+
+`--update` re-copies the skills and **reconciles `.metate/profile.yml` against the
+template**: keys added in the new version are appended with their defaults, while your
+existing values and comments are left untouched. It's idempotent — an up-to-date profile
+comes out byte-identical — and it prints exactly which keys it added so you can tune them.
+
 ## First run in a project — the decisions you make
 
 `metate-init` (or `bootstrap.sh`) autodetects your toolchain (pnpm / npm / yarn / python /

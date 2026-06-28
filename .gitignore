@@ -1,3 +1,4 @@
 .DS_Store
 .metate/session.json
 .metate/issues.json
+.metate/*.bak
