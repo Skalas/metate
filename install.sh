@@ -39,6 +39,27 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# --- prerequisite: codebase-memory-mcp (required) --------------------------
+# Structural knowledge graph provider. Present if the CLI is on PATH OR it's
+# registered as an MCP server in a known client config. Required — abort if absent.
+# Match the full server name so a stray mention in a config comment isn't a hit.
+cbm_present() {
+  command -v codebase-memory-mcp >/dev/null 2>&1 && return 0
+  [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && return 0
+  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml"; do
+    [ -f "$cfg" ] && grep -qi 'codebase-memory-mcp' "$cfg" && return 0
+  done
+  return 1
+}
+if cbm_present; then
+  echo "▸ prerequisite ok: codebase-memory-mcp detected — leaving it on"
+else
+  echo "✗ prerequisite missing: codebase-memory-mcp (required)" >&2
+  echo "    install it, then re-run this installer:" >&2
+  echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
+  exit 1
+fi
+
 # No local skills/ → fetch them from GitHub into a temp checkout.
 if [ -z "$SRC" ]; then
   command -v git >/dev/null 2>&1 || { echo "git is required to install from GitHub" >&2; exit 1; }

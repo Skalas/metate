@@ -19,13 +19,15 @@ sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
 isolation: none            # none | worktree
 
-# --- codebase memory (optional structural context provider) ---------------
-# When enabled, review sub-agents prefer the knowledge graph (codebase-memory-mcp)
-# over grep/Read for structural discovery — impact of the diff, callers of changed
-# symbols, reviewFocus invariants traced through the call graph. Absent or
-# enabled:false → metate runs exactly as before (graceful degradation, no dependency).
+# --- codebase memory (required structural context provider) ---------------
+# codebase-memory-mcp is a REQUIRED prerequisite (install/bootstrap abort without
+# it). This flag only toggles whether review USES the graph: when enabled, review
+# sub-agents prefer the knowledge graph over grep/Read for structural discovery —
+# impact of the diff, callers of changed symbols, reviewFocus invariants traced
+# through the call graph. Set enabled:false to opt a repo out of graph-augmented
+# review (sub-agents fall back to grep/Read for that repo only).
 codebaseMemory:
-  enabled: false           # true once `codebase-memory-mcp install` wired the MCP entry + repo is indexed
+  enabled: true            # default on; the repo must be indexed (bootstrap prints the index command)
   reindex: git             # git | always | manual — refresh the graph between rounds after the implementer patches
   indexCommand: ""         # blank = rely on the auto_index git watcher; else an explicit reindex command
 
