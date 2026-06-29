@@ -31,6 +31,27 @@ PROFILE="$METATE_DIR/profile.yml"
 
 echo "▸ bootstrapping metate in: $PROJECT_ROOT"
 
+# --- required prerequisite: codebase-memory-mcp ----------------------------
+# Fail fast before writing anything. Present if the CLI is on PATH OR it's wired
+# as an MCP server in a known client config (a client may manage the server
+# itself, leaving no binary on PATH).
+# Match the full server name (not a loose 'codebase-memory' substring) so a stray
+# mention in a config comment doesn't read as present.
+cbm_present() {
+  command -v codebase-memory-mcp >/dev/null 2>&1 && return 0
+  [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && return 0
+  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml"; do
+    [ -f "$cfg" ] && grep -qi 'codebase-memory-mcp' "$cfg" && return 0
+  done
+  return 1
+}
+if ! cbm_present; then
+  echo "✗ required prerequisite missing: codebase-memory-mcp" >&2
+  echo "    install it, then re-run this bootstrap:" >&2
+  echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
+  exit 1
+fi
+
 # --- detect the fast + ship gates from project tooling ---------------------
 fast="echo 'set fastGate in .metate/profile.yml' && false"
 ship="$fast"
@@ -136,75 +157,77 @@ if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
   gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
 fi
 
-# --- codebase-memory-mcp: detect, configure if present, suggest if not ------
+# --- codebase-memory-mcp: configure (presence guaranteed by the guard above) -
 # cbm gives review sub-agents a structural knowledge graph (prefer it over grep).
-# Present  → enable it in a freshly-written profile + drop the Cursor rule.
-# Absent   → leave codebaseMemory.enabled:false and suggest the install one-liner.
+# CBM_BIN may be empty when a client manages the server itself (no PATH binary);
+# that only changes the wording of the messages below, not the wiring.
 CBM_BIN="$(command -v codebase-memory-mcp 2>/dev/null || true)"
 [ -z "$CBM_BIN" ] && [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && CBM_BIN="$HOME/.local/bin/codebase-memory-mcp"
 
 if [ -n "$CBM_BIN" ]; then
   echo "  ✓ codebase-memory-mcp detected: $CBM_BIN"
+else
+  echo "  ✓ codebase-memory-mcp detected: registered as an MCP server (CLI not on PATH)"
+fi
 
-  # Enable in the profile only on a fresh write — never clobber a tuned value.
-  if [ "$FRESH" = 1 ]; then
-    # Single `enabled:` key in the template lives under codebaseMemory.
-    sed -i.bak 's/^\(  enabled:\)[[:space:]]*false/\1 true/' "$PROFILE" && rm -f "$PROFILE.bak"
-    echo "  ✓ set codebaseMemory.enabled: true"
+# The template ships codebaseMemory.enabled: true, so a fresh profile is already
+# graph-on. Existing profiles are never clobbered — if a repo was opted out
+# (enabled:false), leave that choice and just note it. Scope the check to the
+# codebaseMemory block so an unrelated `enabled: true` elsewhere can't mask it.
+if [ "$FRESH" = 1 ]; then
+  echo "  ✓ codebaseMemory.enabled: true (template default)"
+else
+  awk '/^codebaseMemory:/{f=1;next} /^[^[:space:]]/{f=0} f' "$PROFILE" | grep -qE '^\s*enabled:\s*true' \
+    || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
+fi
+
+# Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
+if [ -d "$HOME/.cursor" ]; then
+  RULE_DIR="$PROJECT_ROOT/.cursor/rules"
+  RULE_DEST="$RULE_DIR/codebase-memory.mdc"
+  if [ -f "$RULE_DEST" ]; then
+    echo "  ✓ Cursor rule already present — left untouched"
+  elif [ -f "$CURSOR_RULE" ]; then
+    mkdir -p "$RULE_DIR"
+    cp "$CURSOR_RULE" "$RULE_DEST"
+    echo "  ✓ installed Cursor rule: .cursor/rules/codebase-memory.mdc"
+  fi
+fi
+# The Cursor rule is a vendored copy of cursor-rule.mdc — ignore (and untrack)
+# it like the skills, so its source of truth stays the metate repo. The guard is
+# the file's existence, NOT whether Cursor is installed: that single path is owned
+# by codebase-memory, so untracking it is safe however it got there.
+if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
+  gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
+fi
+
+# Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
+# managed, marker-delimited block: append once, leave untouched if present.
+# AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
+if command -v codex >/dev/null 2>&1; then
+  AGENTS="$PROJECT_ROOT/AGENTS.md"
+  # Defer to any existing block — ours OR the codebase-memory-mcp installer's
+  # (global ~/.codex/AGENTS.md uses the `codebase-memory-mcp:` marker), so a
+  # project that already carries either doesn't get duplicate guidance.
+  if [ -f "$AGENTS" ] && grep -qE 'metate:codebase-memory|codebase-memory-mcp:' "$AGENTS"; then
+    echo "  ✓ Codex AGENTS.md guidance already present — left untouched"
+  elif [ -f "$CODEX_RULE" ]; then
+    # Separate from existing content with a blank line — but only if the file is
+    # already non-empty (the >> below would otherwise create it first).
+    [ -s "$AGENTS" ] && echo "" >> "$AGENTS"
+    { echo "<!-- metate:codebase-memory start -->"
+      cat "$CODEX_RULE"
+      echo "<!-- metate:codebase-memory end -->"; } >> "$AGENTS"
+    echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex)"
   else
-    grep -qE '^\s*enabled:\s*true' "$PROFILE" \
-      || echo "  • existing profile left untouched — set codebaseMemory.enabled: true to use the graph"
+    echo "  • AGENTS.md guidance skipped — codex-rule.md not found at $CODEX_RULE" >&2
   fi
+fi
 
-  # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
-  if [ -d "$HOME/.cursor" ]; then
-    RULE_DIR="$PROJECT_ROOT/.cursor/rules"
-    RULE_DEST="$RULE_DIR/codebase-memory.mdc"
-    if [ -f "$RULE_DEST" ]; then
-      echo "  ✓ Cursor rule already present — left untouched"
-    elif [ -f "$CURSOR_RULE" ]; then
-      mkdir -p "$RULE_DIR"
-      cp "$CURSOR_RULE" "$RULE_DEST"
-      echo "  ✓ installed Cursor rule: .cursor/rules/codebase-memory.mdc"
-    fi
-  fi
-  # The Cursor rule is a vendored copy of cursor-rule.mdc — ignore (and untrack)
-  # it like the skills, so its source of truth stays the metate repo. The guard is
-  # the file's existence, NOT whether Cursor is installed: that single path is owned
-  # by codebase-memory, so untracking it is safe however it got there.
-  if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
-    gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
-  fi
-
-  # Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
-  # managed, marker-delimited block: append once, leave untouched if present.
-  # AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
-  if command -v codex >/dev/null 2>&1; then
-    AGENTS="$PROJECT_ROOT/AGENTS.md"
-    # Defer to any existing block — ours OR the codebase-memory-mcp installer's
-    # (global ~/.codex/AGENTS.md uses the `codebase-memory-mcp:` marker), so a
-    # project that already carries either doesn't get duplicate guidance.
-    if [ -f "$AGENTS" ] && grep -qE 'metate:codebase-memory|codebase-memory-mcp:' "$AGENTS"; then
-      echo "  ✓ Codex AGENTS.md guidance already present — left untouched"
-    elif [ -f "$CODEX_RULE" ]; then
-      # Separate from existing content with a blank line — but only if the file is
-      # already non-empty (the >> below would otherwise create it first).
-      [ -s "$AGENTS" ] && echo "" >> "$AGENTS"
-      { echo "<!-- metate:codebase-memory start -->"
-        cat "$CODEX_RULE"
-        echo "<!-- metate:codebase-memory end -->"; } >> "$AGENTS"
-      echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex)"
-    else
-      echo "  • AGENTS.md guidance skipped — codex-rule.md not found at $CODEX_RULE" >&2
-    fi
-  fi
-
+if [ -n "$CBM_BIN" ]; then
   echo "  → index this repo so the graph isn't empty: $CBM_BIN cli index_repository '{\"path\":\"$PROJECT_ROOT\"}'"
 else
-  echo "  • codebase-memory-mcp not found — review falls back to grep (fine, just slower/coarser)."
-  echo "    Install it to give review a structural knowledge graph:"
-  echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash"
-  echo "    Then re-run this bootstrap to wire it in."
+  echo "  → index this repo so the graph isn't empty (run codebase-memory's index_repository on: $PROJECT_ROOT)"
 fi
 
 # --- autonomous claude implementer: whitelist the nested `claude -p` call ---

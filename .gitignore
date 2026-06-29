@@ -2,3 +2,7 @@
 .metate/session.json
 .metate/issues.json
 .metate/*.bak
+# codebase-memory Cursor rule is installed tooling (source: metate repo)
+.cursor/rules/codebase-memory.mdc
+# metate autonomous implementer permission (personal, per-developer)
+.claude/settings.local.json

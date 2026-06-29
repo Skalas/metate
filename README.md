@@ -45,6 +45,21 @@ skills (generic, install once)        .metate/profile.yml (per-repo, versioned)
 Nothing project-specific lives in the skills. Porting to a new codebase = one
 `bootstrap.sh` run + editing the profile (above all, `reviewFocus`).
 
+## Prerequisites
+
+- **git** — required.
+- An **implementer CLI** — one of `cursor-agent` · `codex` · `claude` · `gemini`
+  (the only writer across the pipeline).
+- **[codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)** —
+  **required**. Gives review/build a structural knowledge graph. The installer and
+  per-project bootstrap detect it (CLI on PATH *or* registered as an MCP server in
+  `~/.claude.json` / `~/.cursor/mcp.json` / `~/.codex/config.toml`), leave it on when
+  present, and never reinstall it — and **abort if it's missing**. Install once:
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash
+  ```
+
 ## Install
 
 The model is **install once globally, then init per project** — the same shape as a
