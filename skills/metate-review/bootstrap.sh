@@ -207,6 +207,53 @@ else
   echo "    Then re-run this bootstrap to wire it in."
 fi
 
+# --- autonomous claude implementer: whitelist the nested `claude -p` call ---
+# Headless `claude -p` (the claude backend) writes files + runs the gate with no
+# TTY, so each spawn would otherwise hit the orchestrator's permission classifier
+# and stall the loop. A Claude session can't self-grant this rule (the self-
+# modification guard rightly blocks it) — but this installer is user-invoked, so
+# it's the one place that legitimately can. Personal + gitignored + opt-in:
+# only when implementer.backend is claude AND implementer.autonomous is true.
+IMPL_BACKEND="$(sed -n 's/^[[:space:]]*backend:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
+# Capture a bare lowercase word, not a true|false alternation: BSD/macOS sed has no \| in BRE.
+IMPL_AUTONOMOUS="$(sed -n 's/^[[:space:]]*autonomous:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
+if [ "$IMPL_BACKEND" = "claude" ] && [ "$IMPL_AUTONOMOUS" = "true" ]; then
+  SETTINGS_DIR="$PROJECT_ROOT/.claude"
+  SETTINGS="$SETTINGS_DIR/settings.local.json"
+  RULE='Bash(claude -p:*)'
+  # Already granted in either the committed or the personal settings file? Done.
+  if { [ -f "$SETTINGS_DIR/settings.json" ] && grep -qF "$RULE" "$SETTINGS_DIR/settings.json"; } \
+     || { [ -f "$SETTINGS" ] && grep -qF "$RULE" "$SETTINGS"; }; then
+    echo "  ✓ autonomous: $RULE already whitelisted — left untouched"
+  elif [ ! -f "$SETTINGS" ]; then
+    mkdir -p "$SETTINGS_DIR"
+    cat > "$SETTINGS" <<'JSON'
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude -p:*)"
+    ]
+  }
+}
+JSON
+    echo "  ✓ autonomous: wrote .claude/settings.local.json whitelisting $RULE"
+  elif command -v jq >/dev/null 2>&1; then
+    STMP="$(mktemp)"
+    jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(claude -p:*)"] | unique)' \
+      "$SETTINGS" > "$STMP" && mv "$STMP" "$SETTINGS"
+    echo "  ✓ autonomous: merged $RULE into existing .claude/settings.local.json"
+  else
+    echo "  • autonomous: .claude/settings.local.json exists but jq is missing —" >&2
+    echo "    add this rule under permissions.allow yourself: $RULE" >&2
+  fi
+  # settings.local.json is personal/per-developer — never commit it.
+  if ! { [ -f "$GI" ] && grep -qxF '.claude/settings.local.json' "$GI"; }; then
+    { echo "# metate autonomous implementer permission (personal, per-developer)"
+      echo ".claude/settings.local.json"; } >> "$GI"
+    echo "  ✓ added .claude/settings.local.json to .gitignore"
+  fi
+fi
+
 cat <<EOF
 
 ✓ bootstrap complete. Next:

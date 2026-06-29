@@ -22,8 +22,9 @@ session** and persist the handle, closing the gap that would otherwise force the
 stage to open a fresh (amnesiac) session.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml`: `implementer.backend`, `implementer.model`, `sessionFile`,
-`isolation`. Adapter commands: read the `metate-review` skill's `IMPLEMENTERS.md`.
+Read `.metate/profile.yml`: `implementer.backend`, `implementer.model`, `implementer.autonomous`,
+`sessionFile`, `isolation`. Adapter commands (incl. the autonomous flag for the `claude` backend):
+read the `metate-review` skill's `IMPLEMENTERS.md`.
 
 ## Steps
 1. **Start a resumable session** per the backend's `start` command (see IMPLEMENTERS.md).

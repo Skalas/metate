@@ -91,6 +91,23 @@ claude -p --resume "<SESSION_ID>" "<blocker fixes>"
 
 Single-vendor loop, or fallback implementer.
 
+**Autonomy (`implementer.autonomous: true`).** Two independent gates must both be cleared, or
+the loop stalls waiting on a prompt with no TTY:
+
+1. **Outer** — the orchestrator spawning `claude -p` needs the `Bash(claude -p:*)` allow-rule.
+   `bootstrap.sh` writes it to `.claude/settings.local.json` when `autonomous: true`. A Claude
+   session can't self-grant it (self-modification guard); the user-invoked installer can.
+2. **Inner** — the nested `claude -p` writing files + running the gate needs
+   `--dangerously-skip-permissions`, or it cannot act headless:
+
+   ```bash
+   claude -p --dangerously-skip-permissions --output-format json "<build prompt>"
+   claude -p --dangerously-skip-permissions --resume "<SESSION_ID>" "<blocker fixes>"
+   ```
+
+   Omit this flag when `autonomous: false` — the implementer then surfaces a normal permission
+   prompt per write (human-in-loop; metate's design is otherwise identical, see metate-build Note).
+
 > ⚠️ Unlike `cursor`/`codex`, the `claude` backend has **no file-based rule** wiring the
 > knowledge graph. In `-p` headless mode it will grep/Read by default (burning tokens on
 > structural reach) unless the prompt carries the **Code Discovery clause** above. When
