@@ -41,11 +41,13 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `review.autoFix` — which buckets get routed to the implementer. One of:
   `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
   Reporting is unconditional regardless of this setting (see Output).
-- `codebaseMemory` — optional structural context provider (codebase-memory-mcp).
-  When `enabled: true`, sub-agents prefer the knowledge graph over grep/Read and the
-  loop re-indexes between rounds. Absent or `enabled: false` ⇒ behave exactly as before
-  (no graph calls, no re-index step). Read `reindex` (`git`|`always`|`manual`) and
-  `indexCommand` only when enabled.
+- `codebaseMemory` — structural context provider (codebase-memory-mcp, a **required
+  prerequisite** — install/bootstrap abort without it). The `enabled` flag (default
+  `true`) toggles whether review *uses* the graph: when `enabled: true`, sub-agents
+  prefer the knowledge graph over grep/Read and the loop re-indexes between rounds.
+  Set `enabled: false` to opt this repo out of graph-augmented review (no graph calls,
+  no re-index step). Read `reindex` (`git`|`always`|`manual`) and `indexCommand` only
+  when enabled.
 
 ## Inputs
 
