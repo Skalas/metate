@@ -54,7 +54,7 @@ Edit `.metate/profile.yml` in place.
 ```bash
 for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found: $c"; done
 ```
-- cursor → `backend: cursor`, `model: composer-2.5`
+- cursor → `backend: cursor`, `model: auto`
 - codex  → `backend: codex`,  `model: ""` (omit; `*-codex-fast` need an API-key account)
 - claude → `backend: claude`, `model: ""`
 
