@@ -10,6 +10,10 @@ shipGate: "__SHIPGATE__"   # full pre-PR gate (mirrors CI)
 implementer:
   backend: cursor          # cursor | codex | claude | gemini
   model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
+  autonomous: false        # claude backend only. true → bootstrap whitelists `Bash(claude -p:*)`
+                           # in .claude/settings.local.json (personal, gitignored) so headless
+                           # rounds don't prompt. Trade-off: removes the per-call approval gate on
+                           # the nested implementer. cursor/codex gate writes via their own flags.
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
