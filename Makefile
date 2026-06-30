@@ -1,5 +1,5 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-review/bootstrap.sh
+SCRIPTS := install.sh skills/metate-review/bootstrap.sh bin/metate skills/metate-review/codex-review.sh
 
 .PHONY: verify check lint test help
 .DEFAULT_GOAL := help

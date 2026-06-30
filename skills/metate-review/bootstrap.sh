@@ -185,6 +185,13 @@ else
     || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
 fi
 
+# Report the orchestrator backend. A fresh profile carries the template default (claude),
+# which preserves today's Claude Code path; an existing profile is never clobbered. The
+# `metate run <stage>` dispatcher routes per metate-review/ORCHESTRATORS.md.
+ORCH_BACKEND="$(awk '/^orchestrator:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
+  | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//')"
+echo "  ✓ orchestrator.backend: ${ORCH_BACKEND:-claude} (blank ⇒ claude; codex|cursor in metate-review/ORCHESTRATORS.md)"
+
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
 if [ -d "$HOME/.cursor" ]; then
   RULE_DIR="$PROJECT_ROOT/.cursor/rules"

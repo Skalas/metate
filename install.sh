@@ -77,11 +77,28 @@ copy_skills() {  # $1 = destination skills root
     local name; name="$(basename "$dir")"
     # Intentionally replaces any same-named skill in the destination. All metate
     # skills are `metate-`prefixed, so this only clobbers prior metate installs.
-    rm -rf "$root/$name"
+    rm -rf "${root:?}/$name"
     cp -R "$dir" "$root/$name"
   done
   [ -f "$root/metate-review/bootstrap.sh" ] && chmod +x "$root/metate-review/bootstrap.sh"
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
+}
+
+# Drop the orchestrator dispatcher (`metate run <stage>`) on PATH. Runs for BOTH scopes:
+# its skills_dir() locates project-vendored .claude/skills at runtime (git rev-parse), so
+# one PATH binary at ~/.local/bin/metate serves user- AND project-scoped installs alike.
+# bin/metate is a sibling of skills/, present in both a local checkout and a fresh clone.
+install_dispatcher() {
+  local bin="$HOME/.local/bin" src; src="$(dirname "$SRC")"
+  mkdir -p "$bin"
+  if [ -f "$src/bin/metate" ]; then
+    cp "$src/bin/metate" "$bin/metate"
+    chmod +x "$bin/metate"
+    [ -x "$bin/metate" ] || { echo "✗ dispatcher install failed: $bin/metate is not executable" >&2; exit 1; }
+    echo "  ✓ orchestrator dispatcher → $bin/metate"
+  else
+    echo "  • bin/metate not found in source — dispatcher not installed" >&2
+  fi
 }
 
 # The bootstrap + profile template ship inside the metate-review skill dir.
@@ -103,6 +120,8 @@ exec bash "$HOME/.claude/skills/metate-review/bootstrap.sh" "$@"
 EOF
   chmod +x "$BIN/metate-init"
   echo "  ✓ per-project initializer → $BIN/metate-init"
+
+  install_dispatcher
   echo ""
   if [ "$UPDATE" = 1 ]; then
     echo "Skills updated. In each project, reconcile its profile with:  metate-init --update"
@@ -113,6 +132,7 @@ EOF
 else
   echo "▸ $VERB metate skills into PROJECT: $PROJECT"
   copy_skills "$PROJECT/.claude/skills"
+  install_dispatcher
   echo "▸ running bootstrap for this project"
   if [ "$UPDATE" = 1 ]; then
     ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" --update )
