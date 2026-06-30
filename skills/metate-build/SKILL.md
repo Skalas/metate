@@ -28,10 +28,14 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
 
 ## Steps
 1. **Start a resumable session** per the backend's `start` command (see IMPLEMENTERS.md).
-   Capture the session id:
+   Background the long-running work call so it can't die on the foreground timeout ceiling
+   (SIGTERM / exit 143) — see IMPLEMENTERS.md → "Long-running invocations" for which call to
+   background vs. capture in the foreground. Capture the session id:
    - cursor → `CID=$(cursor-agent create-chat)`, then drive build with `--resume "$CID"`.
    - codex → run `codex exec …`; resume later with `--last` (or capture the id from `--json`).
-   - claude → `claude -p --output-format json …` → `.session_id`.
+   - claude → `claude -p --output-format json …` → `.session_id`, read from
+     `.metate/.session-start.json` *after* the backgrounded call completes (see IMPLEMENTERS.md
+     → claude section for the redirect), then proceed to step 2.
 2. **Write the handoff** to `sessionFile`:
    ```json
    { "implementer": "<backend>", "sessionId": "<id|--last>", "model": "<model>" }

@@ -20,6 +20,33 @@ Build writes the session handoff (path = `sessionFile` in `.metate/profile.yml`,
 
 For backends that support "resume most-recent", `sessionId` may be the literal `"--last"`.
 
+## Long-running invocations — background the work call, not the id-capture call
+
+Two kinds of call show up in the adapters below, and they want opposite treatment:
+
+- **Fast id-capture calls** (e.g. cursor's `cursor-agent create-chat`) return an id on stdout
+  in well under a second. Run these in the **foreground** and capture with command
+  substitution (`CID=$(…)`) — backgrounding them would discard the very stdout you need.
+- **The long-running work call** — the build, or a review round's resume + gate re-run — can
+  run for many minutes. Run it with the Bash tool's **`run_in_background: true`**.
+
+Why background the work call: a foreground Bash call is bound to the tool's timeout ceiling —
+default 120000 ms (2 min), max 600000 ms (10 min). When the work outlives it, Bash sends
+SIGTERM and the call dies with **exit 143**, killing the implementer mid-write. Raising
+`timeout` to the 10-min max only postpones this; a real build/review round can legitimately
+exceed 10 minutes, so the ceiling is not a reliable bound. A backgrounded call has no such
+ceiling: it runs across turns and re-invokes the orchestrator when it exits, at which point
+its output is retrievable.
+
+So capture the id **on completion**, not mid-run — nothing needs it earlier (build only writes
+`sessionFile` for the *later* review stage). When the work call is also the id source (claude's
+`claude -p --output-format json` → `.session_id`), read it from the completed call's output;
+redirecting stdout to a file (see the `claude` section below) is the robust form — it isolates
+clean JSON for `jq` instead of fishing it out of the completion buffer's mixed stdout/stderr.
+That file is a **transient** capture buffer — distinct from the durable `sessionFile`; overwrite
+or delete it freely. Backends that resume by most-recent (`codex … resume --last`) need no id
+capture at all.
+
 ## Code Discovery clause
 
 When `codebaseMemory.enabled` in the profile, `metate-build` and `metate-review` prepend
@@ -85,8 +112,10 @@ codex exec resume --last -c sandbox_mode="workspace-write" "<blocker fixes>"
 ## claude  ✅ available
 
 ```bash
-claude -p --output-format json "<build prompt>"          # → .session_id
-claude -p --resume "<SESSION_ID>" "<blocker fixes>"
+# start: pass to the Bash tool with run_in_background: true (foreground hits SIGTERM/exit 143)
+# — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .session_id …
+claude -p --output-format json "<build prompt>" > .metate/.session-start.json   # background this call
+claude -p --resume "<SESSION_ID>" "<blocker fixes>"      # resume round — also a work call, background it
 ```
 
 Single-vendor loop, or fallback implementer.
@@ -101,7 +130,8 @@ the loop stalls waiting on a prompt with no TTY:
    `--dangerously-skip-permissions`, or it cannot act headless:
 
    ```bash
-   claude -p --dangerously-skip-permissions --output-format json "<build prompt>"
+   # both backgrounded work calls; start redirects stdout to recover the id (see above)
+   claude -p --dangerously-skip-permissions --output-format json "<build prompt>" > .metate/.session-start.json
    claude -p --dangerously-skip-permissions --resume "<SESSION_ID>" "<blocker fixes>"
    ```
 
