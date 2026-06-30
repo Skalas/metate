@@ -1,5 +1,11 @@
 # metate
 
+> *Metate* — the Mesoamerican grinding stone, worked with a *mano*. The same
+> stone grinds whatever you put on it: *maíz* into *masa*, seeds and chiles into
+> *mole*, cacao into chocolate — raw material into something finished through
+> patient, repeated passes. Here, the one stone that grinds *any* codebase into
+> shipped work, one ceremony at a time — and is set up again for the next batch.
+
 A portable, codebase-agnostic **development pipeline** for Claude Code — the
 *ceremonias de metate*. Seven ceremonies, each a skill; the three-round review engine is one
 of them.
