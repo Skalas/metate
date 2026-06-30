@@ -19,9 +19,17 @@ It's a loop: `metate-aftercare` writes the next-sprint pointers that `metate-dis
 to open the next cycle — with **you** as the stop-condition between iterations.
 
 Across the whole pipeline the **implementer** (an external CLI — `cursor-agent` ·
-`codex` · `claude` · `gemini`) is the **only writer**. Claude Code orchestrates and its
-sub-agents are read-only. The implementer's **build session is resumed across review
-rounds**, so it keeps the rationale behind its own code instead of re-deriving it.
+`codex` · `claude` · `gemini`) is the **only writer**. The **orchestrator** that drives the
+ceremonies and runs the read-only review fan-out is itself pluggable (`claude` · `codex` ·
+`cursor`), selected by `orchestrator.backend` **independently** of the implementer — so
+"claude-cursor" (claude drives, cursor writes), "codex-only", or "codex-cursor" are all just
+config. The implementer's **build session is resumed across review rounds**, so it keeps the
+rationale behind its own code instead of re-deriving it.
+
+Run a stage on the configured orchestrator with the `metate run <stage>` dispatcher (installed
+on PATH); `orchestrator.backend: claude` (the default) keeps the Claude Code plugin flow
+unchanged. Per-runtime adapter commands live in `metate-review/ORCHESTRATORS.md` (the
+orchestrator twin of `IMPLEMENTERS.md`).
 
 ## The ceremonies
 
@@ -133,6 +141,9 @@ file — the bootstrap only guesses the gates. In order of importance:
 2. **`implementer.backend` + `model`** — who writes the code: `cursor` (verified end-to-end),
    `codex`, `claude`, or `gemini` (probe first). Blank model = adapter default. See
    `metate-review/IMPLEMENTERS.md` for the per-backend commands and verification status.
+   **`orchestrator.backend`** (independent) — who *drives* the ceremonies and the review
+   fan-out: `claude` (default; the plugin flow), `codex` (verified), or `cursor` (probe). See
+   `metate-review/ORCHESTRATORS.md`.
 3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
    (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
 4. **`prep`** — `baseBranch` (set to `dev` if you gitflow), `readingOrder` (handoff docs to
@@ -155,6 +166,15 @@ Then run the ceremonies in order in Claude Code:
 
 Add a row + start/resume commands to `metate-review/IMPLEMENTERS.md`. The contract:
 `start → sessionId`, `resume(sessionId, prompt)` headless with write access, a fast model.
+
+## Adding an orchestrator
+
+Add a row + per-runtime command blocks to `metate-review/ORCHESTRATORS.md`, then a `case` arm
+in `bin/metate`. The contract is two primitives: `runStage(skill)` — execute a `SKILL.md`
+playbook end to end — and `fanOut(reviewers[], read-only)` — launch N concurrent read-only
+reviewers returning typed findings. A new backend must clear one bar: **resume a headless
+session by id** (so review rounds resume the build session, not an amnesiac one). `claude` and
+`codex` are verified; `cursor` is wired probe-before-use (beta); `gemini` is implementer-only.
 
 ## License
 
