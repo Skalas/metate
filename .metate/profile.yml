@@ -56,8 +56,8 @@ discover:
 # --- prep (metate-prep) --------------------------------------------------
 prep:
   baseBranch: main         # no dev branch on this repo
-  readingOrder: ["README.md"]
-  techDebtFile: ""
+  readingOrder: ["README.md", "docs/ROADMAP.md"]
+  techDebtFile: "docs/TECH-DEBT.md"
   issues:                  # file the ledger at sprint start from the text plan
     create: true           # false = skip issue filing entirely
     tracker: github        # gh CLI
@@ -72,7 +72,7 @@ smoke:
 
 # --- aftercare (metate-aftercare) ----------------------------------------
 aftercare:
-  deliverables: ["README.md"]
+  deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md"]
 
 # --- ship (metate-ship) --------------------------------------------------
 ship:
