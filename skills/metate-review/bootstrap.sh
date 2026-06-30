@@ -140,6 +140,10 @@ if ! { [ -f "$GI" ] && grep -qE '^\.metate/session\.json' "$GI"; }; then
   { echo ""; echo "# metate session handoff"; echo ".metate/session.json"; } >> "$GI"
   echo "  ✓ added .metate/session.json to .gitignore"
 fi
+if ! { [ -f "$GI" ] && grep -qxF '.metate/.session-start.json' "$GI"; }; then
+  { echo "# metate transient session-id capture buffer"; echo ".metate/.session-start.json"; } >> "$GI"
+  echo "  ✓ added .metate/.session-start.json to .gitignore"
+fi
 if ! { [ -f "$GI" ] && grep -qE '^\.metate/issues\.json' "$GI"; }; then
   { echo "# metate issue ledger"; echo ".metate/issues.json"; } >> "$GI"
   echo "  ✓ added .metate/issues.json to .gitignore"

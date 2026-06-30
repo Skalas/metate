@@ -1,5 +1,6 @@
 .DS_Store
 .metate/session.json
+.metate/.session-start.json
 .metate/issues.json
 .metate/*.bak
 # codebase-memory Cursor rule is installed tooling (source: metate repo)
