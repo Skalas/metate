@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "metate review finding set",
+  "description": "Structured findings a read-only reviewer returns. Used as `codex exec --output-schema` (and the cursor/gemini equivalent) so each reviewer's final response is typed JSON the orchestrator can merge in shell.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "bucket", "summary", "rationale"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Repo-relative path of the file the finding is in."
+          },
+          "line": {
+            "type": "integer",
+            "description": "1-indexed line the finding anchors to (0 when not line-specific)."
+          },
+          "bucket": {
+            "type": "string",
+            "enum": ["blocker", "warning", "suggestion"],
+            "description": "blocker = wrong behavior / security / violated reviewFocus invariant / won't build. warning = real but non-blocking. suggestion = elegance/DESIGN (never auto-applied)."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-sentence statement of the defect."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why it is real and why it lands in this bucket; concrete failing input/state where applicable."
+          }
+        }
+      }
+    }
+  }
+}
