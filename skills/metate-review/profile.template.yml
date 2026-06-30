@@ -48,6 +48,18 @@ reviewFocus: |
 review:
   autoFix: blockers
 
+# --- discover (metate-discover) -------------------------------------------
+# The pre-plan. Surveys signals, ranks candidate sprints, lets you pick, and
+# writes the chosen one as the plan doc prep consumes. You decide; it proposes.
+discover:
+  signals:                 # which sources to sweep for candidate work
+    aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
+    codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
+    issues: true           # open gh issues + techDebtFile items whose trigger has fired
+    gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
+  planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
+  candidates: 5            # how many ranked candidates to propose
+
 # --- prep (metate-prep) ---------------------------------------------------
 prep:
   baseBranch: main         # branch new work from here (set to `dev` if you gitflow)

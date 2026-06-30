@@ -2,7 +2,7 @@
 name: metate-review
 version: 1.0.0
 description: |
-  Stage 2 (Review) of the `metate` pipeline — the three-round review engine.
+  Stage 3 (Review) of the `metate` pipeline — the three-round review engine.
   Orchestrates up to 3 rounds of parallel read-only sub-agent review
   (correctness · security · elegance) and applies ONLY blocker fixes through a
   pluggable implementer CLI (cursor-agent · codex · claude · gemini), resuming
@@ -60,9 +60,26 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 
 ## The loop — at most 3 rounds
 
+**Each round is adversarial and cumulative, not a re-run.** Round 1 reviews the build diff.
+Every round after carries forward the prior rounds' findings *and* the patch the implementer
+just applied — and the reviewers have two jobs beyond a fresh read:
+
+- **Verify the last patch.** For each finding fixed last round, confirm the fix actually
+  resolves it and introduced no new defect the fast gate can't catch — a broken `reviewFocus`
+  invariant, a regressed state transition, a newly-affected caller (`trace_path` the patched
+  symbols when `codebaseMemory.enabled`). A fix is a fresh change under review, not a closed
+  ticket. The orchestrator that drove the fix is the maker; verification comes from the
+  read-only fan-out (§1), never the orchestrator's own spot-check or grep.
+- **Catch what earlier rounds missed.** The point of multiple rounds is *escalating*
+  scrutiny: treat a quiet prior round as a signal to probe harder and from new angles, not to
+  relax. Do **not** re-raise a finding the implementer explicitly declined with a rationale
+  (that never converges) — carry it forward as settled.
+
 ### 1. Fan-out review (parallel, read-only)
 Spawn these sub-agents **in one message** so they run concurrently; each gets the diff +
-`reviewFocus` and returns structured findings:
+`reviewFocus` and returns structured findings. **From round 2 on, also hand each sub-agent
+the prior rounds' findings (fixed · declined-with-rationale · still-open) and the patch diff
+applied since**, so it can verify the fixes and avoid re-litigating settled points:
 
 - `code-reviewer` — correctness bugs, broken state transitions, and every invariant
   listed in `reviewFocus`.
@@ -137,9 +154,17 @@ Convergence is anchored on **blockers** — the objective signal. Auto-fixed war
 attempted opportunistically each round but never by themselves force another round (subjective
 findings would never converge).
 
+**A round that applied fixes can never declare done.** "0 blockers" must come from a fan-out
+round on the patched tree — any patch *requires* a following verify round. A green fast gate is
+necessary, not sufficient: it proves the build, not the logic.
+
 - **0 blockers and gate green** → ✅ done. Any unfixed (or implementer-declined)
   warning/DESIGN findings are reported, not looped on.
 - **Blockers remain after round 3** → 🛑 STOP. Summarize survivors; hand back to the user.
+- **Round 3 *applied* fixes that cleared the last blockers** → 🛑 STOP, not ✅: the cap leaves
+  no round to verify that patch, and round 3 cannot self-certify. Hand back with the round-3
+  diff flagged as unverified — the user runs a spot-check (or a manual round-4 fan-out) before
+  declaring done.
 
 ## Output
 Reporting is **unconditional** — every finding surfaces regardless of `review.autoFix`.

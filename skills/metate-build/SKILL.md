@@ -2,7 +2,7 @@
 name: metate-build
 version: 1.0.0
 description: |
-  Stage 1 (Build) of the `metate` pipeline. Starts a RESUMABLE implementer
+  Stage 2 (Build) of the `metate` pipeline. Starts a RESUMABLE implementer
   session (cursor/codex/claude) and writes the session handoff to
   `.metate/session.json` so later review rounds resume the same thread and keep
   the implementer's rationale. The implementer is the only writer; this skill

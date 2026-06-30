@@ -280,8 +280,8 @@ fi
 cat <<EOF
 
 ✓ bootstrap complete. Next:
-  1. Edit .metate/profile.yml → reviewFocus (your invariants), implementer, prep/smoke/aftercare/ship.
+  1. Edit .metate/profile.yml → reviewFocus (your invariants), implementer, discover/prep/smoke/aftercare/ship.
   2. Run the pipeline ceremonies in Claude Code, in order:
-       metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
+       metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
   3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).
 EOF

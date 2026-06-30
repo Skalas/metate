@@ -2,7 +2,7 @@
 name: metate-aftercare
 version: 1.0.0
 description: |
-  Stage 4 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
+  Stage 5 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
   updates the project's required close-out deliverables (handoff notes, coverage
   docs, roadmap, tech-debt with triggers, next-sprint pointers). Reads the
   deliverable list from `.metate/profile.yml`. Codebase-agnostic; docs only.
@@ -36,4 +36,6 @@ number). If empty, ask the user for the close-out doc set.
 
 ## Output
 List the deliverables updated and the one-line change to each. These commit on the branch
-and ship in the PR (never direct to the base branch). Hand off to `metate-ship`.
+and ship in the PR (never direct to the base branch). The roadmap, next-sprint pointers, and
+triggered debt written here are the **primary input to the next cycle's `metate-discover`** —
+write them as decisions, not vague notes. Hand off to `metate-ship`.

@@ -2,7 +2,7 @@
 name: metate-smoke
 version: 1.0.0
 description: |
-  Stage 3 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
+  Stage 4 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
   bound to the DoD test matrix (T1…Tn) on seeded data, checks seed idempotency,
   and leaves only aesthetic/UX approval to the human. Reads `.metate/profile.yml`.
   Codebase-agnostic.

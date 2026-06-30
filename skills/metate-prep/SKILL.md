@@ -2,7 +2,7 @@
 name: metate-prep
 version: 1.0.0
 description: |
-  Stage 0 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
+  Stage 1 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
   order, triages tech debt, fixes the sprint mode (REDUCE/HOLD/EXPAND), files the
   sprint issue ledger from the text plan, and cuts the working branch from the
   base branch — before any code is written. Reads config from
@@ -17,7 +17,8 @@ allowed-tools:
 
 # metate-prep — prepare the terrain
 
-First ceremony. No implementation here — just orient, decide scope, branch.
+Runs after `metate-discover` (or as the entry point when the plan already exists). No
+implementation here — just orient, decide scope, branch.
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml`. Use the `prep:` block:
@@ -29,9 +30,11 @@ Read `.metate/profile.yml`. Use the `prep:` block:
 - `issueLedger` (top-level) — where to record the filed issue numbers for ship.
 
 ## Steps
-1. **Read the handoff** — read every doc in `prep.readingOrder`, in order. If empty,
-   ask the user for the entry doc (e.g. a sprint README / plan). Summarize the active
-   goal, the DoD, and any test matrix (T1…Tn) you find.
+1. **Read the handoff** — read every doc in `prep.readingOrder`, in order. If the **file at**
+   `discover.planFile` exists on disk (written by a prior `metate-discover` run), read it
+   first as the entry doc; otherwise, if `readingOrder` is empty, ask the user for the entry
+   doc (e.g. a sprint README / plan). Summarize the active goal, the DoD, and any test matrix
+   (T1…Tn) you find.
 2. **Triage debt** — open `prep.techDebtFile`; surface items whose **trigger** the
    upcoming work would hit. Recommend which to fold in vs defer. Don't fix anything.
 3. **Fix the sprint mode** — declare **REDUCE** / **HOLD** / **EXPAND**, justified by

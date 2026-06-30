@@ -37,6 +37,16 @@ reviewFocus: |
 review:
   autoFix: blockers+warnings
 
+# --- discover (metate-discover) ------------------------------------------
+discover:
+  signals:                 # which sources to sweep for candidate work
+    aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
+    codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
+    issues: true           # open gh issues + techDebtFile items whose trigger has fired
+    gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
+  planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
+  candidates: 5            # how many ranked candidates to propose
+
 # --- prep (metate-prep) --------------------------------------------------
 prep:
   baseBranch: main         # no dev branch on this repo

@@ -3,7 +3,7 @@ name: metate
 version: 1.0.0
 description: |
   Entry point, first-run setup wizard, and router for the `metate` development
-  pipeline (prep → build → review → smoke → aftercare → ship). Use this to get
+  pipeline (discover → prep → build → review → smoke → aftercare → ship). Use this to get
   oriented, to configure `.metate/profile.yml` with autodetected defaults on a
   fresh repo, or to find out which ceremony to run next. The actual work lives in
   the `metate-<stage>` skills; this one explains the flow and sets it up.
@@ -18,14 +18,18 @@ allowed-tools:
 
 # metate — pipeline entry point & setup
 
-The pipeline is six ceremonies, one skill each. **There is no single `metate` worker** —
+The pipeline is seven ceremonies, one skill each. **There is no single `metate` worker** —
 this skill orients you, sets up the profile on first run, and routes you to the right
 stage.
 
 ```
-metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
-   0             1            2              3                4                5
+metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
+   0                  1             2            3              4                5                6
 ```
+
+The macro-loop closes back on itself: `metate-aftercare` writes next-sprint pointers that
+`metate-discover` reads to open the next cycle. **You** are the stop-condition between
+iterations — discover proposes, you decide.
 
 The **implementer** (cursor / codex / claude) is the only writer; Claude Code's
 sub-agents are read-only. Everything project-specific lives in `.metate/profile.yml`.
@@ -66,6 +70,10 @@ Read those, extract the real invariants (auth/tenant isolation, money/precision,
 guards, "don't duplicate X", design-system rules), draft 3–6 bullets, and **ask the user
 to confirm or correct**. This is what makes the review catch real failure modes.
 
+**discover** — keep the template defaults unless the user objects: all four `signals` on,
+`planFile: .metate/plan.md`, `candidates: 5`. Turn `codebaseMemory` off here only if
+`codebaseMemory.enabled` is false. The `planFile` is what `prep` reads as its entry doc.
+
 **prep** — detect docs + base branch:
 ```bash
 ls README* docs/handoff/README* docs/*roadmap* 2>/dev/null            # readingOrder candidates
@@ -92,7 +100,8 @@ After writing, show the user the filled profile and confirm before they run the 
 
 | You are… | Run |
 |---|---|
-| starting fresh / no branch for the work | `metate-prep` |
+| don't know what to work on / a sprint just closed | `metate-discover` |
+| have a plan, no branch for the work yet | `metate-prep` |
 | branch cut, ready to write code | `metate-build` (starts the resumable implementer session) |
 | code written, want it reviewed | `metate-review` |
 | review green, need behavior proof | `metate-smoke` |
