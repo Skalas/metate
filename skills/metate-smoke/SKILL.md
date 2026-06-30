@@ -7,7 +7,10 @@ description: |
   and leaves only aesthetic/UX approval to the human. Reads `.metate/profile.yml`.
   Codebase-agnostic.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Bash

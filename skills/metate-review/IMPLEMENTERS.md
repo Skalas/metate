@@ -18,7 +18,10 @@ Build writes the session handoff (path = `sessionFile` in `.metate/profile.yml`,
 { "implementer": "cursor", "sessionId": "44ca13f5-...", "model": "composer-2.5" }
 ```
 
-For backends that support "resume most-recent", `sessionId` may be the literal `"--last"`.
+For backends that support "resume most-recent", `sessionId` may be the literal `"--last"` —
+but only when no other session of that backend is spawned between build and resume. If the
+**orchestrator shares the backend** (e.g. codex orchestrating + writing), the review fan-out
+spawns intervening sessions and `"--last"` is unsafe — record the explicit id (see codex §).
 
 ## Long-running invocations — background the work call, not the id-capture call
 
@@ -45,7 +48,8 @@ redirecting stdout to a file (see the `claude` section below) is the robust form
 clean JSON for `jq` instead of fishing it out of the completion buffer's mixed stdout/stderr.
 That file is a **transient** capture buffer — distinct from the durable `sessionFile`; overwrite
 or delete it freely. Backends that resume by most-recent (`codex … resume --last`) need no id
-capture at all.
+capture — **except** when the orchestrator shares the backend (codex-only), where intervening
+review sessions make `--last` resolve to the wrong thread; there, capture the explicit id (codex §).
 
 ## Code Discovery clause
 
@@ -90,20 +94,28 @@ cursor-agent --print --resume "$CID" --force "<blocker fixes, by file:line>"
 - fast model: `composer-2.5` (or any `-fast`). `--list-models` enumerates.
 - parseable output: `--output-format json|stream-json`.
 
-## codex  ✅ verified (start + `resume --last` continuity tested)
+## codex  ✅ verified (start + explicit-id resume continuity tested)
 
 ```bash
-# start (cd into the repo first; -C also works on `exec`)
-codex exec -s workspace-write "<build prompt>"
+# start: capture the REAL session id (headless reads stdin — redirect < /dev/null).
+# `--json` emits JSONL events; the session/thread id is on the session-configured event.
+codex exec -s workspace-write --json "<build prompt>" < /dev/null > .metate/.session-start.jsonl
+SESSION_ID="$(jq -r 'select(.session_id // .thread_id) | (.session_id // .thread_id)' \
+  .metate/.session-start.jsonl | head -1)"
 # resume — NOTE: the `resume` subcommand does NOT accept -s or -C.
 # Pass the sandbox via -c, and set cwd with the shell (cd) beforehand.
-codex exec resume --last -c sandbox_mode="workspace-write" "<blocker fixes>"
-# or by explicit id: codex exec resume "<SESSION_ID>" -c sandbox_mode="workspace-write" "<fixes>"
+codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixes>" < /dev/null
 ```
 
-- session: `resume --last` (verified — no id parsing needed); or capture the id from `--json`.
+- session: **record the explicit id** in `sessionFile` — `{ "implementer":"codex",
+  "sessionId":"<id>" }`. ⚠️ `resume --last` is **only** safe in a single-vendor loop where the
+  orchestrator is *not* codex. When the **orchestrator is also codex** (the codex-only pilot),
+  the read-only reviewer fan-out spawns newer codex sessions each round, so `--last` would
+  resolve to a *reviewer* thread, not the build session — `codex-review.sh` therefore requires
+  an explicit `sessionId` and `die`s on `--last`/empty.
 - write: `-s workspace-write` on `exec`; on `resume` use `-c sandbox_mode="workspace-write"`.
-  `-s read-only` for review-only passes.
+  `-s read-only` for review-only passes. Headless calls need `< /dev/null` or they block
+  forever on "Reading additional input from stdin...".
 - model: with an **API-key** account, `-m <model>` (e.g. a `codex` variant). With a
   **ChatGPT** account the `*-codex-fast` models are rejected — omit `-m` to use the
   configured default (e.g. `gpt-5.5` from `~/.codex/config.toml`). `--output-schema` for
@@ -166,7 +178,7 @@ Show the diff before merging back.
 | backend | headless write | session resume | fast model | notes |
 |---|---|---|---|---|
 | cursor  | ✅ `--force`            | ✅ `create-chat`+`--resume` (tested)       | ✅ `composer-2.5`         | fully verified |
-| codex   | ✅ `-s workspace-write` | ✅ `resume --last` (tested)                | ✅ default (`gpt-5.5`)¹   | resume sandbox via `-c sandbox_mode` |
+| codex   | ✅ `-s workspace-write` | ✅ explicit-id resume (tested)             | ✅ default (`gpt-5.5`)¹   | `-c sandbox_mode` on resume; `--last` unsafe when orchestrator is also codex |
 | claude  | ✅ default perms        | ✅ `--resume <session_id>`                 | ✅ sonnet                 | single-vendor option |
 | gemini  | ⛔ unverified            | ⛔ unverified                         | —                        | probe before use |
 

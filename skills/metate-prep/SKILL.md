@@ -9,7 +9,10 @@ description: |
   `.metate/profile.yml`. Codebase-agnostic; produces no code edits — its only side
   effects are the filed issues, the issue ledger, and the working branch.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Bash

@@ -8,7 +8,10 @@ description: |
   fresh repo, or to find out which ceremony to run next. The actual work lives in
   the `metate-<stage>` skills; this one explains the flow and sets it up.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Write
@@ -31,8 +34,11 @@ The macro-loop closes back on itself: `metate-aftercare` writes next-sprint poin
 `metate-discover` reads to open the next cycle. **You** are the stop-condition between
 iterations — discover proposes, you decide.
 
-The **implementer** (cursor / codex / claude) is the only writer; Claude Code's
-sub-agents are read-only. Everything project-specific lives in `.metate/profile.yml`.
+Two roles, both pluggable and **independent** (see `metate-review/ORCHESTRATORS.md` and
+`IMPLEMENTERS.md`): the **orchestrator** (`orchestrator.backend` — claude / codex / cursor)
+runs the playbooks and fans out the read-only reviewers; the **implementer**
+(`implementer.backend` — cursor / codex / claude / gemini) is the only writer. Everything
+project-specific lives in `.metate/profile.yml`.
 
 ## Step 1 — detect state
 
@@ -61,6 +67,11 @@ for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found
 - cursor → `backend: cursor`, `model: auto`
 - codex  → `backend: codex`,  `model: ""` (omit; `*-codex-fast` need an API-key account)
 - claude → `backend: claude`, `model: ""`
+
+**orchestrator** — who runs the playbooks + fans out reviewers, independent of the writer.
+Default `backend: claude` (today's behavior; the Claude Code plugin path). Switch to `codex`
+to run the pipeline with no Claude Code in the loop, or `cursor` (probe-before-use). The
+`metate run <stage>` dispatcher routes per `metate-review/ORCHESTRATORS.md`.
 
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash

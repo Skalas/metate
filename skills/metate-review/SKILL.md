@@ -3,7 +3,7 @@ name: metate-review
 version: 1.0.0
 description: |
   Stage 3 (Review) of the `metate` pipeline — the three-round review engine.
-  Orchestrates up to 3 rounds of parallel read-only sub-agent review
+  Orchestrates up to 3 rounds of parallel read-only review
   (correctness · security · elegance) and applies ONLY blocker fixes through a
   pluggable implementer CLI (cursor-agent · codex · claude · gemini), resuming
   the SAME implement session so the implementer keeps the rationale behind its
@@ -11,7 +11,10 @@ description: |
   remain or after round 3. Project-specific settings live in `.metate/profile.yml`
   — this engine is codebase-agnostic.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Bash
@@ -20,12 +23,16 @@ allowed-tools:
 
 # Three-Round Review — pluggable cut ceremony
 
-Claude Code orchestrates. The **implementer** (an external CLI) is the only writer —
-Claude's sub-agents are **read-only** analysis. This avoids two agents editing the same
-tree, and keeps the implementer's session so it remembers *why* it built things.
+The **orchestrator** runs this playbook and fans out the reviewers; the **implementer** (an
+external CLI) is the only writer — the review fan-out is **read-only** analysis. This avoids
+two agents editing the same tree, and keeps the implementer's session so it remembers *why*
+it built things. Both are pluggable and **independent**: the orchestrator is chosen by
+`orchestrator.backend`, the writer by `implementer.backend`.
 
-This engine carries **no project specifics**. Read them from the repo's profile.
-Adapter registry + verified commands per backend: **read `IMPLEMENTERS.md`** (next to this file).
+This engine carries **no project specifics**. Read them from the repo's profile. Per-backend
+verified commands: the **orchestrator** primitives (`runStage` · `fanOut`) live in
+`ORCHESTRATORS.md`; the **implementer** (writer) adapters in `IMPLEMENTERS.md` — both next to
+this file.
 
 ## Step 0 — load the project profile
 
@@ -37,13 +44,13 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `implementer.backend` / `implementer.model` — which adapter + model to drive.
 - `sessionFile` — path to the implement-session handoff (default `.metate/session.json`).
 - `isolation` — `none` | `worktree`.
-- `reviewFocus` — the invariants the sub-agents must scrutinize in THIS codebase.
+- `reviewFocus` — the invariants the reviewers must scrutinize in THIS codebase.
 - `review.autoFix` — which buckets get routed to the implementer. One of:
   `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
   Reporting is unconditional regardless of this setting (see Output).
 - `codebaseMemory` — structural context provider (codebase-memory-mcp, a **required
   prerequisite** — install/bootstrap abort without it). The `enabled` flag (default
-  `true`) toggles whether review *uses* the graph: when `enabled: true`, sub-agents
+  `true`) toggles whether review *uses* the graph: when `enabled: true`, the reviewers
   prefer the knowledge graph over grep/Read and the loop re-indexes between rounds.
   Set `enabled: false` to opt this repo out of graph-augmented review (no graph calls,
   no re-index step). Read `reindex` (`git`|`always`|`manual`) and `indexCommand` only
@@ -76,19 +83,23 @@ just applied — and the reviewers have two jobs beyond a fresh read:
   (that never converges) — carry it forward as settled.
 
 ### 1. Fan-out review (parallel, read-only)
-Spawn these sub-agents **in one message** so they run concurrently; each gets the diff +
-`reviewFocus` and returns structured findings. **From round 2 on, also hand each sub-agent
-the prior rounds' findings (fixed · declined-with-rationale · still-open) and the patch diff
-applied since**, so it can verify the fixes and avoid re-litigating settled points:
+Run the three reviewers through the orchestrator's **`fanOut`** primitive — N concurrent
+**read-only** agents, each returning structured findings (typed per `finding.schema.json`).
+The per-runtime mapping is in `ORCHESTRATORS.md` (claude: read-only sub-agents in one message;
+codex/cursor: parallel `exec --output-schema` processes merged in shell). Each agent gets the
+diff + `reviewFocus`. **From round 2 on, also hand each agent the prior rounds' findings
+(fixed · declined-with-rationale · still-open) and the patch diff applied since**, so it can
+verify the fixes and avoid re-litigating settled points:
 
 - `code-reviewer` — correctness bugs, broken state transitions, and every invariant
   listed in `reviewFocus`.
 - `security-auditor` — authz/tenant isolation, secrets, PII in payloads/logs, injection.
 - `refactorer` — DESIGN/elegance/DRY. **Informational only** — never auto-applied.
 
-**When `codebaseMemory.enabled`**, each sub-agent prompt must instruct it to prefer the
-codebase-memory-mcp graph over grep/Read for structural reach (sub-agents do not inherit
-this preference — restate it). Concretely:
+**When `codebaseMemory.enabled`**, each reviewer prompt must instruct it to prefer the
+codebase-memory-mcp graph over grep/Read for structural reach (fanned-out agents do not
+inherit this preference — restate it; see `ORCHESTRATORS.md` for how each runtime reaches
+the MCP). Concretely:
 - compute the **impact of the diff** — `trace_path` the changed symbols to find callers the
   diff doesn't show (a changed signature breaking an off-diff caller is a classic blocker);
 - trace each `reviewFocus` invariant through the call graph rather than grepping for it;
@@ -176,6 +187,7 @@ so nothing the auto-fix scope skipped is lost.
 ## Guardrails
 - Implementer write mode is auto-approving. If `isolation: worktree`, run the implementer
   in an isolated git worktree and show the diff before merging back (see `IMPLEMENTERS.md`).
-- Never let a sub-agent write. Route every fix through the implementer, tagged with its bucket.
+- Never let a reviewer write. The fan-out is read-only; route every fix through the
+  implementer, tagged with its bucket.
 - Adversarially verify a finding before calling it a blocker — a plausible-but-wrong "bug"
   wastes a round and risks the implementer breaking working code.
