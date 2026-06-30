@@ -51,6 +51,16 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      { "sprint": "<topic>",
        "issues": [ { "id": "T1", "number": 42, "title": "…", "url": "…" } ] }
      ```
+   - **Clean the ledger.** Writing the ledger **overwrites** any prior one — never append to a
+     ledger whose `sprint` differs, or last sprint's issues leak into this sprint's auto-close
+     at ship. Stamp the current `sprint` topic.
+   - **Reset the session file — only when starting a *new* sprint.** If the existing ledger's
+     `sprint` differs from the one you're setting up, clear `sessionFile` (written by a prior
+     sprint's Build run) so the next Build opens a fresh implementer session. If you're
+     re-running prep **within the same sprint** (e.g. to refile an issue), leave `sessionFile`
+     untouched — deleting an in-flight Build session would make the next review STOP (see
+     metate-review). If no ledger file exists yet (first sprint), treat it as a new sprint and
+     clear `sessionFile`.
    - If `create` is false, skip filing and note that the ledger is externally managed.
 5. **Cut the branch** — from `prep.baseBranch`:
    ```bash
