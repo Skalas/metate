@@ -2,7 +2,7 @@
 name: metate-ship
 version: 1.0.0
 description: |
-  Stage 5 (Ship) of the `metate` pipeline. Restructures the branch into
+  Stage 6 (Ship) of the `metate` pipeline. Restructures the branch into
   bisectable commits, runs the full ship gate, and opens the PR with issue
   auto-close wiring — only after the gate is green. Reads `.metate/profile.yml`.
   Codebase-agnostic. Commits/pushes/PRs only on explicit user confirmation.

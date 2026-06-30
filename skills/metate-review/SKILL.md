@@ -2,7 +2,7 @@
 name: metate-review
 version: 1.0.0
 description: |
-  Stage 2 (Review) of the `metate` pipeline — the three-round review engine.
+  Stage 3 (Review) of the `metate` pipeline — the three-round review engine.
   Orchestrates up to 3 rounds of parallel read-only sub-agent review
   (correctness · security · elegance) and applies ONLY blocker fixes through a
   pluggable implementer CLI (cursor-agent · codex · claude · gemini), resuming

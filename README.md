@@ -1,13 +1,16 @@
 # metate
 
 A portable, codebase-agnostic **development pipeline** for Claude Code — the
-*ceremonias de metate*. Six ceremonies, each a skill; the three-round review engine is one
+*ceremonias de metate*. Seven ceremonies, each a skill; the three-round review engine is one
 of them.
 
 ```
-metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
-   0            1            2              3              4               5
+metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
+   0                 1             2            3              4               5                6
 ```
+
+It's a loop: `metate-aftercare` writes the next-sprint pointers that `metate-discover` reads
+to open the next cycle — with **you** as the stop-condition between iterations.
 
 Across the whole pipeline the **implementer** (an external CLI — `cursor-agent` ·
 `codex` · `claude` · `gemini`) is the **only writer**. Claude Code orchestrates and its
@@ -18,26 +21,28 @@ rounds**, so it keeps the rationale behind its own code instead of re-deriving i
 
 Start with **`metate`** — the entry-point skill that orients you, fills
 `.metate/profile.yml` with autodetected defaults on first run, and routes you to the
-right stage. The six stage skills do the actual work:
+right stage. The seven stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
-| 1 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
-| 2 | `metate-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
-| 3 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn) on seeded data; human approves UX only |
-| 4 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
-| 5 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
+| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git), rank candidate sprints, **you pick**, write the plan doc prep consumes |
+| 1 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
+| 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
+| 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
+| 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn) on seeded data; human approves UX only |
+| 5 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
+| 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
 
 ## Architecture: engine vs profile
 
 ```
 skills (generic, install once)        .metate/profile.yml (per-repo, versioned)
-├─ metate-prep/                         ├─ fastGate / shipGate     (your commands)
-├─ metate-build/                        ├─ implementer.backend     (cursor/codex/…)
-├─ metate-review/   ← review engine     ├─ reviewFocus             (your invariants)
-│   ├─ IMPLEMENTERS.md  (CLI adapters) ├─ prep / smoke / aftercare / ship blocks
-│   ├─ profile.template.yml            └─ sessionFile / isolation
+├─ metate-discover/                     ├─ fastGate / shipGate     (your commands)
+├─ metate-prep/                         ├─ implementer.backend     (cursor/codex/…)
+├─ metate-build/                        ├─ reviewFocus             (your invariants)
+├─ metate-review/   ← review engine     ├─ discover / prep / smoke / aftercare / ship blocks
+│   ├─ IMPLEMENTERS.md  (CLI adapters) └─ sessionFile / isolation
+│   ├─ profile.template.yml
 │   └─ bootstrap.sh
 ├─ metate-smoke/ · metate-aftercare/ · metate-ship/
 ```
@@ -133,9 +138,12 @@ file — the bootstrap only guesses the gates. In order of importance:
 7. **`ship`** — `prTarget` (match `baseBranch`), `commitStyle`, `issueCloseKeyword`.
 8. **`isolation`** — `none`, or `worktree` to run the auto-approving implementer in an
    isolated git worktree and review the diff before merging back.
+9. **`discover`** — defaults are usually fine: all four `signals` on, `planFile`
+   `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
+   you decide *what* to work on; you always pick — it never starts a sprint on its own.
 
 Then run the ceremonies in order in Claude Code:
-`metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
+`metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
 
 ## Adding an implementer
 
