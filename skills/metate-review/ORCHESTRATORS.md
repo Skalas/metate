@@ -66,13 +66,16 @@ codex exec -s workspace-write -c approval_policy="never" --cd "$PWD" "$(cat skil
 <project profile + stage inputs>"
 
 # fanOut(reviewers, read-only): N parallel read-only processes, typed JSON out, shell merge.
-codex exec --sandbox read-only -c approval_policy="never" --cd "$PWD" \
+# APPROVE_MCP pre-approves the codebase-memory MCP tool calls headless — WITHOUT it, exec
+# auto-cancels them ("user cancelled MCP tool call") and reviewers grep-fall-back silently.
+APPROVE_MCP='-c mcp_servers.codebase-memory-mcp.default_tools_approval_mode="approve"'
+codex exec --sandbox read-only -c approval_policy="never" $APPROVE_MCP --cd "$PWD" \
   --output-schema skills/metate-review/finding.schema.json \
   -o /tmp/correctness.json "<correctness reviewer prompt>" &
-codex exec --sandbox read-only -c approval_policy="never" --cd "$PWD" \
+codex exec --sandbox read-only -c approval_policy="never" $APPROVE_MCP --cd "$PWD" \
   --output-schema skills/metate-review/finding.schema.json \
   -o /tmp/security.json    "<security reviewer prompt>" &
-codex exec --sandbox read-only -c approval_policy="never" --cd "$PWD" \
+codex exec --sandbox read-only -c approval_policy="never" $APPROVE_MCP --cd "$PWD" \
   --output-schema skills/metate-review/finding.schema.json \
   -o /tmp/elegance.json    "<elegance reviewer prompt>" &
 wait
@@ -81,18 +84,26 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
 
 # resume (apply blocker fixes through the codex IMPLEMENT session — IMPLEMENTERS.md):
 #   `resume` takes no -s/-C; pass the sandbox via -c and set cwd with the shell.
-( cd "$PWD" && codex exec resume --last \
-    -c sandbox_mode="workspace-write" -c approval_policy="never" "<blocker fixes>" )
+#   Resume by EXPLICIT session id (NOT --last): the read-only fan-out above spawns newer
+#   codex sessions, so --last would resolve to a reviewer thread, not the implement session.
+( cd "$PWD" && codex exec resume "$SESSION_ID" \
+    -c sandbox_mode="workspace-write" -c approval_policy="never" $APPROVE_MCP "<blocker fixes>" )
 ```
 
 - `--output-last-message FILE` (`-o`) isolates the typed final response for `jq`; combine
   with `--output-schema`. `--json` is the JSONL alternative if you'd rather stream events.
 - model: omit `-m` to use the configured default (`gpt-5.5` from `~/.codex/config.toml`).
   `*-codex-fast` models require an API-key account; ChatGPT-account auth rejects them.
-- MCP: codex reads MCP servers from `~/.codex/config.toml` `[mcp_servers.*]`; the
-  codebase-memory entry there is reachable from `exec`. File-based tool-priority guidance
-  also lives in `AGENTS.md` (bootstrap injects it) — but restate the Code Discovery clause
-  in the reviewer prompt too (the only path that always reaches the agent). See `codex-rule.md`.
+- MCP: codex reads MCP servers from `~/.codex/config.toml` `[mcp_servers.*]`, but
+  **registration alone is not enough headless**. In `codex exec` an MCP tool call is a
+  *separate* approval gate (`approvals_reviewer = "user"`); with no TTY it is auto-cancelled
+  (`user cancelled MCP tool call`) and the agent silently greps instead. `approval_policy="never"`
+  does **not** cover this — it only auto-approves *shell commands*. Auto-approve the server's
+  tool calls with `default_tools_approval_mode="approve"`, passed per-run via `-c` (the
+  `APPROVE_MCP` var above) so **no machine-specific config lives in the repo**; the read-only
+  sandbox stays intact. File-based tool-priority guidance also lives in `AGENTS.md` (bootstrap
+  injects it), but restate the Code Discovery clause in the reviewer prompt too (the only path
+  that always reaches the agent). See `codex-rule.md`.
 - re-index between rounds: the `codex-review.sh` pilot relies on `reindex: git` — the
   auto-index git watcher refreshes the graph after the implementer patches, so the pilot
   triggers no re-index itself. `reindex: always` / `reindex: manual` are **not** honored by
@@ -138,7 +149,7 @@ before selecting `gemini` as orchestrator.
 | backend | runStage | fanOut (read-only, typed) | MCP in headless | notes |
 |---|---|---|---|---|
 | claude  | ✅ Skill tool                  | ✅ Agent sub-agents (one message)            | ✅ `~/.claude.json` | today's default; untouched |
-| codex   | ✅ `exec` (tested)             | ✅ parallel `exec --output-schema` (tested)  | ✅ `~/.codex/config.toml` | resume sandbox via `-c sandbox_mode`; pre-grant approvals |
+| codex   | ✅ `exec` (tested)             | ✅ parallel `exec --output-schema` (tested)  | ✅ config + `default_tools_approval_mode="approve"` via `-c` (verified live) | resume sandbox via `-c sandbox_mode`; pre-grant BOTH shell (`approval_policy`) and MCP (`default_tools_approval_mode`) approvals |
 | cursor  | ⛔ `-p` (beta, probe)          | ⛔ no `--output-schema`; prompt the schema   | ⚠ needs `--approve-mcps` | beta; 30s shell timeout; name a model |
 | gemini  | ⛔ unverified                  | ⛔ unverified                                | ⛔ unverified | probe before use |
 
