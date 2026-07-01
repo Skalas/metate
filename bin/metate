@@ -55,6 +55,9 @@ SKILL_MD="$SKILLS/metate-$stage/SKILL.md"
 backend="$(read_backend)"; backend="${backend:-claude}"
 echo "▸ metate run $stage  (orchestrator: $backend)"
 
+STAGE_PROMPT="$(printf '%s\n\nRun this metate stage against the repo at %s. Read project specifics from %s.\n' \
+  "$(cat "$SKILL_MD")" "$ROOT" "$PROFILE")"
+
 case "$backend" in
   claude)
     # Today's path: the Claude Code plugin runs the stage as a Skill. The dispatcher
@@ -72,16 +75,30 @@ case "$backend" in
     # "gotchas") so a mid-run approval cannot stall the headless process. Pipe the prompt via
     # stdin (`-`) — a SKILL.md starts with `---`, which codex would parse as a flag if passed
     # as a positional argument.
-    printf '%s\n\nRun this metate stage against the repo at %s. Read project specifics from %s.\n' \
-      "$(cat "$SKILL_MD")" "$ROOT" "$PROFILE" \
+    printf '%s' "$STAGE_PROMPT" \
       | codex exec -s workspace-write -c approval_policy="never" --cd "$ROOT" -
     ;;
 
   cursor)
-    echo "  ⚠ orchestrator.backend=cursor is PROBE-BEFORE-USE (beta): 30s shell timeout," >&2
-    echo "    '--approve-mcps' for headless MCP, no '--model auto'. See ORCHESTRATORS.md." >&2
     command -v cursor-agent >/dev/null 2>&1 || die "orchestrator.backend=cursor but 'cursor-agent' is not on PATH"
-    die "cursor orchestrator is not yet wired — verify the runStage/fanOut blocks in ORCHESTRATORS.md, then enable it here"
+    case "$stage" in
+      review|discover)
+        # fanOut needs IDE Task subagents — not runnable headlessly (exit 2 so CI cannot false-green).
+        echo "  → run in Cursor: metate-$stage (native skill or this chat)" >&2
+        echo "    fanOut: three parallel Task subagents (readonly) — ORCHESTRATORS.md → cursor." >&2
+        echo "    codex-review.sh is codex-only; cursor does not shell-fan-out cursor-agent." >&2
+        exit 2
+        ;;
+      *)
+        ORCH_MODEL="${METATE_ORCH_MODEL:-composer-2.5}"
+        # SKILL_MD comes from skills_dir() (vendored metate playbooks only). --trust/--approve-mcps
+        # headless-approve workspace + MCP; --force auto-approves shell (same role as codex
+        # approval_policy=never for runStage — see ORCHESTRATORS.md → cursor).
+        cursor-agent -p --trust --approve-mcps --force \
+          --model "$ORCH_MODEL" --workspace "$ROOT" --output-format text \
+          "$STAGE_PROMPT"
+        ;;
+    esac
     ;;
 
   gemini)
