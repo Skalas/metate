@@ -6,6 +6,15 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Codex as a native skill host (increment `codex-native-skills`, 2026-07-01).** Corrects an
+  earlier wrong assumption that codex could only run metate via the shell dispatcher. Codex loads
+  metate's `SKILL.md` playbooks **natively** through its interactive `$<skill>` picker (verified:
+  `$metate` lists all stage skills), reading from the `.agents/skills` surface. Shipped: `install.sh`
+  installs into BOTH `~/.claude/skills` (Claude) and `~/.agents/skills` (Codex), user + project scope;
+  `metate-init` and `bin/metate` search both roots; `bootstrap.sh` gitignores `.agents/skills/metate-*`
+  as vendored tooling. `metate run <stage>` is now explicitly the **headless/noninteractive** path,
+  not the primary UX — interactive users invoke the skills natively in either runtime.
+
 - **PR #29 made merge-safe (sprint `merge-safe-29`, 2026-07-01).** Closed the trust + DoD gaps
   gating the merge. Shipped: **M1/#43** review diff now includes untracked files (was a false
   "clean" — new implementer files were invisible), hardened with a RETURN-trap index restore, a

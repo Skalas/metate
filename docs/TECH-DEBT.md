@@ -6,6 +6,34 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 > Wire this file into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md` (and
 > optionally `techDebtFile:` top-level) so discover/prep pick it up automatically.
 
+## From the `codex-native-skills` increment (2026-07-01)
+
+### Opportunity — native codex mechanisms this pivot did not adopt
+
+- **`codex review --base <branch>` / `--uncommitted` reimplemented by hand.** `codex-review.sh`
+  hand-rolls merge-base anchoring + the untracked-file intent-to-add dance (all of M1). Codex has a
+  native `codex review` subcommand with `--base`, `--uncommitted` (staged + unstaged + **untracked**),
+  and `--commit` — i.e. M1's entire diff-scope machinery overlaps with `--uncommitted`.
+  **Checked live against codex-cli 0.142.4:** `codex review --uncommitted` emits a single
+  human-readable review pass, rejects custom prompts with `--uncommitted`, and rejects `--json`,
+  `--output-schema`, and `-o`. It does **not** provide metate's structured multi-lens JSON contract
+  or fanOut→resume-fix→gate loop. **Trigger:** before the next substantive edit to
+  `codex-review.sh`'s diff logic — consider whether only diff collection can be delegated, but do not
+  replace the loop with native `codex review` unless that command gains structured output + fix-loop
+  controls.
+
+### Decided — not doing
+
+- **`codex plugin` marketplace distribution — declined.** Direct install (`install.sh` copying into
+  `.claude/skills` + `.agents/skills`) is the chosen model; no marketplace snapshot. Not revisiting
+  unless the two-target copy becomes a real maintenance burden.
+
+### Process
+
+- **Pivot is uncommitted + unreviewed.** The codex-native-skill wiring changed after PR #29 was
+  reconciled, so the PR no longer reflects the branch and no metate-review round ran on this diff.
+  **Trigger:** immediately — commit + run `metate-review` before updating PR #29.
+
 ## From the `merge-safe-29` sprint (2026-07-01)
 
 ### Resolved

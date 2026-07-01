@@ -6,7 +6,7 @@
 > patient, repeated passes. Here, the one stone that grinds *any* codebase into
 > shipped work, one ceremony at a time — and is set up again for the next batch.
 
-A portable, codebase-agnostic **development pipeline** for Claude Code — the
+A portable, codebase-agnostic **development pipeline** for Claude Code and Codex — the
 *ceremonias de metate*. Seven ceremonies, each a skill; the three-round review engine is one
 of them.
 
@@ -26,10 +26,12 @@ ceremonies and runs the read-only review fan-out is itself pluggable (`claude` �
 config. The implementer's **build session is resumed across review rounds**, so it keeps the
 rationale behind its own code instead of re-deriving it.
 
-Run a stage on the configured orchestrator with the `metate run <stage>` dispatcher (installed
-on PATH); `orchestrator.backend: claude` (the default) keeps the Claude Code plugin flow
-unchanged. Per-runtime adapter commands live in `metate-review/ORCHESTRATORS.md` (the
-orchestrator twin of `IMPLEMENTERS.md`).
+Interactive users invoke the ceremonies as native skills in their runtime. The
+`metate run <stage>` dispatcher is installed on PATH for headless/noninteractive orchestration;
+`orchestrator.backend: claude` (the default) keeps the Claude Code plugin flow unchanged, and
+`orchestrator.backend: codex` drives the verified Codex automation path. Per-runtime adapter
+commands live in `metate-review/ORCHESTRATORS.md` (the orchestrator twin of
+`IMPLEMENTERS.md`).
 
 ## The ceremonies
 
@@ -81,8 +83,9 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
 
 ## Install
 
-The model is **install once globally, then init per project** — the same shape as a
-user-level skill.
+The model is **install once globally, then init per project**. The same
+`skills/metate-*` source is installed into both native skill surfaces:
+Claude (`.claude/skills`) and Codex (`.agents/skills`).
 
 **From GitHub, one line** (no clone; the installer fetches itself):
 
@@ -93,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bas
 Or hand the line to an agent like Claude Code — "install metate user-level from GitHub"
 and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed version.
 
-**From a local checkout — user level** (skills global, available in every project; leaves a `metate-init` you run per project):
+**From a local checkout — user level** (skills global for Claude + Codex, available in every project; leaves a `metate-init` you run per project):
 
 ```bash
 ./install.sh --user
@@ -101,13 +104,13 @@ and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed
 metate-init
 ```
 
-**Project level** (skills vendored into the repo; bootstraps that project immediately):
+**Project level** (skills vendored into the repo under both `.claude/skills` and `.agents/skills`; bootstraps that project immediately):
 
 ```bash
 ./install.sh --project /path/to/repo
 ```
 
-**As a Claude Code plugin** (for teams): this repo is also a valid plugin
+**As a Claude Code plugin** (for teams): this repo is also a valid Claude plugin
 (`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
 `claude plugin install metate`, then run `metate-init` per project.
 
@@ -164,14 +167,17 @@ file — the bootstrap only guesses the gates. In order of importance:
 Then run the ceremonies in order:
 `metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
 
-**Two ways to drive a stage**, depending on `orchestrator.backend`:
+**Interactive skill UX** is native to each runtime:
 
 - **`claude`** (default) — invoke the stage as a Claude Code skill: `metate-review`,
   `metate-prep`, etc. The plugin loads the matching `SKILL.md`.
-- **`codex`** (and any non-claude orchestrator) — use the dispatcher: `metate run <stage>`
-  (e.g. `metate run review`). It reads `orchestrator.backend` from `.metate/profile.yml` and
-  routes the ceremony to that runtime — `metate run review` under `codex` runs the
-  `fanOut → resume → gate` loop headless. Blank/absent backend ⇒ `claude`.
+- **`codex`** — invoke the same stage as a Codex skill: `$metate-review`,
+  `$metate-prep`, etc. Codex discovers these from `.agents/skills` or `~/.agents/skills`.
+
+`metate run <stage>` is the headless dispatcher for automation and noninteractive
+orchestration. It reads `orchestrator.backend` from `.metate/profile.yml` and routes the
+ceremony to that runtime. Under `codex`, `metate run review` runs the verified
+`fanOut → resume → gate` loop headlessly. Blank/absent backend ⇒ `claude`.
 
 ### Graph-augmented review
 
