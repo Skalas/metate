@@ -24,6 +24,7 @@ RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
 # list for two audiences — keep them in sync when those tool names change.
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
+CURSOR_AGENTS_SRC="$SCRIPT_DIR/cursor-agents"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 METATE_DIR="$PROJECT_ROOT/.metate"
@@ -133,6 +134,18 @@ gi_ignore_untrack() {
   fi
 }
 
+# Scalar nested under `implementer:` (e.g. backend, autonomous).
+read_implementer_field() {
+  awk -v k="$1" '
+    /^implementer:/ { f = 1; next }
+    f && /^[^[:space:]]/ { f = 0 }
+    f && $0 ~ ("^[[:space:]]+" k ":") {
+      sub(/^[[:space:]]*[A-Za-z0-9_.-]+:[[:space:]]*/, ""); print; exit
+    }
+  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
+                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+}
+
 # Per-sprint local state: these files are runtime-only and never committed, so
 # they need the .gitignore entry but no untrack pass — hence hand-rolled rather
 # than routed through gi_ignore_untrack (whose untrack step would be a no-op).
@@ -216,6 +229,35 @@ if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
   gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
 fi
 
+# Drop metate reviewer subagents for Cursor IDE fanOut (idempotent; refresh on --update).
+if [ -d "$HOME/.cursor" ] && [ -d "$CURSOR_AGENTS_SRC" ]; then
+  AGENTS_DIR="$PROJECT_ROOT/.cursor/agents"
+  mkdir -p "$AGENTS_DIR"
+  installed=0
+  refreshed=0
+  for src in "$CURSOR_AGENTS_SRC"/metate-*.md; do
+    [ -f "$src" ] || continue
+    dest="$AGENTS_DIR/$(basename "$src")"
+    if [ -f "$dest" ] && [ "$UPDATE" -eq 0 ]; then
+      continue
+    fi
+    if [ -f "$dest" ]; then
+      refreshed=$((refreshed + 1))
+    else
+      installed=$((installed + 1))
+    fi
+    cp "$src" "$dest"
+  done
+  if [ "$installed" -gt 0 ]; then
+    echo "  ✓ installed $installed metate reviewer agent(s): .cursor/agents/metate-*.md"
+  elif [ "$refreshed" -gt 0 ]; then
+    echo "  ✓ refreshed $refreshed metate reviewer agent(s) (--update)"
+  else
+    echo "  ✓ metate reviewer agents already present — left untouched"
+  fi
+  gi_ignore_untrack '.cursor/agents/metate-*.md' 'metate reviewer agents are installed tooling (source: metate repo)'
+fi
+
 # Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
 # managed, marker-delimited block: append once, leave untouched if present.
 # AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
@@ -251,9 +293,8 @@ fi
 # can't self-grant this rule (the self-modification guard rightly blocks it) — but this
 # installer is user-invoked, so it's the one place that legitimately can. Personal +
 # gitignored + opt-in: only when implementer.autonomous is true and backend is recognized.
-IMPL_BACKEND="$(sed -n 's/^[[:space:]]*backend:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
-# Capture a bare lowercase word, not a true|false alternation: BSD/macOS sed has no \| in BRE.
-IMPL_AUTONOMOUS="$(sed -n 's/^[[:space:]]*autonomous:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
+IMPL_BACKEND="$(read_implementer_field backend)"
+IMPL_AUTONOMOUS="$(read_implementer_field autonomous)"
 RULE=""
 case "$IMPL_BACKEND" in
   claude) RULE='Bash(claude -p:*)' ;;

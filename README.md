@@ -173,11 +173,16 @@ Then run the ceremonies in order:
   `metate-prep`, etc. The plugin loads the matching `SKILL.md`.
 - **`codex`** — invoke the same stage as a Codex skill: `$metate-review`,
   `$metate-prep`, etc. Codex discovers these from `.agents/skills` or `~/.agents/skills`.
+- **`cursor`** — invoke the stage as a Cursor skill (`metate-review`, etc.) or run
+  `metate run <stage>`. Review and discover fan out via **parallel Task subagents**
+  (`readonly: true`) inside the IDE — no shell driver. Headless `metate run` drives
+  `runStage` stages with `cursor-agent -p`; fanOut stages print the IDE ceremony to run.
 
 `metate run <stage>` is the headless dispatcher for automation and noninteractive
 orchestration. It reads `orchestrator.backend` from `.metate/profile.yml` and routes the
 ceremony to that runtime. Under `codex`, `metate run review` runs the verified
-`fanOut → resume → gate` loop headlessly. Blank/absent backend ⇒ `claude`.
+`fanOut → resume → gate` loop headlessly via `codex-review.sh`. Under `cursor`, review
+stays IDE-native (Task fanOut). Blank/absent backend ⇒ `claude`.
 
 ### Graph-augmented review
 
@@ -197,9 +202,8 @@ Add a row + per-runtime command blocks to `metate-review/ORCHESTRATORS.md`, then
 in `bin/metate`. The contract is two primitives: `runStage(skill)` — execute a `SKILL.md`
 playbook end to end — and `fanOut(reviewers[], read-only)` — launch N concurrent read-only
 reviewers returning typed findings. A new backend must clear one bar: **resume a headless
-session by id** (so review rounds resume the build session, not an amnesiac one). `claude` and
-`codex` are verified as orchestrators; `cursor` has a probe-before-use `case` arm that
-currently `die`s (its `runStage`/`fanOut` blocks aren't verified yet — a future sprint);
+session by id** (so review rounds resume the build session, not an amnesiac one). `claude`,
+`codex`, and `cursor` (IDE Task fanOut + headless `runStage`) are verified orchestrators;
 `gemini` is implementer-only.
 
 ## License

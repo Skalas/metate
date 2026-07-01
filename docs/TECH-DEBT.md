@@ -79,13 +79,12 @@ These surfaced in the merge-safe-29 review as report-only (elegance/DRY), not bl
   repo's "each script hand-rolls its reader" convention; unifying is the deferred `lib/profile.sh`.
   **Trigger:** when a third script needs the same key, or the `lib/profile.sh` item is picked up.
 
-### Deferred (scope honesty for PR #29)
-
-- **cursor-as-orchestrator is a die-stub.** The branch title says claude/codex/cursor but
-  `bin/metate` `die`s on `cursor`; only claude + codex orchestrators shipped. Documented in README
-  and ROADMAP as deferred, not hidden.
-  **Trigger:** the ROADMAP "cursor-as-orchestrator end-to-end" item — wire runStage/fanOut, verify a
-  resume round-trips, drop the die.
+- **cursor-as-orchestrator IDE path — RESOLVED (2026-07-01).** Task fanOut documented in
+  `ORCHESTRATORS.md`; reviewer agents ship in `skills/metate-review/cursor-agents/` (bootstrap
+  → `.cursor/agents/`); `bin/metate` wires headless `runStage` and points `review`/`discover`
+  at the IDE ceremony (exit 2). No `cursor-review.sh` — shell fan-out is codex-only. Dogfood:
+  3-round IDE review converged (0 blockers round 3); `read_implementer_field` helper in bootstrap.
+  **Residual trigger:** headless `fanOut` when `cursor-agent` CLI exposes Task fan-out.
 
 ## From the `stabilize-codex-orchestrator` sprint (2026-06-30)
 
@@ -159,11 +158,11 @@ These surfaced in the merge-safe-29 review as report-only (elegance/DRY), not bl
   anchoring. **Residual:** convergence proven; codex's MCP reachability (T10) was **RESOLVED**
   in the `stabilize-codex-orchestrator` sprint — see that section above.
 
-- **cursor-as-orchestrator end-to-end.** `bin/metate`'s `cursor)` arm `die`s ("not yet wired");
-  ORCHESTRATORS.md marks it probe-before-use (beta: 30s shell timeout, `--approve-mcps`, no
-  `--model auto`).
-  **Trigger:** someone needs cursor to *drive* (not just implement), OR the Cursor CLI Task
-  tool leaves beta. Wire the arm + verify a resume round-trips.
+- **cursor-as-orchestrator headless fanOut.** IDE Task fanOut is shipped; `cursor-agent -p` has
+  no Task/subagent API yet, so `metate run review` under `orchestrator.backend: cursor` prints
+  the IDE ceremony instead of shell-fan-out.
+  **Trigger:** `cursor-agent` CLI exposes Task fan-out (or stable `.cursor/agents/` invocation
+  headless). Do **not** add `cursor-review.sh` — that path is codex-only.
 
 - **Residual prompt-injection hardening on the codex fix-apply step.** The DATA/instruction
   boundary + 500-char cap + newline-strip are in place; egress-deny and allow-pattern gating

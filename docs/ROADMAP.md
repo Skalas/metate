@@ -6,6 +6,14 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Cursor orchestrator adapter (increment `cursor-orchestrator`, 2026-07-01).** Native IDE path:
+  Task fanOut for `review`/`discover` (mirrors Claude Agent tool — no `cursor-review.sh`);
+  reviewer system prompts in `skills/metate-review/cursor-agents/`; bootstrap installs to
+  `.cursor/agents/`; `bin/metate` headless `runStage` via `cursor-agent -p` (`review`/`discover`
+  exit 2). Dogfood profile: `orchestrator.backend: cursor` + `implementer.backend: cursor`.
+  **Verified:** 3-round IDE review (Task fanOut), implementer session handoff, `make verify` green.
+  Residual: headless `fanOut` when `cursor-agent` CLI exposes Task (TECH-DEBT).
+
 - **Codex as a native skill host (increment `codex-native-skills`, 2026-07-01).** Corrects an
   earlier wrong assumption that codex could only run metate via the shell dispatcher. Codex loads
   metate's `SKILL.md` playbooks **natively** through its interactive `$<skill>` picker (verified:
@@ -51,23 +59,19 @@ Ranked by failure-surface, not effort. Each has a trigger in TECH-DEBT.md.
 (T10 codex MCP reachability, the metate-on-metate self-review guard, and the #43 untracked-file
 review gap — all **done**, see the two Done entries above.)
 
-1. **cursor-as-orchestrator end-to-end.** `bin/metate` `die`s on `cursor` (probe-before-use). This
-   is the one gap between the branch's title ("claude/codex/cursor") and what shipped (claude+codex).
-   Wire the `runStage`/`fanOut` blocks and verify a resume round-trips (beta: 30s shell
-   timeout, `--approve-mcps`, no `--model auto`).
-2. **T3 live graph-unavailable fallback proof (#37).** Mechanism is in (in-rationale disclosure +
+1. **T3 live graph-unavailable fallback proof (#37).** Mechanism is in (in-rationale disclosure +
    `codebaseMemory.enabled:false` opt-out); missing is a live run with the MCP genuinely down that
    captures the logged fallback. Trigger in TECH-DEBT.md.
-3. **T6 branch-behind dedicated validation (#40).** Merge-base→working-tree anchoring ran and clean
+2. **T6 branch-behind dedicated validation (#40).** Merge-base→working-tree anchoring ran and clean
    multi-round convergence is proven (T5); the one unexercised path is a base strictly ahead of
    the feature branch.
-4. **Deeper injection mitigation on the codex fix-apply step.** The DATA-boundary + cap +
+3. **Deeper injection mitigation on the codex fix-apply step.** The DATA-boundary + cap +
    newline-strip are in (and this sprint added `.file`/`.line` sanitization); add network-egress
    denial during `workspace-write` resume and an imperative-verb/URL allow-pattern check on
    findings before handoff.
-5. **Native typed-subagent fan-out (EXPAND).** Map reviewers to `.codex/agents/*.toml` /
-   `.cursor/agents/*.md` once those CLIs' fan-out leaves beta — higher fidelity than the
-   shell-process baseline.
+4. **Native typed-subagent fan-out — CLI upgrade (EXPAND).** Cursor IDE Task fanOut is shipped.
+   Remaining: codex `.codex/agents/*.toml` batch fan-out and headless `cursor-agent` Task API
+   once those CLIs stabilize — higher fidelity than shell-process `codex exec` baseline.
 
 ## Later
 

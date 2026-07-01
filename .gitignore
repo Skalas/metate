@@ -11,5 +11,7 @@
 .metate/.review-diff*
 # codebase-memory Cursor rule is installed tooling (source: metate repo)
 .cursor/rules/codebase-memory.mdc
+# metate reviewer agents for Cursor IDE fanOut (source: skills/metate-review/cursor-agents)
+.cursor/agents/metate-*.md
 # metate autonomous implementer permission (personal, per-developer)
 .claude/settings.local.json

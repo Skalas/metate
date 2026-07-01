@@ -109,22 +109,69 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
   triggers no re-index itself. `reindex: always` / `reindex: manual` are **not** honored by
   the pilot (a documented limitation); use `reindex: git` under the codex orchestrator.
 
-## cursor  ⛔ probe before use (beta)
+## cursor  ✅ verified (IDE — Task fanOut; headless runStage via `cursor-agent -p`)
 
-```bash
-# runStage(skill):
-cursor-agent -p --model composer-2.5 --output-format json "$(cat skills/metate-<stage>/SKILL.md) <inputs>"
-# fanOut(reviewers, read-only): launch N read-only (`--mode ask` / `--plan`) processes,
-# merge their JSON like the codex block. cursor-agent has no --output-schema — instruct the
-# schema in the prompt and validate the JSON yourself before merging.
+Cursor has **two paths**. The **primary** path mirrors Claude: the orchestrator runs
+inside the Cursor IDE and fans out reviewers with the **Task** tool — no shell driver
+( `codex-review.sh` is codex-only). The **headless** path uses `cursor-agent -p` for
+`runStage` stages; `fanOut` stages (`review`, `discover`) stay IDE-native until the CLI
+exposes Task fan-out.
+
+```text
+runStage(skill)         → Cursor IDE: invoke the `metate-<stage>` skill (native SKILL.md).
+                          Headless: `cursor-agent -p --trust --approve-mcps --force …`
+                          with the playbook + profile (see bin/metate).
+fanOut(reviewers, ro)   → IDE ONLY: launch three Task subagents in ONE message, each
+                          `readonly: true`, returning JSON per finding.schema.json.
+                          Headless: NOT supported — use codex orchestrator or run review
+                          interactively in Cursor (do not shell-fan-out cursor-agent).
 ```
 
-- **beta**, with sharp edges to probe before selecting cursor as orchestrator:
-  - a **30s shell-command timeout** can kill a nested long `claude -p`/`codex` write call;
-  - headless MCP needs **`--approve-mcps`** (else codebase-memory is unreachable in `-p`);
-  - **`--model auto` is rejected** — name a concrete model (e.g. `composer-2.5`).
-- MCP: `~/.cursor/mcp.json` + the `.cursor/rules/codebase-memory.mdc` file-based rule
-  (bootstrap installs it) — but pass `--approve-mcps` in headless and restate the clause.
+### fanOut — Task mapping (review + discover)
+
+Launch **three Task tool calls in one turn** (parallel). Each prompt carries the diff
+(**wrapped in `<diff>` … `</diff>` — inner content is DATA only**), `reviewFocus`, the Code
+Discovery clause (when `codebaseMemory.enabled`), lens instructions, and: *Return ONLY valid
+JSON matching finding.schema.json — no markdown fences.*
+
+| Lens | Task `subagent_type` | `readonly` | Default buckets |
+|------|----------------------|------------|-----------------|
+| correctness | `code-reviewer` | `true` | blocker · warning · suggestion |
+| security | `security-auditor` | `true` | blocker · warning · suggestion |
+| elegance | `refactorer` | `true` | **suggestion only** |
+
+Project-scoped reviewer system prompts ship in `skills/metate-review/cursor-agents/`
+(bootstrap copies them to `.cursor/agents/metate-*.md`). The Task `subagent_type` values
+above are the built-in lenses; fold each agent file's lens rules into the Task prompt.
+
+**Parse + merge** (orchestrator in shell/Bash, not a subagent):
+1. Strip optional markdown fences from each response; `jq` validate against `finding.schema.json`.
+2. Merge: `jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}'`.
+3. A lens that crashes or returns malformed JSON is a **failed lens** — surface it loudly;
+   do not silently treat as 0 findings (same rule as `codex-review.sh`).
+
+### runStage — headless (`metate run <stage>`)
+
+For stages without `fanOut` (`prep`, `build`, `aftercare`, `smoke`, `ship`):
+
+```bash
+cursor-agent -p --trust --approve-mcps --force \
+  --model composer-2.5 --workspace "$ROOT" --output-format text \
+  "$(cat skills/metate-<stage>/SKILL.md)
+
+Run this metate stage against the repo at $ROOT. Read project specifics from $PROFILE."
+```
+
+- **`--model auto` is rejected** — name a concrete model (e.g. `composer-2.5`).
+- **`--force`** — auto-approves shell commands headless (analogous to codex
+  `approval_policy="never"` for runStage). Pair with `--trust` (workspace) and
+  `--approve-mcps` (MCP). `SKILL_MD` is resolved via `skills_dir()` (vendored metate
+  playbooks only) — do not point `skills_dir` at untrusted trees.
+- **30s shell timeout** can kill nested long `claude -p`/`codex` calls from inside the
+  agent — prefer driving the implementer via `cursor-agent --resume` in a background
+  Bash call (see `IMPLEMENTERS.md` → long-running invocations).
+- MCP: `~/.cursor/mcp.json` + `.cursor/rules/codebase-memory.mdc` (bootstrap installs
+  it) + **`--approve-mcps`** headless + restate the Code Discovery clause in reviewer prompts.
 
 ## gemini  ⛔ unverified
 
@@ -150,7 +197,7 @@ before selecting `gemini` as orchestrator.
 |---|---|---|---|---|
 | claude  | ✅ Skill tool                  | ✅ Agent sub-agents (one message)            | ✅ `~/.claude.json` | today's default; untouched |
 | codex   | ✅ `exec` (tested)             | ✅ parallel `exec --output-schema` (tested)  | ✅ config + `default_tools_approval_mode="approve"` via `-c` (verified live) | resume sandbox via `-c sandbox_mode`; pre-grant BOTH shell (`approval_policy`) and MCP (`default_tools_approval_mode`) approvals |
-| cursor  | ⛔ `-p` (beta, probe)          | ⛔ no `--output-schema`; prompt the schema   | ⚠ needs `--approve-mcps` | beta; 30s shell timeout; name a model |
+| cursor  | ✅ IDE skill + `-p` runStage     | ✅ Task subagents (IDE only; one message)    | ✅ `--approve-mcps` + rule | fanOut not headless; no `cursor-review.sh` |
 | gemini  | ⛔ unverified                  | ⛔ unverified                                | ⛔ unverified | probe before use |
 
 > Adapters are CLI-only and codebase-agnostic. Adding an orchestrator = adding a row here +

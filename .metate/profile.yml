@@ -15,7 +15,7 @@ implementer:
 # INDEPENDENT of implementer.backend (the writer). claude keeps existing behavior unchanged.
 # See metate-review/ORCHESTRATORS.md for the per-runtime command blocks + verification table.
 orchestrator:
-  backend: claude          # claude | codex | cursor
+  backend: cursor          # claude | codex | cursor — cursor uses IDE Task fanOut for review
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
@@ -37,7 +37,7 @@ reviewFocus: |
   - bootstrap.sh stays idempotent: never clobbers an existing profile.yml; .gitignore append is one-shot.
   - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
-    ONLY writer (metate-review stays read-only: Read/Bash/Agent, no Write/Edit).
+    ONLY writer (metate-review stays read-only: Read/Bash/Agent/Task, no Write/Edit).
 
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 review:
