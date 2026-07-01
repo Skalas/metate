@@ -241,31 +241,38 @@ else
   echo "  → index this repo so the graph isn't empty (run codebase-memory's index_repository on: $PROJECT_ROOT)"
 fi
 
-# --- autonomous claude implementer: whitelist the nested `claude -p` call ---
-# Headless `claude -p` (the claude backend) writes files + runs the gate with no
-# TTY, so each spawn would otherwise hit the orchestrator's permission classifier
-# and stall the loop. A Claude session can't self-grant this rule (the self-
-# modification guard rightly blocks it) — but this installer is user-invoked, so
-# it's the one place that legitimately can. Personal + gitignored + opt-in:
-# only when implementer.backend is claude AND implementer.autonomous is true.
+# --- autonomous implementer: whitelist the headless subprocess call ---
+# Headless implementer CLIs write files + run the gate with no TTY, so each spawn would
+# otherwise hit the orchestrator's permission classifier and stall the loop. A session
+# can't self-grant this rule (the self-modification guard rightly blocks it) — but this
+# installer is user-invoked, so it's the one place that legitimately can. Personal +
+# gitignored + opt-in: only when implementer.autonomous is true and backend is recognized.
 IMPL_BACKEND="$(sed -n 's/^[[:space:]]*backend:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
 # Capture a bare lowercase word, not a true|false alternation: BSD/macOS sed has no \| in BRE.
 IMPL_AUTONOMOUS="$(sed -n 's/^[[:space:]]*autonomous:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
-if [ "$IMPL_BACKEND" = "claude" ] && [ "$IMPL_AUTONOMOUS" = "true" ]; then
+RULE=""
+case "$IMPL_BACKEND" in
+  claude) RULE='Bash(claude -p:*)' ;;
+  cursor) RULE='Bash(cursor-agent:*)' ;;
+  codex)  RULE='Bash(codex:*)' ;;
+esac
+if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -z "$RULE" ]; then
+  echo "  • autonomous: unrecognized implementer.backend '${IMPL_BACKEND:-<blank>}' — no permission grant written"
+fi
+if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -n "$RULE" ]; then
   SETTINGS_DIR="$PROJECT_ROOT/.claude"
   SETTINGS="$SETTINGS_DIR/settings.local.json"
-  RULE='Bash(claude -p:*)'
   # Already granted in either the committed or the personal settings file? Done.
   if { [ -f "$SETTINGS_DIR/settings.json" ] && grep -qF "$RULE" "$SETTINGS_DIR/settings.json"; } \
      || { [ -f "$SETTINGS" ] && grep -qF "$RULE" "$SETTINGS"; }; then
     echo "  ✓ autonomous: $RULE already whitelisted — left untouched"
   elif [ ! -f "$SETTINGS" ]; then
     mkdir -p "$SETTINGS_DIR"
-    cat > "$SETTINGS" <<'JSON'
+    cat > "$SETTINGS" <<JSON
 {
   "permissions": {
     "allow": [
-      "Bash(claude -p:*)"
+      "$RULE"
     ]
   }
 }
@@ -273,7 +280,7 @@ JSON
     echo "  ✓ autonomous: wrote .claude/settings.local.json whitelisting $RULE"
   elif command -v jq >/dev/null 2>&1; then
     STMP="$(mktemp)"
-    jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(claude -p:*)"] | unique)' \
+    jq --arg rule "$RULE" '.permissions.allow = ((.permissions.allow // []) + [$rule] | unique)' \
       "$SETTINGS" > "$STMP" && mv "$STMP" "$SETTINGS"
     echo "  ✓ autonomous: merged $RULE into existing .claude/settings.local.json"
   else
