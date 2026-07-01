@@ -6,7 +6,7 @@
 > patient, repeated passes. Here, the one stone that grinds *any* codebase into
 > shipped work, one ceremony at a time — and is set up again for the next batch.
 
-A portable, codebase-agnostic **development pipeline** for Claude Code — the
+A portable, codebase-agnostic **development pipeline** for Claude Code and Codex — the
 *ceremonias de metate*. Seven ceremonies, each a skill; the three-round review engine is one
 of them.
 
@@ -19,9 +19,19 @@ It's a loop: `metate-aftercare` writes the next-sprint pointers that `metate-dis
 to open the next cycle — with **you** as the stop-condition between iterations.
 
 Across the whole pipeline the **implementer** (an external CLI — `cursor-agent` ·
-`codex` · `claude` · `gemini`) is the **only writer**. Claude Code orchestrates and its
-sub-agents are read-only. The implementer's **build session is resumed across review
-rounds**, so it keeps the rationale behind its own code instead of re-deriving it.
+`codex` · `claude` · `gemini`) is the **only writer**. The **orchestrator** that drives the
+ceremonies and runs the read-only review fan-out is itself pluggable (`claude` · `codex` ·
+`cursor`), selected by `orchestrator.backend` **independently** of the implementer — so
+"claude-cursor" (claude drives, cursor writes), "codex-only", or "codex-cursor" are all just
+config. The implementer's **build session is resumed across review rounds**, so it keeps the
+rationale behind its own code instead of re-deriving it.
+
+Interactive users invoke the ceremonies as native skills in their runtime. The
+`metate run <stage>` dispatcher is installed on PATH for headless/noninteractive orchestration;
+`orchestrator.backend: claude` (the default) keeps the Claude Code plugin flow unchanged, and
+`orchestrator.backend: codex` drives the verified Codex automation path. Per-runtime adapter
+commands live in `metate-review/ORCHESTRATORS.md` (the orchestrator twin of
+`IMPLEMENTERS.md`).
 
 ## The ceremonies
 
@@ -73,8 +83,9 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
 
 ## Install
 
-The model is **install once globally, then init per project** — the same shape as a
-user-level skill.
+The model is **install once globally, then init per project**. The same
+`skills/metate-*` source is installed into both native skill surfaces:
+Claude (`.claude/skills`) and Codex (`.agents/skills`).
 
 **From GitHub, one line** (no clone; the installer fetches itself):
 
@@ -85,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bas
 Or hand the line to an agent like Claude Code — "install metate user-level from GitHub"
 and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed version.
 
-**From a local checkout — user level** (skills global, available in every project; leaves a `metate-init` you run per project):
+**From a local checkout — user level** (skills global for Claude + Codex, available in every project; leaves a `metate-init` you run per project):
 
 ```bash
 ./install.sh --user
@@ -93,13 +104,13 @@ and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed
 metate-init
 ```
 
-**Project level** (skills vendored into the repo; bootstraps that project immediately):
+**Project level** (skills vendored into the repo under both `.claude/skills` and `.agents/skills`; bootstraps that project immediately):
 
 ```bash
 ./install.sh --project /path/to/repo
 ```
 
-**As a Claude Code plugin** (for teams): this repo is also a valid plugin
+**As a Claude Code plugin** (for teams): this repo is also a valid Claude plugin
 (`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
 `claude plugin install metate`, then run `metate-init` per project.
 
@@ -133,6 +144,11 @@ file — the bootstrap only guesses the gates. In order of importance:
 2. **`implementer.backend` + `model`** — who writes the code: `cursor` (verified end-to-end),
    `codex`, `claude`, or `gemini` (probe first). Blank model = adapter default. See
    `metate-review/IMPLEMENTERS.md` for the per-backend commands and verification status.
+   **`orchestrator.backend`** (independent) — who *drives* the ceremonies and the review
+   fan-out: `claude` (default; the plugin flow) or `codex` (verified live). `cursor` as an
+   orchestrator is **not yet wired** — `bin/metate` intentionally `die`s on it pending a
+   future sprint (it *is* verified as an *implementer*, above). See
+   `metate-review/ORCHESTRATORS.md`.
 3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
    (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
 4. **`prep`** — `baseBranch` (set to `dev` if you gitflow), `readingOrder` (handoff docs to
@@ -148,13 +164,43 @@ file — the bootstrap only guesses the gates. In order of importance:
    `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
    you decide *what* to work on; you always pick — it never starts a sprint on its own.
 
-Then run the ceremonies in order in Claude Code:
+Then run the ceremonies in order:
 `metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
+
+**Interactive skill UX** is native to each runtime:
+
+- **`claude`** (default) — invoke the stage as a Claude Code skill: `metate-review`,
+  `metate-prep`, etc. The plugin loads the matching `SKILL.md`.
+- **`codex`** — invoke the same stage as a Codex skill: `$metate-review`,
+  `$metate-prep`, etc. Codex discovers these from `.agents/skills` or `~/.agents/skills`.
+
+`metate run <stage>` is the headless dispatcher for automation and noninteractive
+orchestration. It reads `orchestrator.backend` from `.metate/profile.yml` and routes the
+ceremony to that runtime. Under `codex`, `metate run review` runs the verified
+`fanOut → resume → gate` loop headlessly. Blank/absent backend ⇒ `claude`.
+
+### Graph-augmented review
+
+When `codebaseMemory.enabled: true` (default), reviewers prefer the codebase-memory knowledge
+graph over grep for structural reach, and the loop re-indexes between rounds. Set
+`codebaseMemory.enabled: false` to opt a repo out entirely — no graph calls, no MCP approval
+override, grep-only review.
 
 ## Adding an implementer
 
 Add a row + start/resume commands to `metate-review/IMPLEMENTERS.md`. The contract:
 `start → sessionId`, `resume(sessionId, prompt)` headless with write access, a fast model.
+
+## Adding an orchestrator
+
+Add a row + per-runtime command blocks to `metate-review/ORCHESTRATORS.md`, then a `case` arm
+in `bin/metate`. The contract is two primitives: `runStage(skill)` — execute a `SKILL.md`
+playbook end to end — and `fanOut(reviewers[], read-only)` — launch N concurrent read-only
+reviewers returning typed findings. A new backend must clear one bar: **resume a headless
+session by id** (so review rounds resume the build session, not an amnesiac one). `claude` and
+`codex` are verified as orchestrators; `cursor` has a probe-before-use `case` arm that
+currently `die`s (its `runStage`/`fanOut` blocks aren't verified yet — a future sprint);
+`gemini` is implementer-only.
 
 ## License
 

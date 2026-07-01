@@ -15,6 +15,12 @@ implementer:
                            # rounds don't prompt. Trade-off: removes the per-call approval gate on
                            # the nested implementer. cursor/codex gate writes via their own flags.
 
+# --- orchestrator (reads the SKILL.md playbooks, runs the stages, fans out reviewers) ---
+# INDEPENDENT of implementer.backend (the writer). Blank/absent ⇒ claude (today's behavior).
+# Unknown backend fails loudly — no silent fallback. See metate-review/ORCHESTRATORS.md.
+orchestrator:
+  backend: claude          # claude | codex | cursor
+
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
 isolation: none            # none | worktree

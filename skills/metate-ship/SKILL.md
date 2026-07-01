@@ -7,7 +7,10 @@ description: |
   auto-close wiring — only after the gate is green. Reads `.metate/profile.yml`.
   Codebase-agnostic. Commits/pushes/PRs only on explicit user confirmation.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Bash

@@ -156,9 +156,13 @@ fi
 # Project-level skill installs are vendored tooling whose source of truth is the
 # metate repo — don't track them, or every skill update is noise in this project.
 # (.metate/profile.yml stays tracked: it's this project's config.) Skipped for
-# user-level installs, where the skills live in ~/.claude/skills, not the project.
+# user-level installs, where the skills live in ~/.claude/skills and ~/.agents/skills,
+# not the project.
 if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
   gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
+fi
+if compgen -G "$PROJECT_ROOT/.agents/skills/metate-*" >/dev/null 2>&1; then
+  gi_ignore_untrack '.agents/skills/metate-*' 'metate Codex skills are installed tooling (source of truth: metate repo)'
 fi
 
 # --- codebase-memory-mcp: configure (presence guaranteed by the guard above) -
@@ -184,6 +188,13 @@ else
   awk '/^codebaseMemory:/{f=1;next} /^[^[:space:]]/{f=0} f' "$PROFILE" | grep -qE '^\s*enabled:\s*true' \
     || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
 fi
+
+# Report the orchestrator backend. A fresh profile carries the template default (claude),
+# which preserves today's Claude Code path; an existing profile is never clobbered. The
+# `metate run <stage>` dispatcher routes per metate-review/ORCHESTRATORS.md.
+ORCH_BACKEND="$(awk '/^orchestrator:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
+  | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//')"
+echo "  ✓ orchestrator.backend: ${ORCH_BACKEND:-claude} (blank ⇒ claude; codex|cursor in metate-review/ORCHESTRATORS.md)"
 
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
 if [ -d "$HOME/.cursor" ]; then
@@ -234,31 +245,38 @@ else
   echo "  → index this repo so the graph isn't empty (run codebase-memory's index_repository on: $PROJECT_ROOT)"
 fi
 
-# --- autonomous claude implementer: whitelist the nested `claude -p` call ---
-# Headless `claude -p` (the claude backend) writes files + runs the gate with no
-# TTY, so each spawn would otherwise hit the orchestrator's permission classifier
-# and stall the loop. A Claude session can't self-grant this rule (the self-
-# modification guard rightly blocks it) — but this installer is user-invoked, so
-# it's the one place that legitimately can. Personal + gitignored + opt-in:
-# only when implementer.backend is claude AND implementer.autonomous is true.
+# --- autonomous implementer: whitelist the headless subprocess call ---
+# Headless implementer CLIs write files + run the gate with no TTY, so each spawn would
+# otherwise hit the orchestrator's permission classifier and stall the loop. A session
+# can't self-grant this rule (the self-modification guard rightly blocks it) — but this
+# installer is user-invoked, so it's the one place that legitimately can. Personal +
+# gitignored + opt-in: only when implementer.autonomous is true and backend is recognized.
 IMPL_BACKEND="$(sed -n 's/^[[:space:]]*backend:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
 # Capture a bare lowercase word, not a true|false alternation: BSD/macOS sed has no \| in BRE.
 IMPL_AUTONOMOUS="$(sed -n 's/^[[:space:]]*autonomous:[[:space:]]*\([a-z]*\).*/\1/p' "$PROFILE" | head -1)"
-if [ "$IMPL_BACKEND" = "claude" ] && [ "$IMPL_AUTONOMOUS" = "true" ]; then
+RULE=""
+case "$IMPL_BACKEND" in
+  claude) RULE='Bash(claude -p:*)' ;;
+  cursor) RULE='Bash(cursor-agent:*)' ;;
+  codex)  RULE='Bash(codex:*)' ;;
+esac
+if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -z "$RULE" ]; then
+  echo "  • autonomous: unrecognized implementer.backend '${IMPL_BACKEND:-<blank>}' — no permission grant written"
+fi
+if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -n "$RULE" ]; then
   SETTINGS_DIR="$PROJECT_ROOT/.claude"
   SETTINGS="$SETTINGS_DIR/settings.local.json"
-  RULE='Bash(claude -p:*)'
   # Already granted in either the committed or the personal settings file? Done.
   if { [ -f "$SETTINGS_DIR/settings.json" ] && grep -qF "$RULE" "$SETTINGS_DIR/settings.json"; } \
      || { [ -f "$SETTINGS" ] && grep -qF "$RULE" "$SETTINGS"; }; then
     echo "  ✓ autonomous: $RULE already whitelisted — left untouched"
   elif [ ! -f "$SETTINGS" ]; then
     mkdir -p "$SETTINGS_DIR"
-    cat > "$SETTINGS" <<'JSON'
+    cat > "$SETTINGS" <<JSON
 {
   "permissions": {
     "allow": [
-      "Bash(claude -p:*)"
+      "$RULE"
     ]
   }
 }
@@ -266,7 +284,7 @@ JSON
     echo "  ✓ autonomous: wrote .claude/settings.local.json whitelisting $RULE"
   elif command -v jq >/dev/null 2>&1; then
     STMP="$(mktemp)"
-    jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(claude -p:*)"] | unique)' \
+    jq --arg rule "$RULE" '.permissions.allow = ((.permissions.allow // []) + [$rule] | unique)' \
       "$SETTINGS" > "$STMP" && mv "$STMP" "$SETTINGS"
     echo "  ✓ autonomous: merged $RULE into existing .claude/settings.local.json"
   else
@@ -285,7 +303,7 @@ cat <<EOF
 
 ✓ bootstrap complete. Next:
   1. Edit .metate/profile.yml → reviewFocus (your invariants), implementer, discover/prep/smoke/aftercare/ship.
-  2. Run the pipeline ceremonies in Claude Code, in order:
+  2. Run the pipeline ceremonies as native Claude/Codex skills, in order:
        metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
   3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).
 EOF

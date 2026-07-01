@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# metate — stage dispatcher for the pluggable orchestrator.
+#
+#   metate run <stage>     run a pipeline stage on the configured orchestrator
+#
+# Reads `orchestrator.backend` from .metate/profile.yml and routes the stage to that
+# runtime per skills/metate-review/ORCHESTRATORS.md. The backend is independent of
+# `implementer.backend` (the writer). Blank/absent ⇒ `claude` (today's behavior).
+# An unknown backend FAILS LOUDLY — there is no silent fallback.
+#
+# Stages: discover · prep · build · review · smoke · aftercare · ship
+set -euo pipefail
+
+STAGES="discover prep build review smoke aftercare ship"
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+PROFILE="${METATE_PROFILE:-$ROOT/.metate/profile.yml}"
+
+die() { echo "✗ metate: $*" >&2; exit 1; }
+usage() { echo "usage: metate run <stage>   (stages: $STAGES)" >&2; }
+
+# Locate the installed skills root (project-vendored first, then user-level).
+skills_dir() {
+  local c
+  for c in "$ROOT/.agents/skills" "$ROOT/.claude/skills" "$ROOT/skills" \
+           "$HOME/.agents/skills" "$HOME/.claude/skills"; do
+    [ -d "$c/metate-review" ] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+# orchestrator.backend — a scalar nested one level under `orchestrator:`.
+read_backend() {
+  [ -f "$PROFILE" ] || { echo ""; return 0; }
+  awk '
+    /^orchestrator:/ { f = 1; next }
+    f && /^[^[:space:]]/ { f = 0 }
+    f && $0 ~ /^[[:space:]]+backend:/ {
+      sub(/^[[:space:]]*backend:[[:space:]]*/, ""); print; exit
+    }
+  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
+                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+}
+
+cmd="${1:-}"
+[ "$cmd" = "run" ] || { usage; die "unknown command: '${cmd:-}' (only 'run' is supported)"; }
+stage="${2:-}"
+[ -n "$stage" ] || { usage; die "no stage given"; }
+case " $STAGES " in *" $stage "*) ;; *) usage; die "unknown stage: '$stage'";; esac
+
+SKILLS="$(skills_dir)" || die "cannot locate the metate skills (looked in .agents/skills, .claude/skills, skills, ~/.agents/skills, ~/.claude/skills)"
+SKILL_MD="$SKILLS/metate-$stage/SKILL.md"
+[ -f "$SKILL_MD" ] || die "missing playbook: $SKILL_MD"
+
+backend="$(read_backend)"; backend="${backend:-claude}"
+echo "▸ metate run $stage  (orchestrator: $backend)"
+
+case "$backend" in
+  claude)
+    # Today's path: the Claude Code plugin runs the stage as a Skill. The dispatcher
+    # does not re-implement it — it points at the ceremony to invoke.
+    echo "  → run the Claude Code skill: metate-$stage (the plugin loads $SKILL_MD)."
+    ;;
+
+  codex)
+    command -v codex >/dev/null 2>&1 || die "orchestrator.backend=codex but 'codex' is not on PATH"
+    if [ "$stage" = "review" ]; then
+      # The proven codex pilot: fanOut (3 read-only reviewers) + resume + fast gate, ≤3 rounds.
+      exec bash "$SKILLS/metate-review/codex-review.sh"
+    fi
+    # runStage(skill): drive the playbook headless. Pre-grant approvals (see ORCHESTRATORS.md
+    # "gotchas") so a mid-run approval cannot stall the headless process. Pipe the prompt via
+    # stdin (`-`) — a SKILL.md starts with `---`, which codex would parse as a flag if passed
+    # as a positional argument.
+    printf '%s\n\nRun this metate stage against the repo at %s. Read project specifics from %s.\n' \
+      "$(cat "$SKILL_MD")" "$ROOT" "$PROFILE" \
+      | codex exec -s workspace-write -c approval_policy="never" --cd "$ROOT" -
+    ;;
+
+  cursor)
+    echo "  ⚠ orchestrator.backend=cursor is PROBE-BEFORE-USE (beta): 30s shell timeout," >&2
+    echo "    '--approve-mcps' for headless MCP, no '--model auto'. See ORCHESTRATORS.md." >&2
+    command -v cursor-agent >/dev/null 2>&1 || die "orchestrator.backend=cursor but 'cursor-agent' is not on PATH"
+    die "cursor orchestrator is not yet wired — verify the runStage/fanOut blocks in ORCHESTRATORS.md, then enable it here"
+    ;;
+
+  gemini)
+    die "orchestrator.backend=gemini is UNVERIFIED — confirm a read-only fan-out + merge round-trips (see ORCHESTRATORS.md) before selecting it"
+    ;;
+
+  *)
+    die "unknown orchestrator.backend: '$backend' (expected claude | codex | cursor) — no silent fallback"
+    ;;
+esac

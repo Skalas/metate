@@ -7,7 +7,10 @@ description: |
   docs, roadmap, tech-debt with triggers, next-sprint pointers). Reads the
   deliverable list from `.metate/profile.yml`. Codebase-agnostic; docs only.
 license: MIT
-compatibility: claude-code
+compatibility:
+  - claude-code
+  - codex
+  - cursor
 allowed-tools:
   - Read
   - Write

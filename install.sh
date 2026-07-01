@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Installer for the `metate` pipeline skills.
 #
-#   ./install.sh --user              install the skills globally (~/.claude/skills),
-#                                    then leave a per-project initializer (`metate-init`)
-#   ./install.sh --project [PATH]    install the skills into a project's .claude/skills
+#   ./install.sh --user              install the skills globally for Claude + Codex
+#                                    (~/.claude/skills and ~/.agents/skills), then
+#                                    leave a per-project initializer (`metate-init`)
+#   ./install.sh --project [PATH]    install the skills into a project's Claude + Codex
+#                                    skill roots (.claude/skills and .agents/skills)
 #                                    AND run the bootstrap for that project right away
 #   ./install.sh --update [--user|--project [PATH]]
 #                                    refresh installed skills to this version; for
@@ -22,12 +24,25 @@ SCOPE="user"
 PROJECT="$PWD"
 UPDATE=0
 
-# Where do the skills come from? A local checkout if this script sits next to a
-# skills/ dir; otherwise we clone from GitHub (so `curl … | bash` works).
+# Where do the skills come from? A real local checkout if this script is a regular file
+# sitting next to skills/; otherwise clone from GitHub (so `curl … | bash` works).
+# Piped execution (curl | bash): BASH_SOURCE[0] is bash/-/dev/fd/* — dirname resolves
+# to cwd, which would false-positive as a checkout if the user happens to be in one.
 SELF="${BASH_SOURCE[0]:-$0}"
 SELF_DIR="$(cd "$(dirname "$SELF")" 2>/dev/null && pwd || true)"
 SRC=""
-[ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/skills" ] && SRC="$SELF_DIR/skills"
+LOCAL_CHECKOUT=0
+case "$SELF" in
+  bash|dash|sh|-) ;;
+  /dev/fd/*|/dev/stdin|/proc/self/fd/*) ;;
+  *)
+    if [ -f "$SELF" ] && [ -r "$SELF" ] && [ "$(basename "$SELF")" = "install.sh" ] \
+        && [ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/skills" ]; then
+      LOCAL_CHECKOUT=1
+    fi
+    ;;
+esac
+[ "$LOCAL_CHECKOUT" -eq 1 ] && SRC="$SELF_DIR/skills"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -77,11 +92,29 @@ copy_skills() {  # $1 = destination skills root
     local name; name="$(basename "$dir")"
     # Intentionally replaces any same-named skill in the destination. All metate
     # skills are `metate-`prefixed, so this only clobbers prior metate installs.
-    rm -rf "$root/$name"
+    rm -rf "${root:?}/$name"
     cp -R "$dir" "$root/$name"
   done
   [ -f "$root/metate-review/bootstrap.sh" ] && chmod +x "$root/metate-review/bootstrap.sh"
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
+}
+
+# Drop the orchestrator dispatcher (`metate run <stage>`) on PATH. Runs for BOTH scopes:
+# its skills_dir() locates project-vendored .agents/skills or .claude/skills at runtime
+# (git rev-parse), so one PATH binary at ~/.local/bin/metate serves user- AND
+# project-scoped installs alike.
+# bin/metate is a sibling of skills/, present in both a local checkout and a fresh clone.
+install_dispatcher() {
+  local bin="$HOME/.local/bin" src; src="$(dirname "$SRC")"
+  mkdir -p "$bin"
+  if [ -f "$src/bin/metate" ]; then
+    cp "$src/bin/metate" "$bin/metate"
+    chmod +x "$bin/metate"
+    [ -x "$bin/metate" ] || { echo "✗ dispatcher install failed: $bin/metate is not executable" >&2; exit 1; }
+    echo "  ✓ orchestrator dispatcher → $bin/metate"
+  else
+    echo "  • bin/metate not found in source — dispatcher not installed" >&2
+  fi
 }
 
 # The bootstrap + profile template ship inside the metate-review skill dir.
@@ -93,30 +126,48 @@ VERB="installing"; [ "$UPDATE" = 1 ] && VERB="updating"
 if [ "$SCOPE" = "user" ]; then
   echo "▸ $VERB metate skills at USER level"
   copy_skills "$HOME/.claude/skills"
+  copy_skills "$HOME/.agents/skills"
 
   # Leave a per-project initializer on PATH that runs the global bootstrap.
   BIN="$HOME/.local/bin"; mkdir -p "$BIN"
   cat > "$BIN/metate-init" <<'EOF'
 #!/usr/bin/env bash
 # Per-project initializer for metate (skills installed user-level).
-exec bash "$HOME/.claude/skills/metate-review/bootstrap.sh" "$@"
+for root in "$HOME/.agents/skills" "$HOME/.claude/skills"; do
+  if [ -f "$root/metate-review/bootstrap.sh" ]; then
+    exec bash "$root/metate-review/bootstrap.sh" "$@"
+  fi
+done
+echo "metate-init: cannot find metate-review/bootstrap.sh in ~/.agents/skills or ~/.claude/skills" >&2
+exit 1
 EOF
   chmod +x "$BIN/metate-init"
   echo "  ✓ per-project initializer → $BIN/metate-init"
+
+  install_dispatcher
   echo ""
   if [ "$UPDATE" = 1 ]; then
     echo "Skills updated. In each project, reconcile its profile with:  metate-init --update"
   else
-    echo "Skills are global. In ANY project run:  metate-init"
+    echo "Skills are global for Claude and Codex. In ANY project run:  metate-init"
   fi
-  echo "(ensure $BIN is on your PATH; otherwise: bash ~/.claude/skills/$BOOTSTRAP_REL)"
+  echo "(ensure $BIN is on your PATH; otherwise: bash ~/.agents/skills/$BOOTSTRAP_REL)"
 else
   echo "▸ $VERB metate skills into PROJECT: $PROJECT"
   copy_skills "$PROJECT/.claude/skills"
+  copy_skills "$PROJECT/.agents/skills"
+  install_dispatcher
   echo "▸ running bootstrap for this project"
-  if [ "$UPDATE" = 1 ]; then
-    ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" --update )
-  else
-    ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" )
-  fi
+  # Both skill roots are copied from the same $SRC above; invoke bootstrap from whichever
+  # exists (mirrors metate-init's resilience) rather than hardcoding one surface.
+  for sroot in "$PROJECT/.agents/skills" "$PROJECT/.claude/skills"; do
+    if [ -f "$sroot/$BOOTSTRAP_REL" ]; then
+      if [ "$UPDATE" = 1 ]; then
+        ( cd "$PROJECT" && bash "$sroot/$BOOTSTRAP_REL" --update )
+      else
+        ( cd "$PROJECT" && bash "$sroot/$BOOTSTRAP_REL" )
+      fi
+      break
+    fi
+  done
 fi
