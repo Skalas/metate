@@ -156,9 +156,13 @@ fi
 # Project-level skill installs are vendored tooling whose source of truth is the
 # metate repo — don't track them, or every skill update is noise in this project.
 # (.metate/profile.yml stays tracked: it's this project's config.) Skipped for
-# user-level installs, where the skills live in ~/.claude/skills, not the project.
+# user-level installs, where the skills live in ~/.claude/skills and ~/.agents/skills,
+# not the project.
 if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
   gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
+fi
+if compgen -G "$PROJECT_ROOT/.agents/skills/metate-*" >/dev/null 2>&1; then
+  gi_ignore_untrack '.agents/skills/metate-*' 'metate Codex skills are installed tooling (source of truth: metate repo)'
 fi
 
 # --- codebase-memory-mcp: configure (presence guaranteed by the guard above) -
@@ -299,7 +303,7 @@ cat <<EOF
 
 ✓ bootstrap complete. Next:
   1. Edit .metate/profile.yml → reviewFocus (your invariants), implementer, discover/prep/smoke/aftercare/ship.
-  2. Run the pipeline ceremonies in Claude Code, in order:
+  2. Run the pipeline ceremonies as native Claude/Codex skills, in order:
        metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
   3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).
 EOF

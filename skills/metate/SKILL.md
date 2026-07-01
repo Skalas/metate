@@ -49,8 +49,9 @@ git branch --show-current
 ```
 
 - **No profile** → run first-run setup (Step 2). If `.metate/` doesn't exist at all,
-  run the bootstrap first: `bash .claude/skills/metate-review/bootstrap.sh` (or
-  `metate-init` if installed user-level).
+  run the bootstrap first: `metate-init` if installed user-level, or
+  `bash .agents/skills/metate-review/bootstrap.sh` / `bash .claude/skills/metate-review/bootstrap.sh`
+  for a project-vendored install.
 - **Profile has placeholders** (`<invariant …>`, empty `[]`/`""`) → finish setup (Step 2).
 - **Profile filled** → route (Step 3).
 
@@ -70,8 +71,9 @@ for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found
 
 **orchestrator** — who runs the playbooks + fans out reviewers, independent of the writer.
 Default `backend: claude` (today's behavior; the Claude Code plugin path). Switch to `codex`
-to run the pipeline with no Claude Code in the loop, or `cursor` (probe-before-use). The
-`metate run <stage>` dispatcher routes per `metate-review/ORCHESTRATORS.md`.
+to run headless automation with no Claude Code in the loop, or `cursor` (probe-before-use).
+Interactive users should invoke the stage skills natively in Claude or Codex; `metate run
+<stage>` is the noninteractive dispatcher described in `metate-review/ORCHESTRATORS.md`.
 
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash

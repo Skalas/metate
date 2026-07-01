@@ -22,7 +22,8 @@ usage() { echo "usage: metate run <stage>   (stages: $STAGES)" >&2; }
 # Locate the installed skills root (project-vendored first, then user-level).
 skills_dir() {
   local c
-  for c in "$ROOT/.claude/skills" "$ROOT/skills" "$HOME/.claude/skills"; do
+  for c in "$ROOT/.agents/skills" "$ROOT/.claude/skills" "$ROOT/skills" \
+           "$HOME/.agents/skills" "$HOME/.claude/skills"; do
     [ -d "$c/metate-review" ] && { echo "$c"; return 0; }
   done
   return 1
@@ -47,7 +48,7 @@ stage="${2:-}"
 [ -n "$stage" ] || { usage; die "no stage given"; }
 case " $STAGES " in *" $stage "*) ;; *) usage; die "unknown stage: '$stage'";; esac
 
-SKILLS="$(skills_dir)" || die "cannot locate the metate skills (looked in .claude/skills, skills, ~/.claude/skills)"
+SKILLS="$(skills_dir)" || die "cannot locate the metate skills (looked in .agents/skills, .claude/skills, skills, ~/.agents/skills, ~/.claude/skills)"
 SKILL_MD="$SKILLS/metate-$stage/SKILL.md"
 [ -f "$SKILL_MD" ] || die "missing playbook: $SKILL_MD"
 
