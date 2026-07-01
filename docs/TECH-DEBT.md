@@ -28,11 +28,13 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `.claude/skills` + `.agents/skills`) is the chosen model; no marketplace snapshot. Not revisiting
   unless the two-target copy becomes a real maintenance burden.
 
-### Process
+### Process — resolved
 
-- **Pivot is uncommitted + unreviewed.** The codex-native-skill wiring changed after PR #29 was
-  reconciled, so the PR no longer reflects the branch and no metate-review round ran on this diff.
-  **Trigger:** immediately — commit + run `metate-review` before updating PR #29.
+- **Pivot committed + reviewed (2026-07-01).** The codex-native-skill wiring was committed
+  (`feat(install)` + `docs(codex-native-skills)`) and run through a `metate-review` round
+  (correctness · security · doc-accuracy): 0 blockers, security clean, docs verified against code.
+  Fixes applied from that round: install.sh project bootstrap now tries both skill roots (parity
+  with `metate-init`) instead of hardcoding `.claude/skills`.
 
 ## From the `merge-safe-29` sprint (2026-07-01)
 

@@ -158,9 +158,16 @@ else
   copy_skills "$PROJECT/.agents/skills"
   install_dispatcher
   echo "▸ running bootstrap for this project"
-  if [ "$UPDATE" = 1 ]; then
-    ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" --update )
-  else
-    ( cd "$PROJECT" && bash "$PROJECT/.claude/skills/$BOOTSTRAP_REL" )
-  fi
+  # Both skill roots are copied from the same $SRC above; invoke bootstrap from whichever
+  # exists (mirrors metate-init's resilience) rather than hardcoding one surface.
+  for sroot in "$PROJECT/.agents/skills" "$PROJECT/.claude/skills"; do
+    if [ -f "$sroot/$BOOTSTRAP_REL" ]; then
+      if [ "$UPDATE" = 1 ]; then
+        ( cd "$PROJECT" && bash "$sroot/$BOOTSTRAP_REL" --update )
+      else
+        ( cd "$PROJECT" && bash "$sroot/$BOOTSTRAP_REL" )
+      fi
+      break
+    fi
+  done
 fi
