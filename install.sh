@@ -22,12 +22,25 @@ SCOPE="user"
 PROJECT="$PWD"
 UPDATE=0
 
-# Where do the skills come from? A local checkout if this script sits next to a
-# skills/ dir; otherwise we clone from GitHub (so `curl … | bash` works).
+# Where do the skills come from? A real local checkout if this script is a regular file
+# sitting next to skills/; otherwise clone from GitHub (so `curl … | bash` works).
+# Piped execution (curl | bash): BASH_SOURCE[0] is bash/-/dev/fd/* — dirname resolves
+# to cwd, which would false-positive as a checkout if the user happens to be in one.
 SELF="${BASH_SOURCE[0]:-$0}"
 SELF_DIR="$(cd "$(dirname "$SELF")" 2>/dev/null && pwd || true)"
 SRC=""
-[ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/skills" ] && SRC="$SELF_DIR/skills"
+LOCAL_CHECKOUT=0
+case "$SELF" in
+  bash|dash|sh|-) ;;
+  /dev/fd/*|/dev/stdin|/proc/self/fd/*) ;;
+  *)
+    if [ -f "$SELF" ] && [ -r "$SELF" ] && [ "$(basename "$SELF")" = "install.sh" ] \
+        && [ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/skills" ]; then
+      LOCAL_CHECKOUT=1
+    fi
+    ;;
+esac
+[ "$LOCAL_CHECKOUT" -eq 1 ] && SRC="$SELF_DIR/skills"
 
 while [ $# -gt 0 ]; do
   case "$1" in
