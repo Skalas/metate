@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(claude -p:*)"
+      "Bash(claude -p:*)",
+      "Bash(cursor-agent:*)"
     ]
   }
 }

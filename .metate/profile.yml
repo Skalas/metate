@@ -7,9 +7,9 @@ shipGate: "make verify"    # check + metadata/installer sanity, mirrors CI
 
 # --- implementer (the only writer) ---------------------------------------
 implementer:
-  backend: claude          # single-vendor: no heavy codegen here, one auth/model
+  backend: cursor          # implementer/writer runs via cursor-agent
   model: ""                # blank = adapter default
-  autonomous: true         # dogfood runs headless; Bash(claude -p:*) is committed in .claude/settings.json
+  autonomous: true         # dogfood runs headless; Bash(cursor-agent:*) is committed in .claude/settings.json
 
 # --- orchestrator (reads the SKILL.md playbooks, runs the stages, fans out reviewers) ---
 # INDEPENDENT of implementer.backend (the writer). claude keeps existing behavior unchanged.
