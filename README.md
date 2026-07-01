@@ -142,7 +142,9 @@ file — the bootstrap only guesses the gates. In order of importance:
    `codex`, `claude`, or `gemini` (probe first). Blank model = adapter default. See
    `metate-review/IMPLEMENTERS.md` for the per-backend commands and verification status.
    **`orchestrator.backend`** (independent) — who *drives* the ceremonies and the review
-   fan-out: `claude` (default; the plugin flow), `codex` (verified), or `cursor` (probe). See
+   fan-out: `claude` (default; the plugin flow) or `codex` (verified live). `cursor` as an
+   orchestrator is **not yet wired** — `bin/metate` intentionally `die`s on it pending a
+   future sprint (it *is* verified as an *implementer*, above). See
    `metate-review/ORCHESTRATORS.md`.
 3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
    (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
@@ -159,8 +161,24 @@ file — the bootstrap only guesses the gates. In order of importance:
    `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
    you decide *what* to work on; you always pick — it never starts a sprint on its own.
 
-Then run the ceremonies in order in Claude Code:
+Then run the ceremonies in order:
 `metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
+
+**Two ways to drive a stage**, depending on `orchestrator.backend`:
+
+- **`claude`** (default) — invoke the stage as a Claude Code skill: `metate-review`,
+  `metate-prep`, etc. The plugin loads the matching `SKILL.md`.
+- **`codex`** (and any non-claude orchestrator) — use the dispatcher: `metate run <stage>`
+  (e.g. `metate run review`). It reads `orchestrator.backend` from `.metate/profile.yml` and
+  routes the ceremony to that runtime — `metate run review` under `codex` runs the
+  `fanOut → resume → gate` loop headless. Blank/absent backend ⇒ `claude`.
+
+### Graph-augmented review
+
+When `codebaseMemory.enabled: true` (default), reviewers prefer the codebase-memory knowledge
+graph over grep for structural reach, and the loop re-indexes between rounds. Set
+`codebaseMemory.enabled: false` to opt a repo out entirely — no graph calls, no MCP approval
+override, grep-only review.
 
 ## Adding an implementer
 
@@ -174,7 +192,9 @@ in `bin/metate`. The contract is two primitives: `runStage(skill)` — execute a
 playbook end to end — and `fanOut(reviewers[], read-only)` — launch N concurrent read-only
 reviewers returning typed findings. A new backend must clear one bar: **resume a headless
 session by id** (so review rounds resume the build session, not an amnesiac one). `claude` and
-`codex` are verified; `cursor` is wired probe-before-use (beta); `gemini` is implementer-only.
+`codex` are verified as orchestrators; `cursor` has a probe-before-use `case` arm that
+currently `die`s (its `runStage`/`fanOut` blocks aren't verified yet — a future sprint);
+`gemini` is implementer-only.
 
 ## License
 

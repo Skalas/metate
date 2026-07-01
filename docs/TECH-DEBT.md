@@ -6,6 +6,57 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 > Wire this file into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md` (and
 > optionally `techDebtFile:` top-level) so discover/prep pick it up automatically.
 
+## From the `merge-safe-29` sprint (2026-07-01)
+
+### Resolved
+
+- **Untracked files invisible to review (#43) — RESOLVED (M1).** The review diff anchored on
+  `git diff <merge-base>` only, so brand-new implementer-created files were never reviewed (false
+  "clean"). Fixed by intent-to-adding untracked, non-ignored files into the diff, hardened against
+  index leakage with a `RETURN`-trap restore + a case-insensitive secret skip-list + NUL-safe I/O.
+- **metate-on-metate self-review degeneracy — RESOLVED (M2).** The running review engine is now
+  excluded from the fixable set (so a mid-loop self-edit can't corrupt the executing script), and
+  reviewers are told runStage legitimately writes non-code artifacts (kills the oscillation). The
+  prior sprint's dogfood-only limitation is retired.
+- **Code Discovery / MCP override ignored `codebaseMemory.enabled` — RESOLVED (M3).** Both the clause
+  injection and the `default_tools_approval_mode="approve"` override are now gated on the flag.
+- **install.sh piped path (#44) — RESOLVED (M5).** Local-checkout detection requires a real
+  `install.sh` next to `skills/`; the piped path always clones the requested ref.
+- **bootstrap autonomy whitelist claude-only — RESOLVED (M6).** Backend→grant map
+  (claude→`Bash(claude -p:*)`, cursor→`Bash(cursor-agent:*)`, codex→`Bash(codex:*)`), idempotent,
+  claude path byte-identical.
+
+### New debt (triggered) — review DESIGN findings, report-only
+
+These surfaced in the merge-safe-29 review as report-only (elegance/DRY), not blockers. All in
+`skills/metate-review/codex-review.sh` unless noted.
+
+- **Duplicate `if [ "$CODEBASE_MEMORY" = "true" ]` guards** — the MCP-approve-flag setup and the
+  Code Discovery clause live in two adjacent identical conditionals; fold into one.
+  **Trigger:** next time a third `codebaseMemory.enabled`-gated behavior is added — merge the guards
+  first so it doesn't become three.
+- **`REVIEW_ENGINE_REL` hard-codes `skills/metate-review/codex-review.sh`** as a fallback when
+  `git ls-files --full-name` is empty — silent coupling if the skill is relocated.
+  **Trigger:** if the review engine's path/filename ever changes — make it `die` loudly or derive
+  the path instead of a literal fallback.
+- **`withheld.txt` recomputes the self-fix filter** (`file == $eng`) a second time rather than a
+  set-difference of `FIXABLE − FIXABLE_APPLY`. Minor DRY.
+  **Trigger:** next edit to the withhold/fixable logic — collapse to one jq pass.
+- **`lc_f` not declared `local`** in `build_review_diff` (harmless global leak; assigned before use,
+  no `set -u` failure). **Trigger:** any refactor of that function — add it to the `local` line.
+- **Cross-file profile-key parsing duplicated** — `codebaseMemory.enabled` is hand-parsed
+  independently in `codex-review.sh` (`prof_nested`) and `bootstrap.sh` (awk). Consistent with the
+  repo's "each script hand-rolls its reader" convention; unifying is the deferred `lib/profile.sh`.
+  **Trigger:** when a third script needs the same key, or the `lib/profile.sh` item is picked up.
+
+### Deferred (scope honesty for PR #29)
+
+- **cursor-as-orchestrator is a die-stub.** The branch title says claude/codex/cursor but
+  `bin/metate` `die`s on `cursor`; only claude + codex orchestrators shipped. Documented in README
+  and ROADMAP as deferred, not hidden.
+  **Trigger:** the ROADMAP "cursor-as-orchestrator end-to-end" item — wire runStage/fanOut, verify a
+  resume round-trips, drop the die.
+
 ## From the `stabilize-codex-orchestrator` sprint (2026-06-30)
 
 ### Resolved
@@ -44,10 +95,21 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ### Not yet exercised
 
-- **T6 branch-behind dedicated scenario.** The merge-base→working-tree anchoring ran in every review
-  this sprint and clean multi-round convergence is proven (T5), but a scenario where the base branch
-  is strictly ahead of the feature branch was not constructed.
+- **T6 branch-behind dedicated scenario (issue #40, kept OPEN).** The merge-base→working-tree
+  anchoring ran in every review this sprint and clean multi-round convergence is proven (T5), but a
+  scenario where the base branch is strictly ahead of the feature branch was not constructed.
+  Re-triaged as a residual in the `merge-safe-29` M4 verification pass — NOT merge-blocking (the
+  anchoring code path is exercised on every run; only the strictly-behind edge is unbuilt).
   **Trigger:** next codex-orchestrated review on a branch that is behind its base.
+
+- **T3 graph-unavailable fallback logging (issue #37, kept OPEN).** The Code Discovery clause
+  instructs reviewers to disclose a grep fallback in the finding's rationale ("SAY SO … do not
+  silently fall back"), and M3 added a clean `codebaseMemory.enabled: false` opt-out path — but a
+  dedicated LIVE run with the MCP genuinely unreachable at runtime (confirming the fallback is both
+  taken AND logged) was never constructed. Re-triaged as a residual in the `merge-safe-29` M4 pass —
+  NOT merge-blocking (mechanism present; only the live down-path proof is missing).
+  **Trigger:** next time the codebase-memory MCP is down/unregistered during a codex-orchestrated
+  review — capture the reviewer log showing the disclosed fallback, then close #37.
 
 ## From the `pluggable-orchestrator` sprint (2026-06-30)
 

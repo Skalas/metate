@@ -3,6 +3,12 @@
 .metate/.session-start.json
 .metate/issues.json
 .metate/*.bak
+# metate working scratch — plan doc + transient build/review/fix capture buffers
+.metate/plan.md
+.metate/.cursor-cid.tmp
+.metate/.build*
+.metate/.fix-round*
+.metate/.review-diff*
 # codebase-memory Cursor rule is installed tooling (source: metate repo)
 .cursor/rules/codebase-memory.mdc
 # metate autonomous implementer permission (personal, per-developer)
