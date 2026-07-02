@@ -58,13 +58,36 @@ this block to the implementer prompt (build prompt and resume/fix prompt alike).
 differ in how they otherwise learn the preference — see the per-backend table below — so the
 prompt is the **only** path that reaches the `claude` backend in `-p` mode.
 
+**Intensity scales with graph value** (still gated only on `codebaseMemory.enabled`, no extra
+profile knob): on typical codebases the clause applies fully; on doc/shell repos (mostly
+markdown/shell prompt-docs) grep/Read is the expected primary tool even when the flag is on.
+
 ```
 Code Discovery — prefer the codebase-memory-mcp knowledge graph over grep/Read for
-structural reach. Before editing, trace the IMPACT of each change:
+structural reach when the repo is graph-rich (typical codebases). On doc/shell repos
+(mostly markdown/shell prompt-docs) the graph payoff is low — grep/Read is the expected
+primary tool even when codebaseMemory.enabled is true.
+
+Before editing, trace the IMPACT of each change:
   - search_graph — find the symbol you're about to touch by name/label/pattern;
   - trace_path — who calls it / what it calls, so a changed signature doesn't break an
     off-diff caller;
   - get_code_snippet — exact symbol source by qualified name.
+
+RESULT TAXONOMY (do not confuse usage errors with outages):
+  (1) Connection refused / server not registered = graph genuinely DOWN → fall back to
+      grep AND disclose the fallback in your output.
+  (2) An ERROR STRING from the tool = YOUR CALL was malformed → fix the params and RETRY
+      (this is NOT "down").
+  (3) EMPTY result = the graph lacks that symbol → grep for that one specific thing.
+  Only a connection-level failure counts as "down".
+  An error is not an outage — retry a corrected call before ever declaring the graph unavailable.
+
+CANONICAL CALL SIGNATURES (copy these — do not invent params):
+  search_graph(name_pattern="handleRequest")
+  get_code_snippet(qualified_name="pkg.Service.handleRequest")
+  trace_path(function_name="handleRequest", mode="calls"|"data_flow"|"cross_service")
+
 Fall back to grep/Read for string literals, configs, and non-code files. If the repo
 isn't indexed yet, run index_repository first.
 ```
@@ -120,6 +143,15 @@ codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixe
   **ChatGPT** account the `*-codex-fast` models are rejected — omit `-m` to use the
   configured default (e.g. `gpt-5.5` from `~/.codex/config.toml`). `--output-schema` for
   structured final response.
+- **Headless MCP reachability (two independent gates).** `approval_policy="never"` covers
+  **shell commands only**. MCP tool calls need a separate gate:
+  `-c mcp_servers.<id>.default_tools_approval_mode="approve"`. On some codex builds **no**
+  config key suppresses the MCP prompt (see openai/codex issues #24135, #16685) — **probe
+  the target build** rather than assume. Escape hatches (**writer-session / implementer
+  only** — never in the read-only reviewer fan-out; `ORCHESTRATORS.md` → codex
+  `--sandbox read-only`; the reviewer sandbox must stay intact):
+  `approvals_reviewer="auto_review"` + `mcp_elicitations`; or `--full-auto`; last resort
+  `--dangerously-bypass-approvals-and-sandbox`.
 
 ## claude  ✅ available
 
