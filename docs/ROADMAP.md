@@ -6,6 +6,26 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Signal-capture lane + discover explore mode (increment `signal-capture-lane`, 2026-07-02).**
+  A bug found mid-flow no longer forces a choice between derailing the sprint and losing the find.
+  **Write side:** `metate-smoke` now classifies each failure against `git diff <base>` — in-diff =
+  a regression you own (back to build); out-of-diff / exposed-latent = a pre-existing find that is
+  **captured, not fixed in-branch**, appended to `signalsFile` (new profile key) per the new
+  `metate-smoke/signal.schema.json` (tier-1 capture: title/repro/evidence/attribution/severityGuess/
+  blocksDoD/status — NOT a tracker issue). The smoke exit split means smoke can go green with
+  out-of-diff finds parked as signals, removing the pressure that used to push the inline fix.
+  **Read side:** `metate-discover` gained a `signals` source that folds open captures into the slate
+  and **closes the loop** in Step 4 — a chosen signal is stamped `promoted`, an explicitly-dropped one
+  `invalid`/`wontfix`, so nothing lives in the log forever. **Discover `mode`:** `steady` (default,
+  today's behavior) vs `explore` (product not well-defined — lean on product intent + architecture,
+  frame candidates as bets with assumption→validation, rank by learning value). Issue-filing stays
+  gated behind `prep` (captures are not auto-issues). **Verified:** 3-round `metate-review` (correctness
+  · security · elegance) converged 0 blockers — the review caught 6 real defects in the first cuts
+  (missing `Write` grant, no `promoted` path, uncaptured `blocksDoD`, hardcoded path, missing injection
+  guard, no `invalid`/`wontfix` trigger), all fixed; `make verify` green. Bent invariant (dogfood):
+  written by hand on-branch, not through the implementer session (no `session.json`).
+  Residual: `metate-review` write-side + the cold-intake `triage`/`hotfix` lane deferred (see below).
+
 - **Cursor orchestrator adapter (increment `cursor-orchestrator`, 2026-07-01).** Native IDE path:
   Task fanOut for `review`/`discover` (mirrors Claude Agent tool — no `cursor-review.sh`);
   reviewer system prompts in `skills/metate-review/cursor-agents/`; bootstrap installs to
@@ -72,6 +92,12 @@ review gap — all **done**, see the two Done entries above.)
 4. **Native typed-subagent fan-out — CLI upgrade (EXPAND).** Cursor IDE Task fanOut is shipped.
    Remaining: codex `.codex/agents/*.toml` batch fan-out and headless `cursor-agent` Task API
    once those CLIs stabilize — higher fidelity than shell-process `codex exec` baseline.
+5. **`metate-review` signal write-side.** The capture lane's read side (discover) and one write side
+   (smoke) shipped; review can surface out-of-diff finds too but has no `Write` tool / capture step,
+   so it can't append signals. Wire it symmetrically to smoke. Trigger in TECH-DEBT.md.
+6. **Cold-intake `triage` + compressed `hotfix` lane.** The mid-testing capture path is in; the
+   *externally-reported* bug path (triage → route → hotfix/backlog/interrupt) is designed but unbuilt.
+   Only build if cold bug reports become a real, recurring need. Trigger in TECH-DEBT.md.
 
 ## Later
 
