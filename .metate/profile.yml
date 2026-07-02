@@ -19,6 +19,7 @@ orchestrator:
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
+signalsFile: ".metate/signals.json"  # tier-1 captures from smoke; read + dispositioned by discover
 isolation: none
 
 # --- codebase memory (structural context provider) -----------------------
