@@ -8,8 +8,14 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ## Engine-wide (identified in discover, 2026-07-02)
 
-### MCP misuse read as "MCP down" — fix in the engine, benefits every consuming repo
+### MCP misuse read as "MCP down" — RESOLVED (sprint `engine-hardening`, 2026-07-02)
 
+- **RESOLVED (M2).** The Code Discovery clause (`IMPLEMENTERS.md`) now carries the
+  down/bad-query/empty taxonomy + retry-on-usage-error rule + canonical call signatures, and the
+  `ORCHESTRATORS.md` `fanOut` contract has the orchestrator query the graph once and pass it as
+  DATA. Verified via 3-round review. Residual: the clause enrichment landed only in the prompt
+  path, widening drift vs `cursor-rule.mdc`/`codex-rule.md` — folded into the backend-unification
+  item below (single-sourcing resolves it). Original writeup kept for context:
 - **codebase-memory MCP: subagents misread a usage error as an outage, and each fanned-out
   agent independently rediscovers structure (N× payload).** Two root causes, both in the engine
   (NOT fixable per-repo — `codebaseMemory.enabled` only turns the graph off, it can't make agents
@@ -43,6 +49,41 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `lib/profile.sh`. **Trigger:** the next thorough code-review / simplification sprint — this is its
   primary scope (REDUCE mode). Prerequisite decision already made: metate is a *tool* that needs
   multiple backends, so pay for the abstraction rather than deleting backends.
+  **Update (2026-07-02):** the `engine-hardening` M2 enriched the Code Discovery clause in the
+  prompt path only, so `cursor-rule.mdc`/`codex-rule.md` now carry a leaner version — the drift this
+  item warns about is now concrete, not hypothetical. Raises the priority.
+
+## From the `engine-hardening` sprint (2026-07-02)
+
+### Resolved
+
+- **Review fan-out read-only rested on prose — RESOLVED (M1).** The three Cursor reviewer agents now
+  declare `readonly: true` in frontmatter (source + installed `.cursor/agents/` copies), enforcing
+  the "reviewers never write" contract at the harness level instead of by prose alone.
+
+### New debt (triggered)
+
+- **`bin/metate` still passes `--approve-mcps` on the cursor writer/runStage path**, which
+  `ORCHESTRATORS.md`/`IMPLEMENTERS.md` now flag as unconfirmed in current Cursor CLI docs (the
+  documented headless MCP-approval path is `permissions.allow`/`permissions.deny` + `--force`). Docs
+  and dispatcher were reconciled to *describe* this as a residual, not fixed. **Trigger:** verify
+  `--approve-mcps` against the target `cursor-agent` build; if rejected/renamed, switch `bin/metate`
+  to the `permissions`+`--force` path.
+- **Headless cursor read-only fan-out enforcement is unverified.** The cursor-agent CLI has Task/
+  subagent dispatch on recent builds, but it is NOT proven that a reviewer invocation rejects write
+  tool calls under `readonly: true` headlessly — so `bin/metate` still `exit 2`s cursor
+  `review`/`discover`, and the docs say do not enable headless cursor review until verified.
+  **Trigger:** before wiring headless cursor fan-out into `bin/metate` — first confirm on a target
+  build that a `readonly: true` reviewer cannot write, and never pass `--force`/`--trust` to it.
+
+### Learned (process)
+
+- **A build prompt can introduce a harness-level defect the fast gate can't catch.** M1's build
+  added `is_background: true` to the reviewer agents (plausible from the Cursor spec), but it
+  conflicts with metate's *synchronous* fan-out (launch in parallel → immediately `jq`-merge each
+  result); a backgrounded reviewer would return nothing to merge → silent zero-findings. `make check`
+  passed; the round-2 review caught it. Reinforces: verify frontmatter/flags against the *contract
+  that consumes them*, not just validity.
 
 ## From the `codex-native-skills` increment (2026-07-01)
 
