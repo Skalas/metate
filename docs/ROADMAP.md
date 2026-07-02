@@ -26,6 +26,24 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
   written by hand on-branch, not through the implementer session (no `session.json`).
   Residual: `metate-review` write-side + the cold-intake `triage`/`hotfix` lane deferred (see below).
 
+- **Engine hardening — MCP-misuse fix + review read-only enforcement (sprint `engine-hardening`,
+  2026-07-02).** Two milestones. **M1:** the three Cursor reviewer agents now carry
+  `readonly: true` (read-only was enforced only by prose before — a real hole in the review
+  engine's core contract); three stale Cursor claims in `ORCHESTRATORS.md` corrected and
+  version-probed (headless Task fan-out exists on recent builds but `bin/metate` still `exit 2`s
+  it pending verification; SKILL.md native since Cursor 2.4; `--approve-mcps` unconfirmed →
+  `permissions.allow`+`--force`). **M2 (closes the "highest failure-surface" MCP item):** the
+  Code Discovery clause now distinguishes *down vs bad-query vs empty* with a retry-on-usage-error
+  rule + canonical call signatures, so agents stop misreading a malformed call as "MCP down"; the
+  `fanOut` contract now has the orchestrator query the graph ONCE and pass the distilled slice to
+  subagents as DATA (no N× rediscovery); Codex two-gate MCP note added (shell vs MCP approval),
+  with the dangerous escape hatches scoped writer-only. **Verified:** 3-round `metate-review`
+  (claude orchestrator, cursor implementer, session resumed each round) converged 0 blockers — R1
+  caught a doc↔`bin/metate` contradiction, R2 caught the build's own `is_background` overreach
+  (would have silently broken the synchronous fan-out merge), both fixed; `make verify` green.
+  **Scope honesty:** M1+M2 only — M3 (backend unification) and M4 (review write-side) are staged
+  as follow-on sprints (see below). Doc-only, no runtime behavior changed.
+
 - **Cursor orchestrator adapter (increment `cursor-orchestrator`, 2026-07-01).** Native IDE path:
   Task fanOut for `review`/`discover` (mirrors Claude Agent tool — no `cursor-review.sh`);
   reviewer system prompts in `skills/metate-review/cursor-agents/`; bootstrap installs to
@@ -73,7 +91,23 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
   `bin/metate` dispatcher; codex-only review pilot validated live (T3·T4·T5). Shipped as a
   **draft stabilization branch** (PR #29) — issues #19–#28 stay open until merge.
 
-## In progress / next (post-merge-#29 hardening)
+## In progress / next
+
+**Staged follow-ons from the `engine-hardening` sprint (2026-07-02), in build order:**
+
+- **M3 — Unify backends at installation (REDUCE).** Single-source generator: `sources/` (reviewer
+  lenses + code-discovery rule + `backends.yml`) → render per-harness (Cursor `.mdc`/`readonly`,
+  Codex `AGENTS.md` block, Claude/Codex prompt-inject); collapse the three YAML parsers into
+  `lib/profile.sh`; add a "render = no diff" drift gate. Keeps all backends (token-limit switching
+  is load-bearing) — pays for the abstraction instead of copy-paste. M2 already widened the clause
+  drift (see TECH-DEBT), so this is now more urgent. Trigger in TECH-DEBT.md.
+- **M4 — Complete the capture lane: `metate-review` signal write-side (HOLD).** smoke can capture
+  out-of-diff finds; review cannot yet. Add a `Write`-scoped capture step + trim the signal schema
+  (drop `severityGuess`/`blocksDoD` from required). Depends on PR #50 (signal-capture lane) merging first.
+
+*(The MCP-misuse "highest failure-surface" item is now **done** — closed by M2 above.)*
+
+## Legacy hardening backlog (post-merge-#29)
 
 Ranked by failure-surface, not effort. Each has a trigger in TECH-DEBT.md.
 (T10 codex MCP reachability, the metate-on-metate self-review guard, and the #43 untracked-file
@@ -92,12 +126,10 @@ review gap — all **done**, see the two Done entries above.)
 4. **Native typed-subagent fan-out — CLI upgrade (EXPAND).** Cursor IDE Task fanOut is shipped.
    Remaining: codex `.codex/agents/*.toml` batch fan-out and headless `cursor-agent` Task API
    once those CLIs stabilize — higher fidelity than shell-process `codex exec` baseline.
-5. **`metate-review` signal write-side.** The capture lane's read side (discover) and one write side
-   (smoke) shipped; review can surface out-of-diff finds too but has no `Write` tool / capture step,
-   so it can't append signals. Wire it symmetrically to smoke. Trigger in TECH-DEBT.md.
-6. **Cold-intake `triage` + compressed `hotfix` lane.** The mid-testing capture path is in; the
+5. **Cold-intake `triage` + compressed `hotfix` lane.** The mid-testing capture path is in; the
    *externally-reported* bug path (triage → route → hotfix/backlog/interrupt) is designed but unbuilt.
    Only build if cold bug reports become a real, recurring need. Trigger in TECH-DEBT.md.
+   *(`metate-review` signal write-side moved up to the staged M4 follow-on above.)*
 
 ## Later
 

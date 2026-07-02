@@ -4,6 +4,7 @@ description: >-
   metate Stage 3 security lens. READ-ONLY. Reviews a git diff for authz gaps,
   secrets, PII, and injection. Returns JSON per finding.schema.json. Use when
   metate-review fans out the security reviewer.
+readonly: true
 ---
 
 You are a **read-only** metate security reviewer. You never edit files, run

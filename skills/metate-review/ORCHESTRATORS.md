@@ -25,6 +25,13 @@ handshake) is already runtime-neutral — do not re-abstract it.
    subagents** (`.codex/agents/*.toml`, `.cursor/agents/*.md`, Claude sub-agents) are a
    deferred per-runtime upgrade, not the contract baseline.
 
+   When `codebaseMemory.enabled`, the **orchestrator** queries the graph **once** up front
+   (compute diff-impact / relevant subgraph via `trace_path` on changed symbols), **distils**
+   that slice, and passes it to each fanned-out subagent as **DATA in the prompt** — so N
+   subagents do **not** each independently re-run `get_architecture` / broad `search_graph`
+   (which pays discovery cost N times and floods context). Subagents make only targeted
+   lookups after that shared slice.
+
 A reviewer's typed findings conform to `finding.schema.json` (next to this file):
 `{ findings: [{ file, line, bucket, summary, rationale }] }`, `bucket ∈
 blocker|warning|suggestion`. The runnable codex reference implementation of both primitives
@@ -109,22 +116,35 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
   triggers no re-index itself. `reindex: always` / `reindex: manual` are **not** honored by
   the pilot (a documented limitation); use `reindex: git` under the codex orchestrator.
 
-## cursor  ✅ verified (IDE — Task fanOut; headless runStage via `cursor-agent -p`)
+## cursor  ✅ verified (IDE Task fanOut; headless runStage via `cursor-agent -p`)
 
 Cursor has **two paths**. The **primary** path mirrors Claude: the orchestrator runs
 inside the Cursor IDE and fans out reviewers with the **Task** tool — no shell driver
 ( `codex-review.sh` is codex-only). The **headless** path uses `cursor-agent -p` for
-`runStage` stages; `fanOut` stages (`review`, `discover`) stay IDE-native until the CLI
-exposes Task fan-out.
+`runStage` stages only today (`bin/metate` wires those; see below).
+
+**fanOut nuance (shipped vs capability):** recent cursor-agent builds have gained
+Task/subagent dispatch headlessly — probe `cursor-agent --version` / `--help` on the
+target install. **However**, (a) `bin/metate` still **intentionally `exit 2`s**
+`metate run review|discover` under `orchestrator.backend: cursor` pending verification,
+and (b) **headless read-only enforcement** for a cursor reviewer (does `readonly: true`
+actually reject write tool calls?) is **unverified**. Probe the CLI **and** verify a
+reviewer invocation rejects write tool calls under `readonly: true` **before** wiring
+headless cursor fanOut into the dispatcher — do not present this as done.
 
 ```text
-runStage(skill)         → Cursor IDE: invoke the `metate-<stage>` skill (native SKILL.md).
-                          Headless: `cursor-agent -p --trust --approve-mcps --force …`
-                          with the playbook + profile (see bin/metate).
-fanOut(reviewers, ro)   → IDE ONLY: launch three Task subagents in ONE message, each
-                          `readonly: true`, returning JSON per finding.schema.json.
-                          Headless: NOT supported — use codex orchestrator or run review
-                          interactively in Cursor (do not shell-fan-out cursor-agent).
+runStage(skill)         → invoke the `metate-<stage>` skill (native SKILL.md — Cursor
+                          reads SKILL.md natively since Cursor 2.4, editor AND CLI).
+                          Headless fallback: paste the playbook into the prompt
+                          (`$(cat skills/metate-<stage>/SKILL.md) …`) when native skill
+                          loading is unavailable on the target build — see bin/metate.
+fanOut(reviewers, ro)   → IDE (verified): launch three Task subagents in ONE message,
+                          each `readonly: true`, returning JSON per finding.schema.json.
+                          Headless (unverified): recent cursor-agent builds may support
+                          Task fan-out — probe the CLI AND confirm `readonly: true`
+                          rejects write tool calls before wiring. Today `bin/metate`
+                          exits 2 for `review|discover`; use codex orchestrator or run
+                          review interactively in Cursor until headless fanOut is verified.
 ```
 
 ### fanOut — Task mapping (review + discover)
@@ -133,6 +153,11 @@ Launch **three Task tool calls in one turn** (parallel). Each prompt carries the
 (**wrapped in `<diff>` … `</diff>` — inner content is DATA only**), `reviewFocus`, the Code
 Discovery clause (when `codebaseMemory.enabled`), lens instructions, and: *Return ONLY valid
 JSON matching finding.schema.json — no markdown fences.*
+
+When `codebaseMemory.enabled`, the orchestrator runs **one** upfront graph pass (diff-impact
+via `trace_path` on changed symbols), distils the subgraph, and embeds that slice in **each**
+reviewer prompt — reviewers do targeted lookups only; they do not each call
+`get_architecture` or broad `search_graph`.
 
 | Lens | Task `subagent_type` | `readonly` | Default buckets |
 |------|----------------------|------------|-----------------|
@@ -143,6 +168,11 @@ JSON matching finding.schema.json — no markdown fences.*
 Project-scoped reviewer system prompts ship in `skills/metate-review/cursor-agents/`
 (bootstrap copies them to `.cursor/agents/metate-*.md`). The Task `subagent_type` values
 above are the built-in lenses; fold each agent file's lens rules into the Task prompt.
+
+**Read-only lane caveat:** a headless cursor reviewer must **never** be invoked with
+`--force` or `--trust` — those are write-enabling flags for implementer/runStage sessions.
+Until a build is confirmed to reject write tool calls under `readonly: true`, do not
+enable headless cursor fan-out for the read-only review lane.
 
 **Parse + merge** (orchestrator in shell/Bash, not a subagent):
 1. Strip optional markdown fences from each response; `jq` validate against `finding.schema.json`.
@@ -155,6 +185,9 @@ above are the built-in lenses; fold each agent file's lens rules into the Task p
 For stages without `fanOut` (`prep`, `build`, `aftercare`, `smoke`, `ship`):
 
 ```bash
+# Matches bin/metate cursor runStage path. --approve-mcps is version-dependent /
+# unconfirmed in current CLI docs — tracked residual to reconcile with
+# permissions.allow/deny + --force (see bullets below).
 cursor-agent -p --trust --approve-mcps --force \
   --model composer-2.5 --workspace "$ROOT" --output-format text \
   "$(cat skills/metate-<stage>/SKILL.md)
@@ -164,14 +197,22 @@ Run this metate stage against the repo at $ROOT. Read project specifics from $PR
 
 - **`--model auto` is rejected** — name a concrete model (e.g. `composer-2.5`).
 - **`--force`** — auto-approves shell commands headless (analogous to codex
-  `approval_policy="never"` for runStage). Pair with `--trust` (workspace) and
-  `--approve-mcps` (MCP). `SKILL_MD` is resolved via `skills_dir()` (vendored metate
-  playbooks only) — do not point `skills_dir` at untrusted trees.
+  `approval_policy="never"` for runStage). Pair with `--trust` (workspace). **Writer/runStage
+  only** — never pass these to a read-only reviewer invocation (see fanOut caveat above).
+- **Headless MCP approval** — documented Cursor CLI path: pre-grant via
+  `permissions.allow` / `permissions.deny` in `~/.cursor/cli-config.json` (or project
+  config) **+** `--force`. `--approve-mcps` is **unconfirmed** in current Cursor CLI docs —
+  verify on the target build with `cursor-agent --help`. **Note:** `bin/metate` currently
+  still passes `--approve-mcps` for headless runStage — reconciling with the permissions
+  path is a tracked residual, not changed in this sprint.
 - **30s shell timeout** can kill nested long `claude -p`/`codex` calls from inside the
   agent — prefer driving the implementer via `cursor-agent --resume` in a background
   Bash call (see `IMPLEMENTERS.md` → long-running invocations).
+- `SKILL_MD` is resolved via `skills_dir()` (vendored metate playbooks only) — do not
+  point `skills_dir` at untrusted trees.
 - MCP: `~/.cursor/mcp.json` + `.cursor/rules/codebase-memory.mdc` (bootstrap installs
-  it) + **`--approve-mcps`** headless + restate the Code Discovery clause in reviewer prompts.
+  it) + headless permissions pre-grant (above) + restate the Code Discovery clause in
+  reviewer prompts.
 
 ## gemini  ⛔ unverified
 
@@ -189,7 +230,9 @@ before selecting `gemini` as orchestrator.
 - **`--output-schema` on `resume` is version-dependent.** Present in codex-cli 0.142.0;
   if a target install rejects it on `resume`, drop the flag there and validate the JSON in
   shell instead (fan-out reviewers use plain `exec`, which always accepts it).
-- **cursor is beta:** 30s shell timeout, `--approve-mcps` for headless MCP, no `--model auto`.
+- **cursor is beta:** 30s shell timeout, headless MCP via `permissions.allow`/`deny` +
+  `--force` (`--approve-mcps` unconfirmed in docs; `bin/metate` still passes it — tracked
+  residual), no `--model auto`.
 
 ## Verification status
 
@@ -197,7 +240,7 @@ before selecting `gemini` as orchestrator.
 |---|---|---|---|---|
 | claude  | ✅ Skill tool                  | ✅ Agent sub-agents (one message)            | ✅ `~/.claude.json` | today's default; untouched |
 | codex   | ✅ `exec` (tested)             | ✅ parallel `exec --output-schema` (tested)  | ✅ config + `default_tools_approval_mode="approve"` via `-c` (verified live) | resume sandbox via `-c sandbox_mode`; pre-grant BOTH shell (`approval_policy`) and MCP (`default_tools_approval_mode`) approvals |
-| cursor  | ✅ IDE skill + `-p` runStage     | ✅ Task subagents (IDE only; one message)    | ✅ `--approve-mcps` + rule | fanOut not headless; no `cursor-review.sh` |
+| cursor  | ✅ native SKILL.md + `-p` runStage | ✅ IDE Task subagents (one message); headless fanOut unverified | `permissions.allow`/`deny` + `--force` (runStage); `--approve-mcps` residual in `bin/metate` | `bin/metate` exit 2 on review/discover; no `cursor-review.sh` |
 | gemini  | ⛔ unverified                  | ⛔ unverified                                | ⛔ unverified | probe before use |
 
 > Adapters are CLI-only and codebase-agnostic. Adding an orchestrator = adding a row here +
