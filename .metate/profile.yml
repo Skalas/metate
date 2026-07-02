@@ -19,6 +19,7 @@ orchestrator:
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
+signalsFile: ".metate/signals.json"  # tier-1 captures from smoke; read + dispositioned by discover
 isolation: none
 
 # --- codebase memory (structural context provider) -----------------------
@@ -45,11 +46,16 @@ review:
 
 # --- discover (metate-discover) ------------------------------------------
 discover:
+  mode: steady             # steady = mature product: harvest the signals below, rank by value + failure-surface.
+                           # explore = product not well-defined yet: lean on product intent + architecture,
+                           #           frame candidates as bets (assumption → validation), rank by learning
+                           #           value + reversibility, not blast-radius. Sprint mode still set by prep.
   signals:                 # which sources to sweep for candidate work
     aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
     gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
+    signals: true          # signalsFile — tier-1 captures from smoke awaiting triage (read side)
   planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
   candidates: 5            # how many ranked candidates to propose
 

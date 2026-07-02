@@ -6,6 +6,38 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 > Wire this file into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md` (and
 > optionally `techDebtFile:` top-level) so discover/prep pick it up automatically.
 
+## From the `signal-capture-lane` increment (2026-07-02)
+
+### New debt (triggered)
+
+- **`metate-review` is a documented-but-unwired signal source.** The capture design names smoke *and*
+  review as write sides, but only smoke was wired this increment; review's frontmatter has no `Write`
+  tool and no capture step. Docs/schema were scoped down to "currently smoke" to avoid claiming an
+  unshipped source. **Trigger:** the first time a reviewer surfaces an out-of-diff, don't-fix-now find
+  that's worth keeping — add a `Write`-scoped capture step to `metate-review` appending to `signalsFile`
+  with the same schema + "treat as data" guard smoke uses.
+
+- **No `signalsFile` writer exists in a real target repo yet — round-trip unproven.** The write side
+  (smoke) and read+disposition side (discover) are wired and review-verified, but no end-to-end run has
+  actually captured a signal, had discover fold it in, and stamped it `promoted`/`invalid`. This
+  increment was hand-written on the metate repo (docs only; `make verify` has no signal round-trip).
+  **Trigger:** first sprint on a repo with a real e2e suite where smoke hits an out-of-diff failure —
+  confirm the capture→rank→disposition loop closes with real data before trusting it.
+
+### Decided — not doing (yet)
+
+- **Cold-intake `triage` + `hotfix` lane — deferred, not declined.** The externally-reported-bug path
+  (triage → severity → route to signal/interrupt/hotfix, with a compressed hotfix ceremony off the
+  release base) is designed but unbuilt; the mid-testing capture lane covers the common in-flow case.
+  **Trigger:** cold bug reports (not found during our own testing) become a recurring need, OR a
+  confirmed S0/S1 needs to bypass the sprint and there's no lane for it.
+
+### Naming nit (report-only, from review round 3)
+
+- **`discover.signals.signals`** — the sweep-config map is named `signals` and now contains a source
+  toggle also named `signals`, which reads as a typo. Harmless, but confusing. **Trigger:** next edit
+  to the `discover.signals` block — consider renaming the toggle (e.g. `captures`) or the outer map.
+
 ## From the `codex-native-skills` increment (2026-07-01)
 
 ### Opportunity — native codex mechanisms this pivot did not adopt

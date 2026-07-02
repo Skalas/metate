@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "metate signal set",
+  "description": "Cheap tier-1 capture of a bug/anomaly found mid-flow (currently smoke; the review write-side is not yet wired) without derailing. Appended to the profile's `signalsFile` (e.g. `.metate/signals.json`); NOT a tracker issue. `discover`/`triage` read this, confirm+rank, and stamp status: chosen signals become `promoted` (their candidate went into a plan; `prep` then files the issue), rejected ones `invalid`/`wontfix`. Every signal ends promoted or closed — nothing lives here forever.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["signals"],
+  "properties": {
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "repro", "attribution", "severityGuess", "blocksDoD", "status"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "One-sentence statement of the observed defect."
+          },
+          "repro": {
+            "type": "string",
+            "description": "Shortest steps seen so far to reproduce; 'unknown' is allowed at capture time."
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Logs / command output / assertion diff / screenshot path backing the observation."
+          },
+          "attribution": {
+            "type": "string",
+            "enum": ["in-diff", "out-of-diff", "exposed-latent"],
+            "description": "Ownership, decided by `git diff <base>`. in-diff = regression this sprint caused (a blocker, not a signal — fix in-branch). out-of-diff = pre-existing. exposed-latent = old bug only reachable because of this sprint's change."
+          },
+          "severityGuess": {
+            "type": "string",
+            "enum": ["S0", "S1", "S2", "S3"],
+            "description": "Capture-time guess. S0 down/data-loss/security; S1 core broken no workaround; S2 workaround exists; S3 annoyance/cosmetic. Triage may revise."
+          },
+          "blocksDoD": {
+            "type": "boolean",
+            "description": "Does this block the current sprint's Definition of Done? out-of-diff + true is the only case that earns an interrupt decision (hotfix-first | scope-expand)."
+          },
+          "foundIn": {
+            "type": "string",
+            "description": "Where it surfaced, e.g. 'smoke:T3'. Anchors it to the moment of capture."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "promoted", "invalid", "wontfix"],
+            "description": "Loop-closing state. open = awaiting triage; promoted = chosen into a plan by discover (prep files the issue next); invalid/wontfix = closed with reason. Nothing stays open forever."
+          }
+        }
+      }
+    }
+  }
+}
