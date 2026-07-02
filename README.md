@@ -41,11 +41,11 @@ right stage. The seven stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git), rank candidate sprints, **you pick**, write the plan doc prep consumes |
+| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git, **captured bug-signals**), rank candidate sprints in `steady` or `explore` mode, **you pick**, write the plan doc prep consumes |
 | 1 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
 | 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
-| 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn) on seeded data; human approves UX only |
+| 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn); classify failures by diff-attribution — regressions go back to build, **pre-existing finds are captured as signals** (not fixed in-branch); human approves UX only |
 | 5 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
 | 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
 
