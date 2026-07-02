@@ -6,6 +6,44 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 > Wire this file into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md` (and
 > optionally `techDebtFile:` top-level) so discover/prep pick it up automatically.
 
+## Engine-wide (identified in discover, 2026-07-02)
+
+### MCP misuse read as "MCP down" — fix in the engine, benefits every consuming repo
+
+- **codebase-memory MCP: subagents misread a usage error as an outage, and each fanned-out
+  agent independently rediscovers structure (N× payload).** Two root causes, both in the engine
+  (NOT fixable per-repo — `codebaseMemory.enabled` only turns the graph off, it can't make agents
+  use it correctly): (1) the injected **Code Discovery clause** tells agents to prefer the graph
+  but not *how* — a malformed call returns an error string, which agents collapse into "graph is
+  down" and silently grep-fallback; (2) the **fanOut pattern** sends N read-only agents to each run
+  their own `get_architecture`/broad `search_graph`, paying discovery cost N times and flooding
+  context. **Fix (two engine files):**
+  - **Code Discovery clause** (`skills/metate-review/IMPLEMENTERS.md` + the injected review/discover
+    prompt): add a *down vs bad-query vs empty* taxonomy + a retry-on-usage-error rule + canonical
+    call signatures (`search_graph(name_pattern=…)`, `get_code_snippet(qualified_name=…)`,
+    `trace_path(function_name=…, mode=…)`) with one worked example. Only a connection-level failure
+    counts as "down"; an error string means fix-params-and-retry; empty means grep that one symbol.
+  - **`ORCHESTRATORS.md` fanOut**: codify "orchestrator queries the graph ONCE, distills the
+    diff-impact/relevant subgraph, and passes it to subagents as DATA" so reviewers stop
+    rediscovering. Scale intensity to graph value (dial down on doc/shell repos like this one).
+  **Trigger: fires now** — hits every graph-backed repo on every review/discover fanOut. Fix before
+  the next sprint that runs review on a graph-rich codebase. **Highest failure-surface open item.**
+
+### Backend duplication — unify at installation, keep the switching flexibility
+
+- **Multi-backend support is maintained by copy-paste, not abstraction.** The orchestrator ×
+  implementer matrix is genuinely used (daily token-limit exhaustion forces switching interface or
+  implementer mid-project — the flexibility is load-bearing, do NOT collapse it). But it's carried as
+  *parallel per-backend guides/adapters/install flows* that drift (`ORCHESTRATORS.md` ↔
+  `codex-review.sh` command duplication; three ad-hoc YAML parsers; per-runtime prose). Switching is
+  a runtime capability; a separate guide per backend is a maintenance artifact — you can keep full
+  switch-anytime flexibility with one path. **Fix:** one install path that provisions whatever
+  backends are present; one adapter *contract* + a per-backend capability table (the differing CLI
+  invocation is a table row, not a whole doc); collapse the three parsers into the deferred
+  `lib/profile.sh`. **Trigger:** the next thorough code-review / simplification sprint — this is its
+  primary scope (REDUCE mode). Prerequisite decision already made: metate is a *tool* that needs
+  multiple backends, so pay for the abstraction rather than deleting backends.
+
 ## From the `codex-native-skills` increment (2026-07-01)
 
 ### Opportunity — native codex mechanisms this pivot did not adopt
