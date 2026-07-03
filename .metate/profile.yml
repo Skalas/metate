@@ -43,7 +43,7 @@ reviewFocus: |
 
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 review:
-  autoFix: blockers+warnings
+  autoFix: all
 
 # --- discover (metate-discover) ------------------------------------------
 discover:

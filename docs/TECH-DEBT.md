@@ -156,6 +156,52 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   path-scoped `Write(...)` grant, OR a security review flags the orchestrator's write-scope as an
   active risk — then enforce the two-sink restriction at the tool layer rather than in prose.
 
+## From the `engine-consolidation` sprint (2026-07-03)
+
+### Resolved
+
+- **Hand-rolled YAML parsers → `yq` (T1/T2).** `lib/yaml.sh` now parses via `yq` v4 (required
+  dependency, gated in `install.sh`/`bootstrap.sh`); `bin/metate` `read_backend` + `bootstrap.sh`
+  read through `lib/profile.sh`. Closes: *"render.sh re-implements lib/profile.sh's parser"*,
+  *"bin/metate/bootstrap.sh hand-roll their reads"* (Later residual), *"render.sh shadows
+  yaml_nested_scalar"* (renamed `manifest_scalar`/`manifest_field`), *"reviewer_lenses() fallback
+  silently drops a lens"* (now asserts against `YAML_REVIEWER_LENS_ORDER`), *"bin/metate
+  unknown-backend omits gemini"*. Malformed YAML now fails loudly (no silent `reviewFocus`
+  truncation) — a correctness win, not just DRY.
+- **Review-loop algorithm dual-sourced (my-review finding, T3).** Exit criteria single-sourced under
+  `sources/review-loop/` and rendered into both consumers; `make verify` `review-loop-drift` gate
+  fails on divergence.
+- **P3 hygiene batch (T6).** `lc_f` localized; the two `codebaseMemory.enabled` guards folded;
+  `RENDERED` derived from `render.sh --list-outputs`; `_review_engine_rel` literal fallback replaced
+  with a disk-existence check (absent → loud die; untracked-but-present → repo-relative fallback).
+
+### New debt (triggered)
+
+- **[review:security] `yq` is a heavier parser than the old awk on a hostile working-tree
+  `backends.yml`.** Folds into the existing roster-trust item below: `codex-review.sh` reads
+  `sources/backends.yml` for the lens roster from the working tree of the reviewed branch (not the
+  trusted merge-base copy). The awk scanner was bounded per-line; `yq` builds a full document tree
+  (anchor/alias fan-out, large-doc cost), so a crafted `backends.yml` on an untrusted branch costs
+  materially more CPU/memory per unattended review round. **Trigger:** before running
+  `metate run review` under any orchestrator on an **untrusted** branch — load the roster through the
+  same trusted boundary as lens-prompt text (`lib/trusted-review-text.sh`), OR cap `yq` input size.
+  Same fix as the roster-trust item; this raises its priority once untrusted-branch review is wired.
+
+- **[review:elegance] T3 single-sources the verdict-*id* axis only; `sources/review-loop/exit-criteria.md`
+  prose is a third, ungated representation.** The drift gate checks verdicts.yml ↔ `codex-review.sh`
+  literals and `SKILL.md` ↔ generated block, but nothing checks that the backtick-wrapped ids in the
+  exit-criteria prose match `verdicts.yml`. Rename a verdict and the prose goes stale silently.
+  **Trigger:** the next verdict rename, or the next edit to `review-loop-drift` — have the gate also
+  diff the prose's backtick id set against `verdicts.yml`.
+
+- **[review:elegance] `codex-review.sh` withheld-report set-difference is over-engineered and swallows
+  errors.** T6 rewrote the withheld-fix report from a one-pass negated `.file` predicate into a
+  two-step `slurpfile` set-difference plus a `2>/dev/null || :` fallback that silently emits an empty
+  report on any jq formatting error — against the repo's fail-loudly ethos. The *enforcement* set
+  (`FIXABLE_APPLY`) is unaffected (security-verified), so this is report-only. **Trigger:** the next
+  edit to the withhold/fixable logic — revert to the direct negated predicate, or make the fallback
+  loud.
+
 ## From the `backend-source-unification` sprint (2026-07-02)
 
 ### New debt (triggered)

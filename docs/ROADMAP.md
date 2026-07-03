@@ -6,6 +6,35 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Engine consolidation — parser correctness + drift gates + hygiene (sprint `engine-consolidation`,
+  2026-07-03).** HOLD sprint that made the load-bearing config read correctly-or-loudly and closed two
+  structural gaps the prior sprints left. **T1 (yq):** `lib/yaml.sh` now parses via `yq` v4 (a required
+  dependency, peer to `jq`, gated in `install.sh`/`bootstrap.sh`) instead of hand-rolled indent-walking
+  awk — the public function surface is unchanged, malformed YAML fails loudly (no more silent
+  truncated `reviewFocus`), and leading-tab indentation is expanded while in-content tabs are preserved.
+  **T2:** `bin/metate` `read_backend` and `bootstrap.sh` now read through `lib/profile.sh` (retiring the
+  last hand-rolled awk + divergent quote-stripping — closes the "Later" parser residual); `render.sh` no
+  longer shadows the shared `yaml_nested_scalar` (renamed `manifest_scalar`/`manifest_field`);
+  `reviewer_lenses()` fallback asserts the shipped lens `.txt` set matches `YAML_REVIEWER_LENS_ORDER`
+  instead of silently dropping a lens; the unknown-backend error now lists `gemini`. **T3 (drift gate):**
+  the review-loop exit criteria are single-sourced under `sources/review-loop/` and rendered into both
+  consumers, with a `make verify` `review-loop-drift` gate that fails on divergence between
+  `codex-review.sh`'s verdict literals, `SKILL.md`'s spliced block, and the generated artifacts. **T4/T5
+  (docs):** README gained an untrusted-branch security caveat next to the review ceremony and a
+  minimal-path Quickstart. **T6 (cleanups):** `lc_f` localized, the two `codebaseMemory.enabled` guards
+  folded, `RENDERED` derived from `render.sh --list-outputs`, `withheld.txt` as a jq set-difference, and
+  `_review_engine_rel` now distinguishes a real typo (absent on disk → loud die) from a new-in-sprint
+  untracked engine file (present → repo-relative fallback). **Verified:** 3-round `metate-review` (claude
+  orchestrator, cursor implementer, session resumed each round) converged 0 blockers — R1 caught a real
+  blocker (tab-in-block-scalar-content corruption that the first tab test missed, now covered by a
+  regression test) + 3 warnings + 4 suggestions; the R1 fix to `_review_engine_rel` *introduced* a new
+  blocker (dying on the sprint's own untracked T3 files) that R2 caught and R3 fixed and
+  deterministically verified (untracked → resolves; absent → still dies); `make verify` green. Issues
+  #68–#74. **Scope honesty:** the working-tree `backends.yml` roster-trust boundary stays deferred (the
+  yq swap makes its parse cost heavier — noted in TECH-DEBT); two R2 elegance suggestions (exit-criteria
+  prose as a third verdict-id representation; the withheld set-difference over-engineering + silent
+  error-swallow) were captured, not fixed in-branch.
+
 - **Backend source unification + discover source-naming cleanup (sprint `backend-source-unification`,
   2026-07-03).** Closes **M3**, the last staged follow-on from `engine-hardening`, and pays down the
   named "Backend duplication" REDUCE debt. **Source of truth (T1/T2):** reviewer lens bodies, the Code
@@ -147,13 +176,15 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## In progress / next
 
-**No staged follow-ons remain from the `engine-hardening` sprint** — M1 (review read-only) and M2
-(MCP-misuse taxonomy) shipped in `engine-hardening`, M4 (`metate-review` write-side) in
-`review-write-side`, and **M3 (backend unification) shipped in `backend-source-unification`,
-2026-07-03** (see Done). The next cycle picks from the legacy hardening backlog below; the highest-
-value candidates are the two long-deferred **validation** sprints (graph-unavailable fallback proof,
-branch-behind anchoring) and the fresh triggered debt from this sprint — the untrusted-branch roster-
-trust boundary now sits next to the existing untrusted-branch fix-apply hardening (item 3).
+**No staged follow-ons remain from the `engine-hardening` sprint** — all shipped (see Done), and the
+`engine-consolidation` sprint (2026-07-03) closed the parser-correctness + drift-gate + hygiene batch.
+**The prioritized next step is the external-repo proof run (validation):** one full
+discover→ship pass on a real Python/TS repo with a real fast gate and e2e suite. It is the
+reprioritization pivot and opportunistically closes the two long-deferred validation items
+(#37 graph-unavailable fallback, #40 branch-behind anchoring) plus the unproven capture round-trip on
+real data. After it, the **pluggable-roles epic (#30–#34, independent `reviewer.backend`)**; the
+untrusted-branch hardening (roster-trust boundary — now with a heavier `yq` parse cost, see TECH-DEBT —
+plus fix-apply egress) stays trigger-gated until a review actually runs on an untrusted branch.
 
 ## Legacy hardening backlog (post-merge-#29)
 
@@ -181,7 +212,7 @@ review gap — all **done**, see the two Done entries above.)
 
 ## Later
 
-- Finish the parser consolidation: `lib/profile.sh` + `lib/yaml.sh` now back `codex-review.sh` and
-  `render.sh`; the residual is migrating `bin/metate` `read_backend` and `bootstrap.sh`'s inline awk
-  onto the shared reader (partially-resolved; see TECH-DEBT.md).
+- ~~Finish the parser consolidation~~ **DONE (sprint `engine-consolidation`, 2026-07-03).** All
+  profile reads (incl. `bin/metate` `read_backend` and `bootstrap.sh`) now flow through
+  `lib/profile.sh` over a `yq`-backed `lib/yaml.sh`; the hand-rolled awk is retired.
 - Gemini as a verified backend (implementer and/or orchestrator) — currently unverified.
