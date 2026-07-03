@@ -23,6 +23,7 @@ orchestrator:
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
+signalsFile: ".metate/signals.json"  # tier-1 captures from smoke + review; read + dispositioned by discover
 isolation: none            # none | worktree
 
 # --- codebase memory (required structural context provider) ---------------
@@ -45,6 +46,8 @@ reviewFocus: |
   - <invariant 1, e.g. tenant/scope isolation on every transactional query>
   - <invariant 2, e.g. money math at the cent in the payment path>
   - <invariant 3, e.g. state transitions go through the domain guard>
+  - The implementer is the ONLY code writer; the review fan-out stays read-only (no Write/Edit) —
+    the orchestrator may Write ONLY to `signalsFile` and `prep.techDebtFile` to persist capture survivors.
 
 # Which buckets the implementer auto-fixes each round. Reporting is unconditional —
 # whatever isn't auto-fixed is still surfaced for you to decide.
@@ -63,6 +66,7 @@ discover:
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
     gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
+    captures: true         # signalsFile — tier-1 captures from smoke + review awaiting triage (read side)
   planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
   candidates: 5            # how many ranked candidates to propose
 
