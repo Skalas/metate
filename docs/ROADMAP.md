@@ -6,6 +6,34 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **The great shrink — harness-first, soft-enforce, delete the headless engine (sprint
+  `shrink-engine`, 2026-07-03).** The realization: metate had been *developing itself* — sprint after
+  sprint of internal plumbing maintaining machinery the author never runs. Three usage facts collapsed
+  ~a quarter of the repo: (1) metate is **always run via an agent harness** (Claude Code / codex /
+  cursor), never standalone on the CLI, so the orchestrator *is* the harness; (2) **`yq` was overkill**
+  for a small config an agent just reads; (3) **soft enforcement** is fine — reviewers report, the
+  orchestrator verifies or routes to the implementer. **Deleted:** `codex-review.sh` (the 397-line
+  headless review loop), `bin/metate` (the dispatcher), `ORCHESTRATORS.md`, `lib/trusted-review-text.sh`
+  (+ the `readonly:true`/sandbox scaffolding), and the now-orphaned `lib/profile.sh` + `lib/captures.sh`.
+  **Extracted:** reviewer invocations → `REVIEWERS.md` (the twin of `IMPLEMENTERS.md`), soft-enforce
+  (no sandbox/approval/read-only). **Harvested:** the review loop's hard-won correctness (merge-base→
+  working-tree diff, untracked intent-to-add, resume-by-explicit-id, fix-round-requires-verify-round,
+  crashed/empty-lens-disqualifies, ≤3 rounds + verdicts) *out of* the doomed shell engine *into*
+  `metate-review/SKILL.md` — so the path actually run is now MORE correct, not less. **Net −~1,050
+  lines.** **Preserved (non-negotiable):** cross-harness role spawning (orchestrator harness runs
+  reviewers/implementer as other-harness CLIs), harness switching (`reviewer.backend` /
+  `implementer.backend` independent; orchestrator = the harness you open), resumable implementer.
+  **Verified:** 2-round `metate-review` (claude orchestrator, cursor implementer) converged 0 blockers —
+  R1 raised the deleted diff-touches-instruction-files guard as a blocker (**declined**: it's the
+  accepted untrusted-branch trade-off — documented as a limitation, machinery not restored) + 2 warnings
+  (stale "READ-ONLY" wording; the secret-file skip had to be **reinstated as mandatory** since reviewers
+  now run as external CLIs that could receive an untracked `.env`) + orphan-lib cleanup, all fixed; R2
+  verify clean; `make verify` green. Issues #76–#83; closes the pluggable-roles epic #30–#34. Supersedes
+  PR #75 (`engine-consolidation`), which was itself internal-plumbing on the axis this sprint removes.
+  **Accepted trade-offs:** no untrusted-branch review safety (no sandbox/trust boundary — trusted repos,
+  interactive, by design); no CI/no-agent runner (would be a thin loop over the adapters, never a revived
+  `codex-review.sh`).
+
 - **Backend source unification + discover source-naming cleanup (sprint `backend-source-unification`,
   2026-07-03).** Closes **M3**, the last staged follow-on from `engine-hardening`, and pays down the
   named "Backend duplication" REDUCE debt. **Source of truth (T1/T2):** reviewer lens bodies, the Code
