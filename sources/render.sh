@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Render committed harness artifacts from sources/. Idempotent — re-run produces no diff
 # when outputs are up to date. Invoked by `make render` and the verify drift gate.
+#
+#   render.sh                  write all outputs under skills/metate-review/
+#   render.sh --list-outputs   print relative output paths (one per line) for Makefile RENDERED
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,11 +13,16 @@ OUT_REVIEW="$RENDER_ROOT/skills/metate-review"
 OUT_AGENTS="$OUT_REVIEW/cursor-agents"
 OUT_GEN="$OUT_REVIEW/generated"
 MANIFEST="$SRC/backends.yml"
+VERDICTS_SRC="$SRC/review-loop/verdicts.yml"
+EXIT_CRITERIA_SRC="$SRC/review-loop/exit-criteria.md"
 
 # shellcheck disable=SC1091
 . "$ROOT/skills/metate-review/lib/yaml.sh"
 
 die() { echo "render: $*" >&2; exit 1; }
+
+manifest_scalar() { yaml_deep_scalar "$MANIFEST" "$1" "$2" "$3"; }
+manifest_field() { yaml_deep_field "$MANIFEST" code_discovery "$1" "$2"; }
 
 # agent_file must be a safe basename confined to cursor-agents/.
 validate_agent_file() {
@@ -28,15 +36,29 @@ validate_agent_file() {
   esac
 }
 
-yaml_nested_scalar() { yaml_deep_scalar "$MANIFEST" "$1" "$2" "$3"; }
-yaml_cd_field() { yaml_deep_field "$MANIFEST" code_discovery "$1" "$2"; }
+list_outputs() {
+  local lens agent_file
+  printf '%s\n' \
+    skills/metate-review/cursor-rule.mdc \
+    skills/metate-review/codex-rule.md \
+    skills/metate-review/generated/prompt-clause.md \
+    skills/metate-review/generated/review-loop-verdict-ids.txt \
+    skills/metate-review/generated/exit-criteria.md
+  while IFS= read -r lens; do
+    [ -n "$lens" ] || continue
+    agent_file="$(manifest_scalar reviewers "$lens" agent_file)"
+    [ -n "$agent_file" ] || die "missing agent_file for lens $lens"
+    printf 'skills/metate-review/cursor-agents/%s\n' "$agent_file"
+    printf 'skills/metate-review/generated/lens-prompts/%s.txt\n' "$lens"
+  done < <(yaml_child_keys "$MANIFEST" reviewers)
+}
 
 render_cursor_rule() {
   local desc title intro fallback
-  desc="$(yaml_cd_field cursor_mdc description)"
-  title="$(yaml_cd_field cursor_mdc title)"
-  intro="$(yaml_cd_field cursor_mdc intro)"
-  fallback="$(yaml_cd_field cursor_mdc fallback)"
+  desc="$(manifest_field cursor_mdc description)"
+  title="$(manifest_field cursor_mdc title)"
+  intro="$(manifest_field cursor_mdc intro)"
+  fallback="$(manifest_field cursor_mdc fallback)"
   {
     echo "---"
     echo "description: $desc"
@@ -55,9 +77,9 @@ render_cursor_rule() {
 
 render_codex_rule() {
   local title intro fallback
-  title="$(yaml_cd_field codex_rule title)"
-  intro="$(yaml_cd_field codex_rule intro)"
-  fallback="$(yaml_cd_field codex_rule fallback)"
+  title="$(manifest_field codex_rule title)"
+  intro="$(manifest_field codex_rule intro)"
+  fallback="$(manifest_field codex_rule fallback)"
   {
     echo "$title"
     echo ""
@@ -77,12 +99,12 @@ render_prompt_clause() {
 render_reviewer_agent() {
   local lens="$1"
   local name desc role hint agent_file codex_line when_src
-  name="$(yaml_nested_scalar reviewers "$lens" name)"
-  desc="$(yaml_nested_scalar reviewers "$lens" description)"
-  role="$(yaml_nested_scalar reviewers "$lens" role_noun)"
-  hint="$(yaml_nested_scalar reviewers "$lens" code_discovery_hint)"
-  agent_file="$(yaml_nested_scalar reviewers "$lens" agent_file)"
-  codex_line="$(yaml_nested_scalar reviewers "$lens" codex_lens_line)"
+  name="$(manifest_scalar reviewers "$lens" name)"
+  desc="$(manifest_scalar reviewers "$lens" description)"
+  role="$(manifest_scalar reviewers "$lens" role_noun)"
+  hint="$(manifest_scalar reviewers "$lens" code_discovery_hint)"
+  agent_file="$(manifest_scalar reviewers "$lens" agent_file)"
+  codex_line="$(manifest_scalar reviewers "$lens" codex_lens_line)"
   [ -n "$name" ] && [ -n "$agent_file" ] || die "missing reviewer metadata for $lens"
   validate_agent_file "$agent_file"
 
@@ -111,6 +133,46 @@ render_reviewer_agent() {
   printf '%s\n' "$codex_line" > "$OUT_GEN/lens-prompts/$lens.txt"
 }
 
+render_review_loop() {
+  local skill="$OUT_REVIEW/SKILL.md" tmp
+  [ -f "$VERDICTS_SRC" ] || die "missing $VERDICTS_SRC"
+  [ -f "$EXIT_CRITERIA_SRC" ] || die "missing $EXIT_CRITERIA_SRC"
+  mkdir -p "$OUT_GEN"
+  yq eval '.verdicts[]' -r "$VERDICTS_SRC" > "$OUT_GEN/review-loop-verdict-ids.txt"
+  cp "$EXIT_CRITERIA_SRC" "$OUT_GEN/exit-criteria.md"
+  # SKILL.md lives outside the rendered-artifact tree — patch only on in-place render.
+  [ "$RENDER_ROOT" = "$ROOT" ] || return 0
+  [ -f "$skill" ] || die "missing $skill for exit-criteria render"
+  tmp="$(mktemp)"
+  awk -v src="$OUT_GEN/exit-criteria.md" '
+    BEGIN { in_block=0; done=0 }
+    /<!-- metate:exit-criteria start -->/ {
+      print; while ((getline line < src) > 0) print line; close(src)
+      in_block=1; next
+    }
+    /<!-- metate:exit-criteria end -->/ { in_block=0; print; done=1; next }
+    !in_block { print }
+    END { if (!done) { print "render: exit-criteria markers missing in SKILL.md" > "/dev/stderr"; exit 1 } }
+  ' "$skill" > "$tmp" && mv "$tmp" "$skill"
+}
+
+extract_exit_criteria() {
+  local skill="$ROOT/skills/metate-review/SKILL.md"
+  [ -f "$skill" ] || die "missing $skill"
+  awk '/<!-- metate:exit-criteria start -->/,/<!-- metate:exit-criteria end -->/' "$skill" | sed '1d;$d'
+}
+
+if [ "${1:-}" = "--list-outputs" ]; then
+  [ -f "$MANIFEST" ] || die "missing $MANIFEST"
+  list_outputs
+  exit 0
+fi
+
+if [ "${1:-}" = "--extract-exit-criteria" ]; then
+  extract_exit_criteria
+  exit 0
+fi
+
 [ -f "$MANIFEST" ] || die "missing $MANIFEST"
 
 mkdir -p "$OUT_GEN/lens-prompts"
@@ -121,5 +183,6 @@ while IFS= read -r lens; do
   [ -n "$lens" ] || continue
   render_reviewer_agent "$lens"
 done < <(yaml_child_keys "$MANIFEST" reviewers)
+render_review_loop
 
 echo "render: wrote harness artifacts under skills/metate-review/"

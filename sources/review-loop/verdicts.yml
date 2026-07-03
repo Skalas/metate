@@ -1,0 +1,8 @@
+# Canonical review-loop verdict ids (order matters for drift checks).
+# Rendered into generated/review-loop-verdict-ids.txt via sources/render.sh.
+
+verdicts:
+  - done
+  - stop-blockers
+  - stop-gate
+  - stop-incomplete
