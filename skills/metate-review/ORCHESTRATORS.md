@@ -110,7 +110,7 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
   `APPROVE_MCP` var above) so **no machine-specific config lives in the repo**; the read-only
   sandbox stays intact. File-based tool-priority guidance also lives in `AGENTS.md` (bootstrap
   injects it), but restate the Code Discovery clause in the reviewer prompt too (the only path
-  that always reaches the agent). See `codex-rule.md`.
+  that always reaches the agent). See `sources/` → rendered `codex-rule.md` / `prompt-clause.md`.
 - re-index between rounds: the `codex-review.sh` pilot relies on `reindex: git` — the
   auto-index git watcher refreshes the graph after the implementer patches, so the pilot
   triggers no re-index itself. `reindex: always` / `reindex: manual` are **not** honored by

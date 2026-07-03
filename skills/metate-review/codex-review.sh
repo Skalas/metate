@@ -24,6 +24,10 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 PROFILE="${METATE_PROFILE:-$ROOT/.metate/profile.yml}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCHEMA="$SCRIPT_DIR/finding.schema.json"
+PROMPT_CLAUSE_REL="skills/metate-review/generated/prompt-clause.md"
+LENS_PROMPTS_REL="skills/metate-review/generated/lens-prompts"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/profile.sh"
 MAX_ROUNDS=3
 
 die() { echo "✗ $*" >&2; exit 1; }
@@ -34,33 +38,6 @@ done
 [ -f "$PROFILE" ] || die "no profile at $PROFILE — run bootstrap.sh first"
 [ -f "$SCHEMA" ]  || die "finding schema missing: $SCHEMA"
 
-# --- profile readers (small, dependency-free; gates here are simple values) ---
-# A top-level scalar, with surrounding quotes and any trailing comment stripped.
-prof_scalar() {
-  sed -n "s/^$1:[[:space:]]*//p" "$PROFILE" | head -1 \
-    | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
-          -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
-}
-# A scalar nested one level under `parent:` (e.g. prep.baseBranch).
-prof_nested() {
-  awk -v p="^$1:" -v c="$2" '
-    $0 ~ p { f = 1; next }
-    f && /^[^[:space:]]/ { f = 0 }
-    f && $0 ~ ("^[[:space:]]+" c ":") {
-      sub(/^[[:space:]]*[A-Za-z0-9_.-]+:[[:space:]]*/, ""); print; exit
-    }
-  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
-                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
-}
-# A `key: |` block scalar — the indented lines under it, dedented to bare text.
-prof_block() {
-  awk -v k="^$1:" '
-    $0 ~ k { f = 1; next }
-    f && /^[^[:space:]]/ { f = 0 }
-    f { sub(/^  /, ""); print }
-  ' "$PROFILE"
-}
-
 FAST_GATE="$(prof_scalar fastGate)"
 SESSION_FILE="$(prof_scalar sessionFile)"; SESSION_FILE="${SESSION_FILE:-.metate/session.json}"
 BASE_BRANCH="$(prof_nested prep baseBranch)"; BASE_BRANCH="${BASE_BRANCH:-main}"
@@ -70,18 +47,50 @@ CODEBASE_MEMORY="$(prof_nested codebaseMemory enabled)"; CODEBASE_MEMORY="${CODE
 
 [ -n "$FAST_GATE" ] || die "fastGate is empty in $PROFILE"
 
-# Path of this script relative to repo root — used to withhold self-fixes mid-loop (dogfood).
-REVIEW_ENGINE_REL="$(git -C "$ROOT" ls-files --full-name -- "$SCRIPT_DIR/codex-review.sh" 2>/dev/null | head -1)"
-REVIEW_ENGINE_REL="${REVIEW_ENGINE_REL:-skills/metate-review/codex-review.sh}"
+# Bundled install roots for reviewer prompts (see lib/trusted-review-text.sh).
+export METATE_REVIEW_SCRIPT_DIR="$SCRIPT_DIR"
+
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/trusted-review-text.sh"
+
+# Paths relative to repo root — withhold auto-fixes targeting the running engine (dogfood).
+_review_engine_rel() {
+  local file="$1" fallback="$2" rel
+  rel="$(git -C "$ROOT" ls-files --full-name -- "$file" 2>/dev/null | head -1)"
+  printf '%s' "${rel:-$fallback}"
+}
+REVIEW_ENGINE_PATHS=(
+  "$(_review_engine_rel "$SCRIPT_DIR/codex-review.sh" "skills/metate-review/codex-review.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/profile.sh" "skills/metate-review/lib/profile.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/yaml.sh" "skills/metate-review/lib/yaml.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/captures.sh" "skills/metate-review/lib/captures.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/trusted-review-text.sh" "skills/metate-review/lib/trusted-review-text.sh")"
+  "$(_review_engine_rel "$ROOT/sources/backends.yml" "sources/backends.yml")"
+  "$(_review_engine_rel "$ROOT/sources/render.sh" "sources/render.sh")"
+)
+REVIEW_ENGINE_JSON="$(printf '%s\n' "${REVIEW_ENGINE_PATHS[@]}" | jq -R . | jq -s .)"
+
+MANIFEST=""
+if [ -f "$ROOT/sources/backends.yml" ]; then
+  MANIFEST="$ROOT/sources/backends.yml"
+fi
+REVIEWER_LENSES=()
+while IFS= read -r _lens; do
+  [ -n "$_lens" ] || continue
+  REVIEWER_LENSES+=("$_lens")
+done < <(reviewer_lenses "$MANIFEST" "$SCRIPT_DIR")
+unset _lens
+[ "${#REVIEWER_LENSES[@]}" -gt 0 ] || die "no reviewer lenses — need $ROOT/sources/backends.yml or $SCRIPT_DIR/generated/lens-prompts/*.txt"
 
 CODE_DISCOVERY_CLAUSE=""
+declare -a LENS_PROMPTS=()
 if [ "$CODEBASE_MEMORY" = "true" ]; then
-  CODE_DISCOVERY_CLAUSE="Code Discovery: prefer the codebase-memory-mcp graph over grep/Read for structural reach.
-Use search_graph to find symbols, get_code_snippet for exact source, and trace_path for
-callers/callees or impact of the change. If the graph is unavailable and that limits your
-confidence in a finding, SAY SO in that finding's rationale — do not silently fall back for
-structural reach."
+  CODE_DISCOVERY_CLAUSE="$(trusted_review_text "$PROMPT_CLAUSE_REL")"
 fi
+for _lens in "${REVIEWER_LENSES[@]}"; do
+  LENS_PROMPTS+=("$(trusted_review_text "$LENS_PROMPTS_REL/${_lens}.txt")")
+done
+unset _lens
 
 MCP_APPROVE_FLAG=()
 if [ "$CODEBASE_MEMORY" = "true" ]; then
@@ -242,30 +251,25 @@ rationale. Prior fixable findings handed off last round:
 $(cat "$WORK/applied.txt")"
   fi
 
-  C_OUT="$WORK/correctness.json"; S_OUT="$WORK/security.json"; E_OUT="$WORK/elegance.json"
-  review_agent "$C_OUT" correctness \
-    "$CONTEXT
+  declare -a lens_pids=() lens_outs=()
+  for i in "${!REVIEWER_LENSES[@]}"; do
+    lens="${REVIEWER_LENSES[$i]}"
+    out="$WORK/${lens}.json"
+    lens_outs+=("$out")
+    review_agent "$out" "$lens" \
+      "$CONTEXT
 
-Lens: CORRECTNESS. Report bugs, broken state transitions, and any violated reviewFocus invariant. Bucket as blocker/warning/suggestion." \
-    "$WORK/correctness.log" & pid_c=$!
-  review_agent "$S_OUT" security \
-    "$CONTEXT
-
-Lens: SECURITY. Report authz/tenant-isolation gaps, secrets, PII in payloads/logs, injection. Bucket as blocker/warning/suggestion." \
-    "$WORK/security.log" & pid_s=$!
-  review_agent "$E_OUT" elegance \
-    "$CONTEXT
-
-Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informational, bucket them as suggestion." \
-    "$WORK/elegance.log" & pid_e=$!
+${LENS_PROMPTS[$i]}" \
+      "$WORK/${lens}.log" & lens_pids+=($!)
+  done
   # Reap each job explicitly (per-PID) so a crashed lens is accounted for, not swallowed.
-  wait "$pid_c"; wait "$pid_s"; wait "$pid_e"
+  for pid in "${lens_pids[@]}"; do wait "$pid"; done
 
   # Surface any lens that crashed or returned malformed JSON — its findings are missing, so
   # the round below under-reports; make that loud in the report, not just in $WORK/*.log.
-  for fail in "$C_OUT.failed" "$S_OUT.failed" "$E_OUT.failed"; do
-    if [ -f "$fail" ]; then
-      echo "  ⚠ reviewer lens FAILED — $(cat "$fail"); its findings are MISSING from this round"
+  for out in "${lens_outs[@]}"; do
+    if [ -f "${out}.failed" ]; then
+      echo "  ⚠ reviewer lens FAILED — $(cat "${out}.failed"); its findings are MISSING from this round"
       lens_failed=1
     fi
   done
@@ -273,7 +277,7 @@ Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informat
   # Merge + dedupe by file:line:summary.
   MERGED="$WORK/findings.json"
   jq -s '{findings: (map(.findings) | add | unique_by([.file, .line, .summary]))}' \
-    "$C_OUT" "$S_OUT" "$E_OUT" > "$MERGED"
+    "${lens_outs[@]}" > "$MERGED"
 
   blockers=$(jq '[.findings[] | select(.bucket=="blocker")] | length' "$MERGED")
   warnings=$(jq '[.findings[] | select(.bucket=="warning")] | length' "$MERGED")
@@ -287,8 +291,8 @@ Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informat
   # Withhold findings that target this running script: a mid-loop self-edit corrupts bash
   # byte-offset reads (dogfood-only; on a normal target repo the engine is off-diff).
   FIXABLE_APPLY="$WORK/fixable-apply.json"
-  jq --arg eng "$REVIEW_ENGINE_REL" '[.[] | select(.file != $eng)]' "$FIXABLE" > "$FIXABLE_APPLY"
-  jq --arg eng "$REVIEW_ENGINE_REL" -r '.[] | select(.file == $eng) | "  ⚠ withheld fix for \(.file):\(.line) — \(.summary) (cannot edit the running review engine mid-loop)"' \
+  jq --argjson eng "$REVIEW_ENGINE_JSON" '[.[] | select(.file as $f | ($eng | index($f)) == null)]' "$FIXABLE" > "$FIXABLE_APPLY"
+  jq --argjson eng "$REVIEW_ENGINE_JSON" -r '.[] | select(.file as $f | ($eng | index($f)) != null) | "  ⚠ withheld fix for \(.file):\(.line) — \(.summary) (cannot edit the running review engine mid-loop)"' \
     "$FIXABLE" > "$WORK/withheld.txt" || true
   [ -s "$WORK/withheld.txt" ] && cat "$WORK/withheld.txt"
   fixable_n=$(jq 'length' "$FIXABLE_APPLY")
