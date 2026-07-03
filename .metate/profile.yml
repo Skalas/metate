@@ -19,7 +19,7 @@ orchestrator:
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
-signalsFile: ".metate/signals.json"  # tier-1 captures from smoke; read + dispositioned by discover
+signalsFile: ".metate/signals.json"  # tier-1 captures from smoke + review; read + dispositioned by discover
 isolation: none
 
 # --- codebase memory (structural context provider) -----------------------
@@ -38,7 +38,8 @@ reviewFocus: |
   - bootstrap.sh stays idempotent: never clobbers an existing profile.yml; .gitignore append is one-shot.
   - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
-    ONLY writer (metate-review stays read-only: Read/Bash/Agent/Task, no Write/Edit).
+    ONLY code writer; the review fan-out stays read-only (no Write/Edit) — the orchestrator may Write
+    ONLY to `signalsFile` and `prep.techDebtFile` to persist capture survivors.
 
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 review:
@@ -55,7 +56,7 @@ discover:
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
     gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
-    signals: true          # signalsFile — tier-1 captures from smoke awaiting triage (read side)
+    captures: true         # signalsFile — tier-1 captures from smoke + review awaiting triage (read side)
   planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
   candidates: 5            # how many ranked candidates to propose
 
