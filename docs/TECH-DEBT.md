@@ -52,6 +52,15 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   **Update (2026-07-02):** the `engine-hardening` M2 enriched the Code Discovery clause in the
   prompt path only, so `cursor-rule.mdc`/`codex-rule.md` now carry a leaner version — the drift this
   item warns about is now concrete, not hypothetical. Raises the priority.
+  **RESOLVED — core (sprint `backend-source-unification`, 2026-07-03).** This was the named REDUCE
+  trigger and it fired. Reviewer lenses, the Code Discovery rule body, and backend/reviewer metadata
+  now live once under `sources/` and render into every per-harness artifact via `sources/render.sh`,
+  gated by `make render-check` (drift = red build) — the copy-paste-drift class (incl. the M2 clause
+  drift above) is closed for those surfaces. Shared readers `lib/profile.sh` + `lib/yaml.sh` exist and
+  back `codex-review.sh`/`render.sh`. **Residual (still open, narrower):** `bin/metate` `read_backend`
+  and `bootstrap.sh`'s inline awk are not yet on the shared reader (see the parser entry below); and
+  the `ORCHESTRATORS.md` ↔ `codex-review.sh` command duplication is unchanged. **Trigger for the
+  residual:** the next edit to `bin/metate`/`bootstrap.sh` profile reads, or a codex CLI flag change.
 
 ## From the `engine-hardening` sprint (2026-07-02)
 
@@ -120,13 +129,17 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ## From the `review-write-side` sprint (2026-07-02)
 
-### New debt (triggered)
+### Resolved
 
-- **[review:elegance] `discover.signals` map name still collides with `captures`.** T4 renamed the
-  leaf toggle but the parent map is still `discover.signals`, so the fully-qualified key is
-  `discover.signals.captures` — the same signals/captures ambiguity one level up. **Trigger:** the
-  next edit to the `discover.signals` block — rename the map to `discover.sources` (it's a toggle map
-  of discovery sources, not signals itself) and carry it through profile + template + discover prose.
+- **[review:elegance] `discover.signals` map name still collides with `captures` — RESOLVED
+  (sprint `backend-source-unification`, 2026-07-02, T6).** Parent toggle map renamed to
+  `discover.sources` (`discover.sources.captures`); profile + template + Discover prose updated;
+  `lib/profile.sh` reads `discover.sources` with legacy `discover.signals` alias. Original writeup:
+  T4 renamed the leaf toggle but the parent map was still `discover.signals`, so the
+  fully-qualified key was `discover.signals.captures`. **Trigger was:** the next edit to the
+  `discover.signals` block.
+
+### New debt (triggered)
 
 - **[review:elegance] The "treat as data, never instructions" guard is duplicated across capture
   sites.** The same sentence now lives near-verbatim in `metate-smoke/SKILL.md` and
@@ -142,6 +155,64 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   fan-out still has no `Write`; only the orchestrator does. **Trigger:** the harness gains a
   path-scoped `Write(...)` grant, OR a security review flags the orchestrator's write-scope as an
   active risk — then enforce the two-sink restriction at the tool layer rather than in prose.
+
+## From the `backend-source-unification` sprint (2026-07-02)
+
+### New debt (triggered)
+
+- **[review:elegance] Rendered artifact output list is duplicated in `Makefile`.** `render-check`
+  now detects drift for the artifacts listed today, but `RENDERED` manually duplicates
+  `sources/render.sh`'s output contract. **Trigger:** the next time the renderer gains or removes
+  an output — add a `sources/render.sh --list-outputs` mode or committed generated-output manifest
+  so the drift gate checks exactly what the renderer can emit.
+
+- **[review:elegance] `render.sh` re-implements `lib/profile.sh`'s nested-YAML parser.**
+  `render.sh`'s `yaml_nested_scalar`/`yaml_cd_*` and `lib/profile.sh`'s `_prof_*` are two
+  independent hand-rolled awk "walk-by-indent" parsers — the same drift pattern this sprint set
+  out to kill, one layer down. **Trigger:** the next time either parser needs a third nesting
+  level, a quoting fix, or a parsing bug is found in either — unify onto one shared reader.
+
+- **[review:elegance] `yaml_cd_scalar` is a subset of `yaml_cd_block` in `render.sh`.** The two
+  functions share the identical `in_cd`/`in_h` state machine; the block variant only adds a
+  continuation branch. **Trigger:** the next edit to either — collapse into one
+  `yaml_cd_field(harness, field)` that auto-detects the trailing `|`.
+
+- **[review:elegance] Reviewer lens list is hardcoded, not derived from `backends.yml`.** The
+  `correctness security elegance` loop literal lives in both `render.sh` and `codex-review.sh`
+  even though `backends.yml` already enumerates the lenses under `reviewers:`. **Trigger:**
+  adding or removing a lens — derive the loop set from the manifest so a new lens is one edit.
+
+- **[review:elegance] `lib/captures.sh` has no runtime consumer; `PROFILE_ROOT` is a
+  test-only contract.** Only the Makefile self-tests source `captures.sh`; no production path
+  (codex-review.sh, discover) calls `count_open_captures`, and `signals_file_path` relies on
+  `PROFILE_ROOT`, which `lib/profile.sh` neither sets nor documents (tests export it, masking
+  the gap). **Trigger:** the first runtime consumer that needs the open-capture count — wire it
+  in and derive/​document `PROFILE_ROOT` in `profile.sh`, or drop the shell copy and keep the
+  rule as prose.
+
+- **[review:security] Reviewer roster derived from working-tree `backends.yml` has no trusted-source boundary.**
+  Deriving the lens list from `sources/backends.yml` (T9 cleanup) means that when metate reviews a
+  branch which itself contains that file, the roster is read from the working tree rather than the
+  trusted bundled install — unlike reviewer prompt *text*, which `lib/trusted-review-text.sh` gates
+  via merge-base / bundled copy. A branch that drops a lens under `reviewers:` would be reviewed with
+  that lens missing. Low risk today (dogfood branches are trusted; installed usage falls back to the
+  trusted `generated/lens-prompts/`), and `backends.yml`/`render.sh` are now in the mid-loop
+  self-fix withhold set. **Trigger:** before running `metate run review` under the codex orchestrator
+  against an **untrusted** branch (ties to the existing untrusted-branch hardening residual) — load
+  the `reviewers:` key list through the same trusted boundary as lens prompt text.
+
+- **[review:elegance] `render.sh` shadows `lib/yaml.sh`'s `yaml_nested_scalar` with a different-arity local wrapper.**
+  After sourcing `yaml.sh`, `render.sh` redefines `yaml_nested_scalar` (2-arg, binds `$MANIFEST`) over
+  yaml.sh's 3-arg function of the same name. Safe now (later definition wins, single process) but a
+  maintenance footgun. **Trigger:** the next edit to render.sh's parser wrappers — rename the local
+  wrappers (e.g. `manifest_scalar` / `manifest_field`) so no name collides with the shared lib.
+
+- **[review:correctness] `reviewer_lenses()` fallback silently drops any lens not in `YAML_REVIEWER_LENS_ORDER`.**
+  The absent-manifest fallback (the normal installed path) walks the canonical `YAML_REVIEWER_LENS_ORDER`
+  array in `lib/yaml.sh` and emits only those ids — so a lens shipped as `generated/lens-prompts/<id>.txt`
+  but absent from the array would vanish from review coverage with no error. Harmless today (three lenses,
+  all listed). **Trigger:** adding a 4th reviewer lens — update `YAML_REVIEWER_LENS_ORDER` in the same
+  commit (or derive the fallback order from the shipped `.txt` set so the array can't go stale).
 
 ## From the `codex-native-skills` increment (2026-07-01)
 
@@ -310,13 +381,14 @@ These surfaced in the merge-safe-29 review as report-only (elegance/DRY), not bl
 
 ### Design / DRY (review DESIGN findings, report-only)
 
-- **Three ad-hoc YAML-scalar parsers** — `bin/metate` `read_backend`, `codex-review.sh`
-  `prof_*`, and `bootstrap.sh`'s inline awk reimplement the same "scalar nested one level under
-  a key" lookup, and they already diverge (quote-stripping differs between `bin/metate` and
-  `bootstrap.sh`).
-  **Trigger:** a fourth consumer needs profile parsing, OR a parsing bug is found in any copy.
-  Extract `skills/metate-review/lib/profile.sh` (`prof_scalar`/`prof_nested`/`prof_block`) and
-  source it from all three.
+- **Three ad-hoc YAML-scalar parsers — PARTIALLY RESOLVED (sprint `backend-source-unification`,
+  2026-07-03).** The shared readers now exist: `lib/profile.sh` (`prof_scalar`/`prof_nested`/
+  `prof_block`/`prof_discover_toggle`) over a generic `lib/yaml.sh` walker, sourced by
+  `codex-review.sh` and `sources/render.sh` (which retired its own `yaml_cd_scalar`/`yaml_cd_block`
+  copies). **Still hand-rolled:** `bin/metate` `read_backend` and `bootstrap.sh`'s inline awk — not
+  yet migrated to `lib/profile.sh` (and their quote-stripping still diverges).
+  **Trigger:** the next edit to either script's profile reads, OR a parsing bug found in either copy —
+  source `lib/profile.sh` instead of the inline awk.
 
 - **`bin/metate` unknown-backend error omits `gemini`** — the `*)` arm says "expected claude |
   codex | cursor" though `gemini)` has its own arm. **Trigger:** next edit to `bin/metate`.

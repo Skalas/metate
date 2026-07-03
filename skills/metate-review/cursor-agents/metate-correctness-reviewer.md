@@ -1,9 +1,7 @@
 ---
 name: metate-correctness-reviewer
 description: >-
-  metate Stage 3 correctness lens. READ-ONLY. Reviews a git diff for bugs, broken
-  state transitions, and reviewFocus invariant violations. Returns JSON per
-  finding.schema.json. Use when metate-review fans out the correctness reviewer.
+  metate Stage 3 correctness lens. READ-ONLY. Reviews a git diff for bugs, broken state transitions, and reviewFocus invariant violations. Returns JSON per finding.schema.json. Use when metate-review fans out the correctness reviewer.
 readonly: true
 ---
 

@@ -160,7 +160,7 @@ file — the bootstrap only guesses the gates. In order of importance:
 7. **`ship`** — `prTarget` (match `baseBranch`), `commitStyle`, `issueCloseKeyword`.
 8. **`isolation`** — `none`, or `worktree` to run the auto-approving implementer in an
    isolated git worktree and review the diff before merging back.
-9. **`discover`** — defaults are usually fine: all five `discover.signals` source toggles on
+9. **`discover`** — defaults are usually fine: all five `discover.sources` source toggles on
    (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`), `planFile`
    `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
    you decide *what* to work on; you always pick — it never starts a sprint on its own.

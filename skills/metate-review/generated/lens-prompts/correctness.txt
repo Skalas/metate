@@ -1,0 +1,1 @@
+Lens: CORRECTNESS. Report bugs, broken state transitions, and any violated reviewFocus invariant. Bucket as blocker/warning/suggestion.

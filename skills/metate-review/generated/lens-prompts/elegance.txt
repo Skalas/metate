@@ -1,0 +1,1 @@
+Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informational, bucket them as suggestion.

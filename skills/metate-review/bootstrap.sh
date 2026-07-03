@@ -20,8 +20,8 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
-# cursor-rule.mdc and codex-rule.md carry the same codebase-memory tool-priority
-# list for two audiences — keep them in sync when those tool names change.
+# cursor-rule.mdc and codex-rule.md are rendered from sources/ — run `make render`.
+# Do not hand-edit; the verify drift gate enforces parity with sources/.
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
 CURSOR_AGENTS_SRC="$SCRIPT_DIR/cursor-agents"

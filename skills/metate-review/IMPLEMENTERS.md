@@ -58,6 +58,10 @@ this block to the implementer prompt (build prompt and resume/fix prompt alike).
 differ in how they otherwise learn the preference — see the per-backend table below — so the
 prompt is the **only** path that reaches the `claude` backend in `-p` mode.
 
+**Canonical source:** `sources/code-discovery/prompt-clause.md` → rendered to
+`skills/metate-review/generated/prompt-clause.md` (`make render`). Do not hand-edit the
+rendered copy; the verify drift gate enforces parity.
+
 **Intensity scales with graph value** (still gated only on `codebaseMemory.enabled`, no extra
 profile knob): on typical codebases the clause applies fully; on doc/shell repos (mostly
 markdown/shell prompt-docs) grep/Read is the expected primary tool even when the flag is on.
@@ -94,8 +98,8 @@ isn't indexed yet, run index_repository first.
 
 | backend | how it learns the tool-priority |
 |---|---|
-| cursor  | `.cursor/rules/codebase-memory.mdc` (file-based) **+** prompt clause |
-| codex   | `AGENTS.md` block (file-based) **+** prompt clause |
+| cursor  | `.cursor/rules/codebase-memory.mdc` (rendered from `sources/`) **+** prompt clause |
+| codex   | `AGENTS.md` block (rendered `codex-rule.md`) **+** prompt clause |
 | claude  | **prompt clause ONLY** — `-p` headless does not act on ambient CLAUDE.md the way the interactive loop does |
 | gemini  | prompt clause only (no file-based rule wired) |
 

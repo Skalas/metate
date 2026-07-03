@@ -51,7 +51,7 @@ discover:
                            # explore = product not well-defined yet: lean on product intent + architecture,
                            #           frame candidates as bets (assumption → validation), rank by learning
                            #           value + reversibility, not blast-radius. Sprint mode still set by prep.
-  signals:                 # which sources to sweep for candidate work
+  sources:                 # which sources to sweep for candidate work (legacy alias: discover.signals)
     aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
