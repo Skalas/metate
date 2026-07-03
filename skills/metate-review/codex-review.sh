@@ -32,7 +32,7 @@ MAX_ROUNDS=3
 
 die() { echo "✗ $*" >&2; exit 1; }
 
-for bin in codex jq git; do
+for bin in codex jq git yq; do
   command -v "$bin" >/dev/null 2>&1 || die "required tool missing: $bin"
 done
 [ -f "$PROFILE" ] || die "no profile at $PROFILE — run bootstrap.sh first"
@@ -55,18 +55,30 @@ export METATE_REVIEW_SCRIPT_DIR="$SCRIPT_DIR"
 
 # Paths relative to repo root — withhold auto-fixes targeting the running engine (dogfood).
 _review_engine_rel() {
-  local file="$1" fallback="$2" rel
+  local file="$1" rel
   rel="$(git -C "$ROOT" ls-files --full-name -- "$file" 2>/dev/null | head -1)"
-  printf '%s' "${rel:-$fallback}"
+  if [ -n "$rel" ]; then
+    printf '%s' "$rel"
+  elif [ -e "$file" ]; then
+    # exists on disk but untracked (e.g. a self-referential engine file added this sprint) —
+    # fall back to the repo-relative path; it stays in the mid-loop self-edit withhold set.
+    printf '%s' "${file#"$ROOT"/}"
+  else
+    die "review engine path does not exist: $file (typo/rename in the withhold list?)"
+  fi
 }
 REVIEW_ENGINE_PATHS=(
-  "$(_review_engine_rel "$SCRIPT_DIR/codex-review.sh" "skills/metate-review/codex-review.sh")"
-  "$(_review_engine_rel "$SCRIPT_DIR/lib/profile.sh" "skills/metate-review/lib/profile.sh")"
-  "$(_review_engine_rel "$SCRIPT_DIR/lib/yaml.sh" "skills/metate-review/lib/yaml.sh")"
-  "$(_review_engine_rel "$SCRIPT_DIR/lib/captures.sh" "skills/metate-review/lib/captures.sh")"
-  "$(_review_engine_rel "$SCRIPT_DIR/lib/trusted-review-text.sh" "skills/metate-review/lib/trusted-review-text.sh")"
-  "$(_review_engine_rel "$ROOT/sources/backends.yml" "sources/backends.yml")"
-  "$(_review_engine_rel "$ROOT/sources/render.sh" "sources/render.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/codex-review.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/profile.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/yaml.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/captures.sh")"
+  "$(_review_engine_rel "$SCRIPT_DIR/lib/trusted-review-text.sh")"
+  "$(_review_engine_rel "$ROOT/sources/backends.yml")"
+  "$(_review_engine_rel "$ROOT/sources/render.sh")"
+  "$(_review_engine_rel "$ROOT/sources/review-loop/verdicts.yml")"
+  "$(_review_engine_rel "$ROOT/sources/review-loop/exit-criteria.md")"
+  "$(_review_engine_rel "$SCRIPT_DIR/generated/review-loop-verdict-ids.txt")"
+  "$(_review_engine_rel "$SCRIPT_DIR/generated/exit-criteria.md")"
 )
 REVIEW_ENGINE_JSON="$(printf '%s\n' "${REVIEW_ENGINE_PATHS[@]}" | jq -R . | jq -s .)"
 
@@ -84,18 +96,15 @@ unset _lens
 
 CODE_DISCOVERY_CLAUSE=""
 declare -a LENS_PROMPTS=()
+MCP_APPROVE_FLAG=()
 if [ "$CODEBASE_MEMORY" = "true" ]; then
   CODE_DISCOVERY_CLAUSE="$(trusted_review_text "$PROMPT_CLAUSE_REL")"
+  MCP_APPROVE_FLAG=(-c 'mcp_servers.codebase-memory-mcp.default_tools_approval_mode="approve"')
 fi
 for _lens in "${REVIEWER_LENSES[@]}"; do
   LENS_PROMPTS+=("$(trusted_review_text "$LENS_PROMPTS_REL/${_lens}.txt")")
 done
 unset _lens
-
-MCP_APPROVE_FLAG=()
-if [ "$CODEBASE_MEMORY" = "true" ]; then
-  MCP_APPROVE_FLAG=(-c 'mcp_servers.codebase-memory-mcp.default_tools_approval_mode="approve"')
-fi
 
 # --- implement session (resumed for fixes; pilot expects the codex backend) ---
 SESSION_PATH="$ROOT/$SESSION_FILE"
@@ -164,7 +173,7 @@ verdict=""
 # Intent-to-add untracked files for merge-base diff, then restore index. RETURN trap
 # guarantees rm --cached cleanup even if a mid-block git command fails under set -e.
 build_review_diff() {
-  local restored=0 f
+  local restored=0 f lc_f
   : > "$UNTRACKED_NUL"
 
   cleanup_untracked_intent() {
@@ -292,8 +301,10 @@ ${LENS_PROMPTS[$i]}" \
   # byte-offset reads (dogfood-only; on a normal target repo the engine is off-diff).
   FIXABLE_APPLY="$WORK/fixable-apply.json"
   jq --argjson eng "$REVIEW_ENGINE_JSON" '[.[] | select(.file as $f | ($eng | index($f)) == null)]' "$FIXABLE" > "$FIXABLE_APPLY"
-  jq --argjson eng "$REVIEW_ENGINE_JSON" -r '.[] | select(.file as $f | ($eng | index($f)) != null) | "  ⚠ withheld fix for \(.file):\(.line) — \(.summary) (cannot edit the running review engine mid-loop)"' \
-    "$FIXABLE" > "$WORK/withheld.txt" || true
+  jq -n --slurpfile all "$FIXABLE" --slurpfile sub "$FIXABLE_APPLY" \
+    '[$all[0][] | select(. as $x | ($sub[0] | index($x)) == null)]' > "$WORK/withheld.json"
+  jq -r '.[] | "  ⚠ withheld fix for \(.file):\(.line) — \(.summary) (cannot edit the running review engine mid-loop)"' \
+    "$WORK/withheld.json" > "$WORK/withheld.txt" 2>/dev/null || : > "$WORK/withheld.txt"
   [ -s "$WORK/withheld.txt" ] && cat "$WORK/withheld.txt"
   fixable_n=$(jq 'length' "$FIXABLE_APPLY")
 
