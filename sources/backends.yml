@@ -1,0 +1,48 @@
+# Neutral backend + reviewer metadata — rendered into per-harness artifacts.
+# Edit sources/ and run `make render` (or `sources/render.sh`); do not hand-edit outputs.
+
+reviewers:
+  correctness:
+    agent_file: metate-correctness-reviewer.md
+    name: metate-correctness-reviewer
+    description: metate Stage 3 correctness lens. READ-ONLY. Reviews a git diff for bugs, broken state transitions, and reviewFocus invariant violations. Returns JSON per finding.schema.json. Use when metate-review fans out the correctness reviewer.
+    role_noun: correctness
+    code_discovery_hint: (prefer codebase-memory-mcp graph over grep)
+    codex_lens_line: Lens: CORRECTNESS. Report bugs, broken state transitions, and any violated reviewFocus invariant. Bucket as blocker/warning/suggestion.
+  security:
+    agent_file: metate-security-reviewer.md
+    name: metate-security-reviewer
+    description: metate Stage 3 security lens. READ-ONLY. Reviews a git diff for authz gaps, secrets, PII, and injection. Returns JSON per finding.schema.json. Use when metate-review fans out the security reviewer.
+    role_noun: security
+    code_discovery_hint: (prefer codebase-memory-mcp graph over grep)
+    codex_lens_line: Lens: SECURITY. Report authz/tenant-isolation gaps, secrets, PII in payloads/logs, injection. Bucket as blocker/warning/suggestion.
+  elegance:
+    agent_file: metate-elegance-reviewer.md
+    name: metate-elegance-reviewer
+    description: metate Stage 3 elegance/DESIGN lens. READ-ONLY. Reviews a git diff for DRY, structure, and naming. Returns JSON per finding.schema.json. Use when metate-review fans out the elegance reviewer. Findings are informational — bucket as suggestion.
+    role_noun: elegance/DESIGN
+    code_discovery_hint: (dead-code / high-fan-out queries for DESIGN findings)
+    codex_lens_line: Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informational, bucket them as suggestion.
+
+code_discovery:
+  cursor_mdc:
+    description: Prefer the codebase-memory-mcp knowledge graph over grep/codebase-search for structural code discovery.
+    always_apply: true
+    title: "# Code Discovery — prefer the knowledge graph"
+    intro: |
+      This repo is indexed by **codebase-memory-mcp** (MCP server `codebase-memory-mcp`,
+      wired in `~/.cursor/mcp.json`). For **structural** code discovery, prefer its MCP tools
+      over Cursor's built-in codebase search / grep / file-by-file reading.
+    fallback: |
+      Fall back to grep / codebase search freely for: string literals, error messages,
+      config and non-code files, or when the graph returns too little. If the repo isn't
+      indexed yet, run `index_repository` first. Always read a file before editing it.
+  codex_rule:
+    title: "## Code Discovery — prefer the knowledge graph"
+    intro: |
+      This repo is indexed by **codebase-memory-mcp**. For **structural** code discovery,
+      prefer its MCP tools over plain grep / file-by-file reading.
+    fallback: |
+      Fall back to grep freely for: string literals, error messages, config and non-code
+      files, or when the graph returns too little. If the repo isn't indexed yet, run
+      `index_repository` first. Always read a file before editing it.

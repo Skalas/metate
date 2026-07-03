@@ -1,0 +1,1 @@
+Lens: SECURITY. Report authz/tenant-isolation gaps, secrets, PII in payloads/logs, injection. Bucket as blocker/warning/suggestion.
