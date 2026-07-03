@@ -6,6 +6,36 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Backend source unification + discover source-naming cleanup (sprint `backend-source-unification`,
+  2026-07-03).** Closes **M3**, the last staged follow-on from `engine-hardening`, and pays down the
+  named "Backend duplication" REDUCE debt. **Source of truth (T1/T2):** reviewer lens bodies, the Code
+  Discovery rule body, and backend/reviewer metadata now live once under `sources/` (`reviewers/*.md`,
+  `code-discovery/*.md`, `backends.yml`) and render into every per-harness artifact — the three Cursor
+  `readonly: true` reviewer agents, `cursor-rule.mdc`, `codex-rule.md`, and the Claude/Codex
+  `generated/` prompt-clause + lens prompts — via a small `sources/render.sh` (files + a tiny renderer,
+  not a template engine). **Drift gate (T4):** `make render` regenerates; `make render-check` (in
+  `make verify`) fails the build if any committed artifact drifts from `sources/`, so the copy-paste
+  drift the M2 clause enrichment made concrete can no longer happen silently. **Wiring (T3):**
+  `codex-review.sh`/`bootstrap.sh` consume the generated/source-backed content; **backend switching
+  preserved (T5)** — the orchestrator × implementer matrix is untouched, this removed maintenance
+  copies, not flexibility. **Naming (T6/T7):** the `discover.signals` parent map → `discover.sources`
+  (so capture signals aren't both the map and one source inside it), with a legacy `discover.signals`
+  alias in `lib/profile.sh` so existing profiles don't break; dogfood profile + template + README
+  updated. **Absent captures stay boring (T8):** absent/empty `signalsFile` → 0 open captures, gate-
+  tested. Shared readers `lib/profile.sh` + generic `lib/yaml.sh` now back `codex-review.sh` and
+  `render.sh` (retiring their duplicate parsers). **Verified:** `metate-review` (cursor implementer,
+  resumed session) — R1 caught 2 blockers (`render.sh` `sed` `&`/`|` silent corruption that the drift
+  gate would have certified as correct; the self-fix withhold set not covering the newly-extracted
+  `lib/*.sh` engine files) + 1 warning (block-scalar blank-line truncation), all fixed; R2 verify
+  clean; `make verify` green. Then all 4 review-captured elegance wants were paid down in the same
+  session (unify parsers → `lib/yaml.sh`; derive the lens roster from `backends.yml`; document/derive
+  the `PROFILE_ROOT` contract; collapse `yaml_cd_*`), whose verify round caught 2 more warnings (glob
+  vs declaration lens order; `backends.yml`/`render.sh` missing from the withhold set) — fixed — and
+  **downgraded a false blocker** (roster is frozen at startup, not re-read per round, so a mid-loop
+  autofix can't shrink it). Issues #59–#66. **Scope honesty:** `bin/metate`/`bootstrap.sh` still
+  hand-roll their profile reads (narrowed residual in TECH-DEBT); the untrusted-branch roster-trust
+  boundary and the render-output-list duplication remain triggered debt, not this sprint's scope.
+
 - **Review write-side: complete the capture lane + trim the schema (sprint `review-write-side`,
   2026-07-02).** Closes roadmap item 5's residual and the M4 follow-on. A review no longer loses
   its survivors to the terminal — `metate-review` now persists them, and the two kinds route to two
@@ -117,17 +147,13 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## In progress / next
 
-**Remaining staged follow-on from the `engine-hardening` sprint (2026-07-02):**
-
-- **M3 — Unify backends at installation (REDUCE).** Single-source generator: `sources/` (reviewer
-  lenses + code-discovery rule + `backends.yml`) → render per-harness (Cursor `.mdc`/`readonly`,
-  Codex `AGENTS.md` block, Claude/Codex prompt-inject); collapse the three YAML parsers into
-  `lib/profile.sh`; add a "render = no diff" drift gate. Keeps all backends (token-limit switching
-  is load-bearing) — pays for the abstraction instead of copy-paste. M2 already widened the clause
-  drift (see TECH-DEBT), so this is now more urgent. Trigger in TECH-DEBT.md.
-
-*(The MCP-misuse "highest failure-surface" item and M4 — the `metate-review` write-side — are both
-now **done**; see the Done entries above. M3 is the last staged follow-on.)*
+**No staged follow-ons remain from the `engine-hardening` sprint** — M1 (review read-only) and M2
+(MCP-misuse taxonomy) shipped in `engine-hardening`, M4 (`metate-review` write-side) in
+`review-write-side`, and **M3 (backend unification) shipped in `backend-source-unification`,
+2026-07-03** (see Done). The next cycle picks from the legacy hardening backlog below; the highest-
+value candidates are the two long-deferred **validation** sprints (graph-unavailable fallback proof,
+branch-behind anchoring) and the fresh triggered debt from this sprint — the untrusted-branch roster-
+trust boundary now sits next to the existing untrusted-branch fix-apply hardening (item 3).
 
 ## Legacy hardening backlog (post-merge-#29)
 
@@ -155,5 +181,7 @@ review gap — all **done**, see the two Done entries above.)
 
 ## Later
 
-- Shared `lib/profile.sh` to collapse the three ad-hoc YAML parsers (DRY; see TECH-DEBT.md).
+- Finish the parser consolidation: `lib/profile.sh` + `lib/yaml.sh` now back `codex-review.sh` and
+  `render.sh`; the residual is migrating `bin/metate` `read_backend` and `bootstrap.sh`'s inline awk
+  onto the shared reader (partially-resolved; see TECH-DEBT.md).
 - Gemini as a verified backend (implementer and/or orchestrator) — currently unverified.
