@@ -74,6 +74,14 @@ else
   echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
   exit 1
 fi
+if command -v yq >/dev/null 2>&1; then
+  echo "▸ prerequisite ok: yq detected — leaving it on"
+else
+  echo "✗ prerequisite missing: yq (required — profile reads use real YAML parsing)" >&2
+  echo "    install it, then re-run this installer:" >&2
+  echo "      brew install yq   # or see https://github.com/mikefarah/yq#install" >&2
+  exit 1
+fi
 
 # No local skills/ → fetch them from GitHub into a temp checkout.
 if [ -z "$SRC" ]; then

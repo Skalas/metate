@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# profile.sh — shared, dependency-free readers for .metate/profile.yml
+# profile.sh — shared readers for .metate/profile.yml (yq-backed via yaml.sh)
 # Source from shell scripts:  . "$(dirname "$0")/lib/profile.sh"
 #
 # discover.sources is canonical; discover.signals is accepted as a legacy alias (T7).

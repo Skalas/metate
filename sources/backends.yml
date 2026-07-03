@@ -5,24 +5,39 @@ reviewers:
   correctness:
     agent_file: metate-correctness-reviewer.md
     name: metate-correctness-reviewer
-    description: metate Stage 3 correctness lens. READ-ONLY. Reviews a git diff for bugs, broken state transitions, and reviewFocus invariant violations. Returns JSON per finding.schema.json. Use when metate-review fans out the correctness reviewer.
+    description: >-
+      metate Stage 3 correctness lens. READ-ONLY. Reviews a git diff for bugs, broken state
+      transitions, and reviewFocus invariant violations. Returns JSON per finding.schema.json.
+      Use when metate-review fans out the correctness reviewer.
     role_noun: correctness
     code_discovery_hint: (prefer codebase-memory-mcp graph over grep)
-    codex_lens_line: Lens: CORRECTNESS. Report bugs, broken state transitions, and any violated reviewFocus invariant. Bucket as blocker/warning/suggestion.
+    codex_lens_line: >-
+      Lens: CORRECTNESS. Report bugs, broken state transitions, and any violated reviewFocus
+      invariant. Bucket as blocker/warning/suggestion.
   security:
     agent_file: metate-security-reviewer.md
     name: metate-security-reviewer
-    description: metate Stage 3 security lens. READ-ONLY. Reviews a git diff for authz gaps, secrets, PII, and injection. Returns JSON per finding.schema.json. Use when metate-review fans out the security reviewer.
+    description: >-
+      metate Stage 3 security lens. READ-ONLY. Reviews a git diff for authz gaps, secrets, PII,
+      and injection. Returns JSON per finding.schema.json. Use when metate-review fans out the
+      security reviewer.
     role_noun: security
     code_discovery_hint: (prefer codebase-memory-mcp graph over grep)
-    codex_lens_line: Lens: SECURITY. Report authz/tenant-isolation gaps, secrets, PII in payloads/logs, injection. Bucket as blocker/warning/suggestion.
+    codex_lens_line: >-
+      Lens: SECURITY. Report authz/tenant-isolation gaps, secrets, PII in payloads/logs,
+      injection. Bucket as blocker/warning/suggestion.
   elegance:
     agent_file: metate-elegance-reviewer.md
     name: metate-elegance-reviewer
-    description: metate Stage 3 elegance/DESIGN lens. READ-ONLY. Reviews a git diff for DRY, structure, and naming. Returns JSON per finding.schema.json. Use when metate-review fans out the elegance reviewer. Findings are informational — bucket as suggestion.
+    description: >-
+      metate Stage 3 elegance/DESIGN lens. READ-ONLY. Reviews a git diff for DRY, structure,
+      and naming. Returns JSON per finding.schema.json. Use when metate-review fans out the
+      elegance reviewer. Findings are informational — bucket as suggestion.
     role_noun: elegance/DESIGN
     code_discovery_hint: (dead-code / high-fan-out queries for DESIGN findings)
-    codex_lens_line: Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informational, bucket them as suggestion.
+    codex_lens_line: >-
+      Lens: ELEGANCE/DESIGN. Report DRY/structure/naming issues — these are informational,
+      bucket them as suggestion.
 
 code_discovery:
   cursor_mdc:
