@@ -34,11 +34,11 @@ The macro-loop closes back on itself: `metate-aftercare` writes next-sprint poin
 `metate-discover` reads to open the next cycle. **You** are the stop-condition between
 iterations — discover proposes, you decide.
 
-Two roles, both pluggable and **independent** (see `metate-review/ORCHESTRATORS.md` and
-`IMPLEMENTERS.md`): the **orchestrator** (`orchestrator.backend` — claude / codex / cursor)
-runs the playbooks and fans out the read-only reviewers; the **implementer**
-(`implementer.backend` — cursor / codex / claude / gemini) is the only writer. Everything
-project-specific lives in `.metate/profile.yml`.
+Two roles, both pluggable and **independent** (see `metate-review/REVIEWERS.md` and
+`IMPLEMENTERS.md`): **reviewers** (`reviewer.backend` — spawn as other-harness CLIs) report
+findings; the **implementer** (`implementer.backend` — cursor / codex / claude / gemini) is the
+only writer. The harness session you opened is the orchestrator. Everything project-specific
+lives in `.metate/profile.yml`.
 
 ## Step 1 — detect state
 
@@ -69,11 +69,11 @@ for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found
 - codex  → `backend: codex`,  `model: ""` (omit; `*-codex-fast` need an API-key account)
 - claude → `backend: claude`, `model: ""`
 
-**orchestrator** — who runs the playbooks + fans out reviewers, independent of the writer.
-Default `backend: claude` (today's behavior; the Claude Code plugin path). Switch to `codex`
-to run headless automation with no Claude Code in the loop, or `cursor` (probe-before-use).
-Interactive users should invoke the stage skills natively in Claude or Codex; `metate run
-<stage>` is the noninteractive dispatcher described in `metate-review/ORCHESTRATORS.md`.
+**reviewer** — who runs the three review lenses (can differ per lens). Default `backend: claude`
+(matches the Claude Code plugin path). Set `codex` or `cursor` for cross-harness fan-out — see
+`metate-review/REVIEWERS.md`.
+
+Invoke stage skills natively in your harness (`metate-review`, `metate-prep`, etc.).
 
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash
