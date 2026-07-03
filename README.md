@@ -45,6 +45,12 @@ right stage. The seven stage skills do the actual work:
 | 1 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
 | 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch fixable findings via the implementer (same session); **capture survivors** (out-of-diff bugs → signals, deferred wants → tech-debt); re-gate |
+
+> **Security:** the fix-apply step resumes a `workspace-write` implementer session with
+> `approval_policy=never` (auto-approving writes and shell). **metate-review is not yet safe
+> to run against untrusted branches** (e.g. external PRs) — reviewer findings flow straight
+> into a write-capable agent. Hardening (roster-trust boundary, egress deny, finding allow-list)
+> is deferred; see `docs/TECH-DEBT.md`.
 | 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn); classify failures by diff-attribution — regressions go back to build, **pre-existing finds are captured as signals** (not fixed in-branch); human approves UX only |
 | 5 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
 | 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
@@ -69,6 +75,8 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
 ## Prerequisites
 
 - **git** — required.
+- **jq** and **yq** ([mikefarah/yq](https://github.com/mikefarah/yq) v4) — required. Profile
+  and backend manifest reads parse real YAML via `yq`; malformed config fails loudly.
 - An **implementer CLI** — one of `cursor-agent` · `codex` · `claude` · `gemini`
   (the only writer across the pipeline).
 - **[codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)** —
@@ -80,6 +88,23 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
   ```bash
   curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash
   ```
+
+## Quickstart
+
+Minimal path to a first green review (one backend, defaults):
+
+```bash
+# 1. Install skills + prerequisites (user-level; needs jq, yq, codebase-memory-mcp on PATH)
+curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
+
+# 2. Bootstrap a project (writes .metate/profile.yml; tune reviewFocus after)
+cd your-repo && metate-init
+
+# 3. Build, then review (implementer writes; orchestrator fans out read-only reviewers)
+#    metate-build → metate-review — or headless: metate run review when orchestrator.backend=codex
+```
+
+Use `make check` as the fast gate during review rounds; `make verify` before ship.
 
 ## Install
 
