@@ -19,6 +19,17 @@ PROFILE="${METATE_PROFILE:-$ROOT/.metate/profile.yml}"
 die() { echo "✗ metate: $*" >&2; exit 1; }
 usage() { echo "usage: metate run <stage>   (stages: $STAGES)" >&2; }
 
+cmd="${1:-}"
+[ "$cmd" = "run" ] || { usage; die "unknown command: '${cmd:-}' (only 'run' is supported)"; }
+stage="${2:-}"
+[ -n "$stage" ] || { usage; die "no stage given"; }
+stage_ok=0
+for _s in $STAGES; do
+  [ "$stage" = "$_s" ] && { stage_ok=1; break; }
+done
+unset _s
+[ "$stage_ok" = 1 ] || { usage; die "unknown stage: '$stage'"; }
+
 # Locate the installed skills root (project-vendored first, then user-level).
 skills_dir() {
   local c
@@ -29,26 +40,15 @@ skills_dir() {
   return 1
 }
 
-# orchestrator.backend — a scalar nested one level under `orchestrator:`.
+SKILLS="$(skills_dir)" || die "cannot locate the metate skills (looked in .agents/skills, .claude/skills, skills, ~/.agents/skills, ~/.claude/skills)"
+# shellcheck disable=SC1091
+. "$SKILLS/metate-review/lib/profile.sh"
+
 read_backend() {
   [ -f "$PROFILE" ] || { echo ""; return 0; }
-  awk '
-    /^orchestrator:/ { f = 1; next }
-    f && /^[^[:space:]]/ { f = 0 }
-    f && $0 ~ /^[[:space:]]+backend:/ {
-      sub(/^[[:space:]]*backend:[[:space:]]*/, ""); print; exit
-    }
-  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
-                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+  prof_nested orchestrator backend
 }
 
-cmd="${1:-}"
-[ "$cmd" = "run" ] || { usage; die "unknown command: '${cmd:-}' (only 'run' is supported)"; }
-stage="${2:-}"
-[ -n "$stage" ] || { usage; die "no stage given"; }
-case " $STAGES " in *" $stage "*) ;; *) usage; die "unknown stage: '$stage'";; esac
-
-SKILLS="$(skills_dir)" || die "cannot locate the metate skills (looked in .agents/skills, .claude/skills, skills, ~/.agents/skills, ~/.claude/skills)"
 SKILL_MD="$SKILLS/metate-$stage/SKILL.md"
 [ -f "$SKILL_MD" ] || die "missing playbook: $SKILL_MD"
 
@@ -106,6 +106,6 @@ case "$backend" in
     ;;
 
   *)
-    die "unknown orchestrator.backend: '$backend' (expected claude | codex | cursor) — no silent fallback"
+    die "unknown orchestrator.backend: '$backend' (expected claude | codex | cursor | gemini) — no silent fallback"
     ;;
 esac

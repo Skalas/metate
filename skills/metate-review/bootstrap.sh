@@ -52,6 +52,12 @@ if ! cbm_present; then
   echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
   exit 1
 fi
+if ! command -v yq >/dev/null 2>&1; then
+  echo "✗ required prerequisite missing: yq (https://github.com/mikefarah/yq)" >&2
+  echo "    install it, then re-run this bootstrap:" >&2
+  echo "      brew install yq   # or see https://github.com/mikefarah/yq#install" >&2
+  exit 1
+fi
 
 # --- detect the fast + ship gates from project tooling ---------------------
 fast="echo 'set fastGate in .metate/profile.yml' && false"
@@ -134,16 +140,12 @@ gi_ignore_untrack() {
   fi
 }
 
-# Scalar nested under `implementer:` (e.g. backend, autonomous).
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/profile.sh"
+
+# Nested under `implementer:` (e.g. backend, autonomous).
 read_implementer_field() {
-  awk -v k="$1" '
-    /^implementer:/ { f = 1; next }
-    f && /^[^[:space:]]/ { f = 0 }
-    f && $0 ~ ("^[[:space:]]+" k ":") {
-      sub(/^[[:space:]]*[A-Za-z0-9_.-]+:[[:space:]]*/, ""); print; exit
-    }
-  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
-                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+  prof_nested implementer "$1"
 }
 
 # Per-sprint local state: these files are runtime-only and never committed, so
@@ -205,8 +207,7 @@ fi
 # Report the orchestrator backend. A fresh profile carries the template default (claude),
 # which preserves today's Claude Code path; an existing profile is never clobbered. The
 # `metate run <stage>` dispatcher routes per metate-review/ORCHESTRATORS.md.
-ORCH_BACKEND="$(awk '/^orchestrator:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
-  | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//')"
+ORCH_BACKEND="$(prof_nested orchestrator backend)"
 echo "  ✓ orchestrator.backend: ${ORCH_BACKEND:-claude} (blank ⇒ claude; codex|cursor in metate-review/ORCHESTRATORS.md)"
 
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
