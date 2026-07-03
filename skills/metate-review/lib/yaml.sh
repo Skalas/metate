@@ -80,33 +80,3 @@ yaml_child_keys() {
     }
   ' "$file"
 }
-
-# Resolve sources/backends.yml for reviewer-lens enumeration.
-backends_manifest_path() {
-  local script_dir="${1:-}" root="${2:-}" c
-  for c in "${METATE_BACKENDS_MANIFEST:-}" \
-           "${root:+$root/sources/backends.yml}" \
-           "${script_dir:+$script_dir/../../sources/backends.yml}"; do
-    [ -n "$c" ] && [ -f "$c" ] && { printf '%s' "$c"; return 0; }
-  done
-  return 1
-}
-
-# Canonical reviewer lens order (matches sources/backends.yml declaration order).
-YAML_REVIEWER_LENS_ORDER=(correctness security elegance)
-
-# Reviewer lens ids from backends.yml (manifest order), or generated/*.txt fallback.
-reviewer_lenses() {
-  local manifest="${1:-}" script_dir="${2:-}" lens dir
-  if [ -z "$manifest" ]; then
-    manifest="$(backends_manifest_path "$script_dir" "${ROOT:-}")" || true
-  fi
-  if [ -n "$manifest" ] && [ -f "$manifest" ]; then
-    yaml_child_keys "$manifest" reviewers
-    return 0
-  fi
-  dir="${script_dir}/generated/lens-prompts"
-  for lens in "${YAML_REVIEWER_LENS_ORDER[@]}"; do
-    [ -f "$dir/${lens}.txt" ] && printf '%s\n' "$lens"
-  done
-}

@@ -1,21 +1,23 @@
 # .metate/profile.yml — metate dogfooding itself.
-# Bash + markdown repo: gates are the Makefile, implementer is single-vendor claude.
+# Bash + markdown repo: gates are the Makefile, implementer is single-vendor cursor.
 
 # --- gates ---------------------------------------------------------------
 fastGate: "make check"     # bash -n + shellcheck, each review round
 shipGate: "make verify"    # check + metadata/installer sanity, mirrors CI
+
+# --- reviewer (parallel lenses; spawned as other-harness CLIs) ------------
+# Default backend for all three lenses. Optional per-lens override (uncomment):
+reviewer:
+  backend: cursor          # codex | cursor | claude
+  # correctness: codex
+  # security: codex
+  # elegance: codex
 
 # --- implementer (the only writer) ---------------------------------------
 implementer:
   backend: cursor          # implementer/writer runs via cursor-agent
   model: ""                # blank = adapter default
   autonomous: true         # dogfood runs headless; Bash(cursor-agent:*) is committed in .claude/settings.json
-
-# --- orchestrator (reads the SKILL.md playbooks, runs the stages, fans out reviewers) ---
-# INDEPENDENT of implementer.backend (the writer). claude keeps existing behavior unchanged.
-# See metate-review/ORCHESTRATORS.md for the per-runtime command blocks + verification table.
-orchestrator:
-  backend: cursor          # claude | codex | cursor — cursor uses IDE Task fanOut for review
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
@@ -38,12 +40,12 @@ reviewFocus: |
   - bootstrap.sh stays idempotent: never clobbers an existing profile.yml; .gitignore append is one-shot.
   - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
-    ONLY code writer; the review fan-out stays read-only (no Write/Edit) — the orchestrator may Write
-    ONLY to `signalsFile` and `prep.techDebtFile` to persist capture survivors.
+    ONLY code writer; reviewers report findings and the orchestrator verifies or routes them to the
+    implementer — the orchestrator may Write ONLY to `signalsFile` and `prep.techDebtFile`.
 
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 review:
-  autoFix: blockers+warnings
+  autoFix: all
 
 # --- discover (metate-discover) ------------------------------------------
 discover:
