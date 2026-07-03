@@ -61,7 +61,7 @@ review:
 # The pre-plan. Surveys signals, ranks candidate sprints, lets you pick, and
 # writes the chosen one as the plan doc prep consumes. You decide; it proposes.
 discover:
-  signals:                 # which sources to sweep for candidate work
+  sources:                 # which sources to sweep for candidate work (legacy alias: discover.signals)
     aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
