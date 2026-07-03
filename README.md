@@ -41,10 +41,10 @@ right stage. The seven stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git, **captured bug-signals**), rank candidate sprints in `steady` or `explore` mode, **you pick**, write the plan doc prep consumes |
+| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git, **captures from smoke + review**), rank candidate sprints in `steady` or `explore` mode, **you pick**, write the plan doc prep consumes |
 | 1 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
-| 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch **only blockers** via the implementer (same session); re-gate |
+| 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch fixable findings via the implementer (same session); **capture survivors** (out-of-diff bugs → signals, deferred wants → tech-debt); re-gate |
 | 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn); classify failures by diff-attribution — regressions go back to build, **pre-existing finds are captured as signals** (not fixed in-branch); human approves UX only |
 | 5 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
 | 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
@@ -160,7 +160,8 @@ file — the bootstrap only guesses the gates. In order of importance:
 7. **`ship`** — `prTarget` (match `baseBranch`), `commitStyle`, `issueCloseKeyword`.
 8. **`isolation`** — `none`, or `worktree` to run the auto-approving implementer in an
    isolated git worktree and review the diff before merging back.
-9. **`discover`** — defaults are usually fine: all four `signals` on, `planFile`
+9. **`discover`** — defaults are usually fine: all five `discover.signals` source toggles on
+   (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`), `planFile`
    `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
    you decide *what* to work on; you always pick — it never starts a sprint on its own.
 

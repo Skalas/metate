@@ -6,6 +6,29 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## Done
 
+- **Review write-side: complete the capture lane + trim the schema (sprint `review-write-side`,
+  2026-07-02).** Closes roadmap item 5's residual and the M4 follow-on. A review no longer loses
+  its survivors to the terminal — `metate-review` now persists them, and the two kinds route to two
+  sinks by semantics. **Bug half (T1):** an out-of-diff / exposed-latent, don't-fix-now defect is
+  appended to `signalsFile` per `metate-smoke/signal.schema.json` with `foundIn: review:<lens>`
+  (T2) — the read side (`metate-discover`) already folds it in. **Want half (T6, added in prep):**
+  a deferred DESIGN/elegance survivor (or a declined warning) is appended to `prep.techDebtFile`
+  as a trigger-gated bullet in the file's existing convention (stable-title dedup so aftercare
+  doesn't double-file) — because a want is not a bug and doesn't fit the signal schema. In BOTH
+  paths the reviewer fan-out stays **read-only**; **only the orchestrator writes** (new `Write` in
+  review's allowed-tools, scoped by prose+invariant to `signalsFile`/`techDebtFile`), and the
+  `reviewFocus` invariant was refined to match (fan-out read-only; orchestrator may write only the
+  two capture sinks). **Schema trim (T3):** `severityGuess`/`blocksDoD` dropped from the signal
+  schema's `required` (kept optional — capture is a lean record, triage enriches later). **Rename
+  (T4):** the self-referential `discover.signals.signals` toggle → `captures`. **Verified:** 2-round
+  `metate-review` (correctness · security · elegance) converged 0 blockers — R1 caught 3 real doc
+  defects (Output overclaimed persistence for the in-diff-warning case; §2b's `###`-per-want format
+  fragmented the ledger vs its real bullet-under-section convention; no blank-`techDebtFile` guard),
+  all fixed; R2 verify came back clean; `make verify` green. Built through the resumed implementer
+  session (`session.json`) — invariant honored, unlike the prior increment. Issues #52–#57.
+  **Scope honesty:** M3 (backend unification) is the remaining staged follow-on; the capture
+  round-trip is still unproven end-to-end here (metate has no e2e suite — see TECH-DEBT).
+
 - **Signal-capture lane + discover explore mode (increment `signal-capture-lane`, 2026-07-02).**
   A bug found mid-flow no longer forces a choice between derailing the sprint and losing the find.
   **Write side:** `metate-smoke` now classifies each failure against `git diff <base>` — in-diff =
@@ -24,7 +47,8 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
   (missing `Write` grant, no `promoted` path, uncaptured `blocksDoD`, hardcoded path, missing injection
   guard, no `invalid`/`wontfix` trigger), all fixed; `make verify` green. Bent invariant (dogfood):
   written by hand on-branch, not through the implementer session (no `session.json`).
-  Residual: `metate-review` write-side + the cold-intake `triage`/`hotfix` lane deferred (see below).
+  Residual: the cold-intake `triage`/`hotfix` lane is still deferred (see below); the
+  `metate-review` write-side is now **done** — see the `review-write-side` entry above.
 
 - **Engine hardening — MCP-misuse fix + review read-only enforcement (sprint `engine-hardening`,
   2026-07-02).** Two milestones. **M1:** the three Cursor reviewer agents now carry
@@ -93,7 +117,7 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
 
 ## In progress / next
 
-**Staged follow-ons from the `engine-hardening` sprint (2026-07-02), in build order:**
+**Remaining staged follow-on from the `engine-hardening` sprint (2026-07-02):**
 
 - **M3 — Unify backends at installation (REDUCE).** Single-source generator: `sources/` (reviewer
   lenses + code-discovery rule + `backends.yml`) → render per-harness (Cursor `.mdc`/`readonly`,
@@ -101,11 +125,9 @@ decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT
   `lib/profile.sh`; add a "render = no diff" drift gate. Keeps all backends (token-limit switching
   is load-bearing) — pays for the abstraction instead of copy-paste. M2 already widened the clause
   drift (see TECH-DEBT), so this is now more urgent. Trigger in TECH-DEBT.md.
-- **M4 — Complete the capture lane: `metate-review` signal write-side (HOLD).** smoke can capture
-  out-of-diff finds; review cannot yet. Add a `Write`-scoped capture step + trim the signal schema
-  (drop `severityGuess`/`blocksDoD` from required). Depends on PR #50 (signal-capture lane) merging first.
 
-*(The MCP-misuse "highest failure-surface" item is now **done** — closed by M2 above.)*
+*(The MCP-misuse "highest failure-surface" item and M4 — the `metate-review` write-side — are both
+now **done**; see the Done entries above. M3 is the last staged follow-on.)*
 
 ## Legacy hardening backlog (post-merge-#29)
 
@@ -129,7 +151,7 @@ review gap — all **done**, see the two Done entries above.)
 5. **Cold-intake `triage` + compressed `hotfix` lane.** The mid-testing capture path is in; the
    *externally-reported* bug path (triage → route → hotfix/backlog/interrupt) is designed but unbuilt.
    Only build if cold bug reports become a real, recurring need. Trigger in TECH-DEBT.md.
-   *(`metate-review` signal write-side moved up to the staged M4 follow-on above.)*
+   *(`metate-review` signal write-side is now **done** — see the `review-write-side` Done entry.)*
 
 ## Later
 

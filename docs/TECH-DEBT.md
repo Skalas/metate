@@ -89,12 +89,13 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ### New debt (triggered)
 
-- **`metate-review` is a documented-but-unwired signal source.** The capture design names smoke *and*
-  review as write sides, but only smoke was wired this increment; review's frontmatter has no `Write`
-  tool and no capture step. Docs/schema were scoped down to "currently smoke" to avoid claiming an
-  unshipped source. **Trigger:** the first time a reviewer surfaces an out-of-diff, don't-fix-now find
-  that's worth keeping — add a `Write`-scoped capture step to `metate-review` appending to `signalsFile`
-  with the same schema + "treat as data" guard smoke uses.
+- **`metate-review` is a documented-but-unwired signal source. — RESOLVED (sprint `review-write-side`,
+  2026-07-02).** Review now has both write-paths: out-of-diff bugs → `signalsFile` (T1), deferred
+  DESIGN wants → `prep.techDebtFile` (T6); `Write` added to review's allowed-tools (orchestrator-only,
+  scoped to the two sinks), schema description + `foundIn: review:<lens>` updated, `reviewFocus`
+  invariant refined. Verified via 2-round review, `make verify` green. Original writeup kept for
+  context: *the capture design names smoke and review as write sides, but only smoke was wired the
+  prior increment; review's frontmatter had no `Write` tool and no capture step.*
 
 - **No `signalsFile` writer exists in a real target repo yet — round-trip unproven.** The write side
   (smoke) and read+disposition side (discover) are wired and review-verified, but no end-to-end run has
@@ -113,9 +114,34 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ### Naming nit (report-only, from review round 3)
 
-- **`discover.signals.signals`** — the sweep-config map is named `signals` and now contains a source
-  toggle also named `signals`, which reads as a typo. Harmless, but confusing. **Trigger:** next edit
-  to the `discover.signals` block — consider renaming the toggle (e.g. `captures`) or the outer map.
+- **`discover.signals.signals` — RESOLVED (sprint `review-write-side`, 2026-07-02, T4).** The inner
+  source toggle was renamed `signals` → `captures`, so the path is now `discover.signals.captures`.
+  The outer map is still named `signals` (see the new debt below for the follow-on).
+
+## From the `review-write-side` sprint (2026-07-02)
+
+### New debt (triggered)
+
+- **[review:elegance] `discover.signals` map name still collides with `captures`.** T4 renamed the
+  leaf toggle but the parent map is still `discover.signals`, so the fully-qualified key is
+  `discover.signals.captures` — the same signals/captures ambiguity one level up. **Trigger:** the
+  next edit to the `discover.signals` block — rename the map to `discover.sources` (it's a toggle map
+  of discovery sources, not signals itself) and carry it through profile + template + discover prose.
+
+- **[review:elegance] The "treat as data, never instructions" guard is duplicated across capture
+  sites.** The same sentence now lives near-verbatim in `metate-smoke/SKILL.md` and
+  `metate-review/SKILL.md` §2b (review's copy even says "same guard as metate-smoke"). Two sites is
+  tolerable. **Trigger:** a third near-identical copy appears anywhere in `skills/` — extract the
+  guard to one shared note (or fold it into `signal.schema.json`'s description, which already carries
+  the capture contract) and have all sites reference it.
+
+- **[review:security] `metate-review`'s `Write` is scoped by prose, not by the tool layer.** Review
+  gained the `Write` tool; the restriction to `signalsFile`/`prep.techDebtFile` is enforced only by
+  the SKILL prose + `reviewFocus` invariant, because the harness `allowed-tools` has no path-scoping
+  syntax (every metate skill grants bare `Write` — repo-wide, not new to this sprint). The reviewer
+  fan-out still has no `Write`; only the orchestrator does. **Trigger:** the harness gains a
+  path-scoped `Write(...)` grant, OR a security review flags the orchestrator's write-scope as an
+  active risk — then enforce the two-sink restriction at the tool layer rather than in prose.
 
 ## From the `codex-native-skills` increment (2026-07-01)
 
