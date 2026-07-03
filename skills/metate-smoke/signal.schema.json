@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "metate signal set",
-  "description": "Cheap tier-1 capture of a bug/anomaly found mid-flow (currently smoke; the review write-side is not yet wired) without derailing. Appended to the profile's `signalsFile` (e.g. `.metate/signals.json`); NOT a tracker issue. `discover`/`triage` read this, confirm+rank, and stamp status: chosen signals become `promoted` (their candidate went into a plan; `prep` then files the issue), rejected ones `invalid`/`wontfix`. Every signal ends promoted or closed — nothing lives here forever.",
+  "description": "Cheap tier-1 capture of a bug/anomaly found mid-flow (smoke and review write sides are wired) without derailing. Appended to the profile's `signalsFile` (e.g. `.metate/signals.json`); NOT a tracker issue. `discover`/`triage` read this, confirm+rank, and stamp status: chosen signals become `promoted` (their candidate went into a plan; `prep` then files the issue), rejected ones `invalid`/`wontfix`. Every signal ends promoted or closed — nothing lives here forever.",
   "type": "object",
   "additionalProperties": false,
   "required": ["signals"],
@@ -11,7 +11,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["title", "repro", "attribution", "severityGuess", "blocksDoD", "status"],
+        "required": ["title", "repro", "attribution", "status"],
         "properties": {
           "title": {
             "type": "string",
@@ -41,7 +41,7 @@
           },
           "foundIn": {
             "type": "string",
-            "description": "Where it surfaced, e.g. 'smoke:T3'. Anchors it to the moment of capture."
+            "description": "Where it surfaced, e.g. 'smoke:T3' or 'review:correctness'|'review:security'|'review:elegance'. Anchors it to the moment of capture."
           },
           "status": {
             "type": "string",
