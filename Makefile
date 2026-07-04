@@ -55,3 +55,7 @@ test: ## metadata + installer sanity
 	@out=$$(bash install.sh --help); echo "$$out" | grep -q 'install.sh' \
 		&& ! echo "$$out" | grep -q 'fetching metate' \
 		&& echo "  ✓ local --help works and does not clone"
+	@val=$$(bash -c 'source skills/metate-review/lib/yaml.sh; yaml_nested_scalar skills/metate-review/profile.template.yml reviewer backend'); \
+		[ "$$val" = claude ] \
+		&& echo "  ✓ yaml.sh reads nested profile keys" \
+		|| { echo "  ✗ yaml.sh nested read on profile.template.yml failed"; exit 1; }

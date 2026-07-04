@@ -135,9 +135,7 @@ Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex surfaces
 metate-init --update    # refresh harness artifacts in each project
 ```
 
-New profile template keys are reconciled by the `metate` wizard skill: it compares
-`.metate/profile.yml` against the shipped template and proposes missing keys with
-values fitted to the repo — additions only, confirmed before writing.
+Profile reconciliation is handled by the `metate` wizard skill (Step 2b).
 
 ## First run — profile decisions
 

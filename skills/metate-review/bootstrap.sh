@@ -3,16 +3,14 @@
 #
 # SCOPE CONTRACT: deterministic file provisioning ONLY — prerequisite check, template
 # copy, .gitignore/untrack passes, harness rule/agent installs, permission whitelist.
-# Anything requiring judgment (gate detection, profile values, reconciling new template
-# keys) lives in the `metate` wizard skill as prose. Resist growing this file.
+# Anything requiring judgment (gate detection, profile values, profile reconciliation)
+# lives in the `metate` wizard skill (Step 2b). Resist growing this file.
 #
 # Self-contained: works whether the skills are installed user-level or per-project.
 #
 #   bootstrap.sh             create the profile if absent; never touch an existing one
 #   bootstrap.sh --update    refresh installed harness artifacts (cursor reviewer agents).
-#                            Profile reconciliation is prose, not code: the `metate`
-#                            wizard skill compares an existing profile against the
-#                            template and proposes missing keys with fitted values.
+#                            Profile reconciliation → metate wizard skill (Step 2b).
 set -euo pipefail
 
 UPDATE=0
@@ -69,8 +67,7 @@ if [ ! -s "$PROFILE" ]; then   # missing or empty → fresh write
   FRESH=1
   echo "  ✓ wrote $PROFILE (gates are placeholders — the metate wizard skill detects them)"
 else
-  echo "  ✓ $PROFILE already exists — left untouched. New template keys are"
-  echo "    reconciled by the metate wizard skill (compare with $TEMPLATE)"
+  echo "  ✓ $PROFILE already exists — left untouched (profile reconciliation → metate wizard, Step 2b)"
 fi
 
 # --- gitignore: per-sprint local state + vendored tooling -------------------
