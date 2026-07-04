@@ -6,20 +6,23 @@
 fastGate: "__FASTGATE__"   # quick loop, run after each review round
 shipGate: "__SHIPGATE__"   # full pre-PR gate (mirrors CI)
 
+# --- reviewer (parallel lenses; spawned as other-harness CLIs) ------------
+# The orchestrator is whichever agent harness you open. Reviewers are separate
+# subprocesses — see metate-review/REVIEWERS.md. Optional per-lens overrides:
+reviewer:
+  backend: claude          # codex | cursor | claude
+  # correctness: codex
+  # security: codex
+  # elegance: codex
+
 # --- implementer (the only writer) ---------------------------------------
 implementer:
   backend: cursor          # cursor | codex | claude | gemini
-  model: ""                # e.g. composer-2.5 | gpt-5.3-codex-fast (blank = adapter default)
+  model: ""                # e.g. composer-2.5 (blank = adapter default)
   autonomous: false        # claude backend only. true → bootstrap whitelists `Bash(claude -p:*)`
                            # in .claude/settings.local.json (personal, gitignored) so headless
                            # rounds don't prompt. Trade-off: removes the per-call approval gate on
                            # the nested implementer. cursor/codex gate writes via their own flags.
-
-# --- orchestrator (reads the SKILL.md playbooks, runs the stages, fans out reviewers) ---
-# INDEPENDENT of implementer.backend (the writer). Blank/absent ⇒ claude (today's behavior).
-# Unknown backend fails loudly — no silent fallback. See metate-review/ORCHESTRATORS.md.
-orchestrator:
-  backend: claude          # claude | codex | cursor
 
 sessionFile: ".metate/session.json"
 issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
@@ -29,71 +32,63 @@ isolation: none            # none | worktree
 # --- codebase memory (required structural context provider) ---------------
 # codebase-memory-mcp is a REQUIRED prerequisite (install/bootstrap abort without
 # it). This flag only toggles whether review USES the graph: when enabled, review
-# sub-agents prefer the knowledge graph over grep/Read for structural discovery —
-# impact of the diff, callers of changed symbols, reviewFocus invariants traced
-# through the call graph. Set enabled:false to opt a repo out of graph-augmented
-# review (sub-agents fall back to grep/Read for that repo only).
+# sub-agents prefer the knowledge graph over grep/Read for structural discovery.
 codebaseMemory:
   enabled: true            # default on; the repo must be indexed (bootstrap prints the index command)
-  reindex: git             # git | always | manual — refresh the graph between rounds after the implementer patches
+  reindex: git             # git | always | manual — refresh the graph between rounds after patches
   indexCommand: ""         # blank = rely on the auto_index git watcher; else an explicit reindex command
 
 # --- review (metate-review) -----------------------------------------------
-# What the read-only sub-agents must scrutinize in THIS codebase. Replace with
-# your real invariants — the difference between a generic review and one that
-# catches your domain's actual failure modes.
+# What reviewers must scrutinize in THIS codebase. Replace with your real invariants.
 reviewFocus: |
   - <invariant 1, e.g. tenant/scope isolation on every transactional query>
   - <invariant 2, e.g. money math at the cent in the payment path>
   - <invariant 3, e.g. state transitions go through the domain guard>
-  - The implementer is the ONLY code writer; the review fan-out stays read-only (no Write/Edit) —
-    the orchestrator may Write ONLY to `signalsFile` and `prep.techDebtFile` to persist capture survivors.
+  - The implementer is the ONLY code writer; reviewers report findings and the orchestrator
+    verifies or routes them to the implementer — the orchestrator may Write ONLY to
+    `signalsFile` and `prep.techDebtFile` to persist capture survivors.
 
-# Which buckets the implementer auto-fixes each round. Reporting is unconditional —
-# whatever isn't auto-fixed is still surfaced for you to decide.
+# Which buckets the implementer auto-fixes each round. Reporting is unconditional.
 #   blockers           — only blockers fixed; warnings + DESIGN reported  (safest, default)
 #   blockers+warnings  — blockers + warnings fixed; DESIGN reported
-#   all                — blockers + warnings + DESIGN fixed (most churn; may rewrite working code)
+#   all                — blockers + warnings + DESIGN fixed (most churn)
 review:
   autoFix: blockers
 
 # --- discover (metate-discover) -------------------------------------------
-# The pre-plan. Surveys signals, ranks candidate sprints, lets you pick, and
-# writes the chosen one as the plan doc prep consumes. You decide; it proposes.
 discover:
-  sources:                 # which sources to sweep for candidate work (legacy alias: discover.signals)
-    aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
-    codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
-    issues: true           # open gh issues + techDebtFile items whose trigger has fired
-    gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
-    captures: true         # signalsFile — tier-1 captures from smoke + review awaiting triage (read side)
-  planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
-  candidates: 5            # how many ranked candidates to propose
+  sources:
+    aftercare: true
+    codebaseMemory: true
+    issues: true
+    gitHistory: true
+    captures: true
+  planFile: ".metate/plan.md"
+  candidates: 5
 
 # --- prep (metate-prep) ---------------------------------------------------
 prep:
-  baseBranch: main         # branch new work from here (set to `dev` if you gitflow)
-  readingOrder: []         # docs to read before building, in order
-  techDebtFile: ""         # e.g. docs/TECH-DEBT.md
-  issues:                  # file the issue ledger from the text plan at sprint start
-    create: true           # false = ledger is managed outside metate
-    tracker: github        # gh CLI
-    granularity: test-matrix  # one issue per DoD test-matrix item (T1…Tn)
-    labels: ["sprint"]     # applied to every filed issue
-    milestone: ""          # blank = none
+  baseBranch: main
+  readingOrder: []
+  techDebtFile: ""
+  issues:
+    create: true
+    tracker: github
+    granularity: test-matrix
+    labels: ["sprint"]
+    milestone: ""
 
 # --- smoke (metate-smoke) -------------------------------------------------
 smoke:
-  command: ""              # e.g. pnpm e2e   (how to run the e2e/smoke suite)
-  seedCommand: ""          # e.g. pnpm db:seed   (must be idempotent)
+  command: ""
+  seedCommand: ""
 
 # --- aftercare (metate-aftercare) -----------------------------------------
-# Deliverables to create/update at sprint close. Use {N} for the sprint number.
 aftercare:
-  deliverables: []         # e.g. ["docs/handoff/post-sprint-{N}.md", "CHANGELOG.md"]
+  deliverables: []
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:
-  prTarget: main           # PR target; set to `dev` if you gitflow (match baseBranch)
+  prTarget: main
   commitStyle: "conventional, bisectable, one per layer"
-  issueCloseKeyword: "Closes"   # PR body keyword for auto-close
+  issueCloseKeyword: "Closes"

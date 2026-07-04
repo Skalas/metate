@@ -136,26 +136,13 @@ codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixe
 
 - session: **record the explicit id** in `sessionFile` — `{ "implementer":"codex",
   "sessionId":"<id>" }`. ⚠️ `resume --last` is **only** safe in a single-vendor loop where the
-  orchestrator is *not* codex. When the **orchestrator is also codex** (the codex-only pilot),
-  the read-only reviewer fan-out spawns newer codex sessions each round, so `--last` would
-  resolve to a *reviewer* thread, not the build session — `codex-review.sh` therefore requires
-  an explicit `sessionId` and `die`s on `--last`/empty.
+  orchestrator is *not* codex. When the **orchestrator is also codex**, reviewer fan-out spawns
+  newer codex sessions each round, so `--last` would resolve to a *reviewer* thread, not the build
+  session — record the explicit id (see `SKILL.md` → Inputs).
 - write: `-s workspace-write` on `exec`; on `resume` use `-c sandbox_mode="workspace-write"`.
-  `-s read-only` for review-only passes. Headless calls need `< /dev/null` or they block
-  forever on "Reading additional input from stdin...".
-- model: with an **API-key** account, `-m <model>` (e.g. a `codex` variant). With a
-  **ChatGPT** account the `*-codex-fast` models are rejected — omit `-m` to use the
-  configured default (e.g. `gpt-5.5` from `~/.codex/config.toml`). `--output-schema` for
-  structured final response.
-- **Headless MCP reachability (two independent gates).** `approval_policy="never"` covers
-  **shell commands only**. MCP tool calls need a separate gate:
-  `-c mcp_servers.<id>.default_tools_approval_mode="approve"`. On some codex builds **no**
-  config key suppresses the MCP prompt (see openai/codex issues #24135, #16685) — **probe
-  the target build** rather than assume. Escape hatches (**writer-session / implementer
-  only** — never in the read-only reviewer fan-out; `ORCHESTRATORS.md` → codex
-  `--sandbox read-only`; the reviewer sandbox must stay intact):
-  `approvals_reviewer="auto_review"` + `mcp_elicitations`; or `--full-auto`; last resort
-  `--dangerously-bypass-approvals-and-sandbox`.
+  Headless calls need `< /dev/null` or they block forever on stdin.
+- model: with an **API-key** account, `-m <model>`. With a **ChatGPT** account omit `-m` for the
+  configured default. `--output-schema` for structured final response.
 
 ## claude  ✅ available
 
@@ -214,7 +201,7 @@ Show the diff before merging back.
 | backend | headless write | session resume | fast model | notes |
 |---|---|---|---|---|
 | cursor  | ✅ `--force`            | ✅ `create-chat`+`--resume` (tested)       | ✅ `composer-2.5`         | fully verified |
-| codex   | ✅ `-s workspace-write` | ✅ explicit-id resume (tested)             | ✅ default (`gpt-5.5`)¹   | `-c sandbox_mode` on resume; `--last` unsafe when orchestrator is also codex |
+| codex   | ✅ `-s workspace-write` | ✅ explicit-id resume (tested)             | ✅ default (`gpt-5.5`)¹   | `-c sandbox_mode` on resume; `--last` unsafe when orchestrator shares codex |
 | claude  | ✅ default perms        | ✅ `--resume <session_id>`                 | ✅ sonnet                 | single-vendor option |
 | gemini  | ⛔ unverified            | ⛔ unverified                         | —                        | probe before use |
 

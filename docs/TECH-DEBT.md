@@ -6,6 +6,48 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 > Wire this file into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md` (and
 > optionally `techDebtFile:` top-level) so discover/prep pick it up automatically.
 
+## From the `shrink-engine` sprint (2026-07-03) — resolved by deletion
+
+The harness-first / soft-enforce shrink **deleted** the headless engine and its dependents. Many
+open items below are now **moot** because the file they targeted no longer exists. Do not action
+them; they're kept only as historical context.
+
+### Resolved by deletion (files removed)
+
+- **`codex-review.sh` gone** → moot: every "codex-review.sh …" item (ORCHESTRATORS.md ↔ codex-review
+  duplication; withheld set-difference; `_review_engine_rel` fallback; `lc_f` local; duplicate
+  `codebaseMemory` guards; the codex-native-review-delegation opportunity; the dogfood self-review /
+  mid-loop self-edit hazards). The review loop now lives as orchestrator prose in
+  `metate-review/SKILL.md`.
+- **`bin/metate` gone** → moot: the `--approve-mcps` cursor-path item, the unknown-backend-omits-gemini
+  nit, the `bin/metate`/`bootstrap.sh` shared-reader residual, and the headless-cursor-fan-out items.
+- **`ORCHESTRATORS.md` gone** → moot: the ORCHESTRATORS ↔ code duplication items. Roles are now wired
+  via `REVIEWERS.md` + `IMPLEMENTERS.md`; the orchestrator is the harness.
+- **`lib/trusted-review-text.sh` gone** → the trusted-source boundary items are moot as *machinery*;
+  the underlying concern is now an **accepted limitation** (below), not open debt.
+- **`lib/profile.sh` + `lib/captures.sh` gone** → moot: the `PROFILE_ROOT` contract and
+  consumer-less-`captures.sh` items. The only shell YAML reader left is `lib/yaml.sh` (render.sh +
+  bootstrap.sh). `yq` was never adopted (retired in plan).
+- **Review-loop drift gate / `sources/review-loop/`** → not present on this base; the exit criteria
+  live once, in `SKILL.md`.
+
+### Accepted limitations (soft-enforce, by design — NOT debt to fix)
+
+- **No untrusted-branch review safety.** Reviewers are not sandboxed/read-only, and a diff that
+  modifies the review engine's own instruction files (lens prompts, prompt-clause, `SKILL.md`) could
+  subvert its own review. Accepted for trusted repos run interactively; documented in `SKILL.md` +
+  README. **Trigger to revisit:** if metate is ever pointed at external/untrusted PRs — then rebuild a
+  hard path *on top of* the extracted adapters, never by reviving `codex-review.sh`.
+
+### New (triggered)
+
+- **Secret-file skip is now prose, not code.** The mandatory secret-name exclusion (`.env`/`*.pem`/
+  `id_*`/`*credentials*`/…) when building the review diff moved from a hardcoded case-statement into a
+  **MUST** instruction in `SKILL.md`, because reviewers now run as external CLI subprocesses (possibly a
+  different vendor) that would otherwise receive an untracked secret. **Trigger:** if a CI/no-agent
+  runner is ever built, reimplement the skip as code there (an agent can be trusted to follow the MUST;
+  a script cannot).
+
 ## Engine-wide (identified in discover, 2026-07-02)
 
 ### MCP misuse read as "MCP down" — RESOLVED (sprint `engine-hardening`, 2026-07-02)

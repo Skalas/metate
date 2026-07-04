@@ -202,12 +202,10 @@ else
     || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
 fi
 
-# Report the orchestrator backend. A fresh profile carries the template default (claude),
-# which preserves today's Claude Code path; an existing profile is never clobbered. The
-# `metate run <stage>` dispatcher routes per metate-review/ORCHESTRATORS.md.
-ORCH_BACKEND="$(awk '/^orchestrator:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
+# Report the reviewer backend. A fresh profile carries the template default (claude).
+REVIEWER_BACKEND="$(awk '/^reviewer:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
   | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//')"
-echo "  ✓ orchestrator.backend: ${ORCH_BACKEND:-claude} (blank ⇒ claude; codex|cursor in metate-review/ORCHESTRATORS.md)"
+echo "  ✓ reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides optional; see metate-review/REVIEWERS.md)"
 
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
 if [ -d "$HOME/.cursor" ]; then
@@ -343,8 +341,8 @@ fi
 cat <<EOF
 
 ✓ bootstrap complete. Next:
-  1. Edit .metate/profile.yml → reviewFocus (your invariants), implementer, discover/prep/smoke/aftercare/ship.
-  2. Run the pipeline ceremonies as native Claude/Codex skills, in order:
+  1. Edit .metate/profile.yml → reviewFocus (your invariants), reviewer/implementer backends, discover/prep/smoke/aftercare/ship.
+  2. Run the pipeline ceremonies as skills in your harness, in order:
        metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
   3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).
 EOF

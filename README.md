@@ -6,9 +6,9 @@
 > patient, repeated passes. Here, the one stone that grinds *any* codebase into
 > shipped work, one ceremony at a time — and is set up again for the next batch.
 
-A portable, codebase-agnostic **development pipeline** for Claude Code and Codex — the
-*ceremonias de metate*. Seven ceremonies, each a skill; the three-round review engine is one
-of them.
+A portable, codebase-agnostic **development pipeline** for agent harnesses (Claude Code,
+Codex, Cursor) — the *ceremonias de metate*. Seven ceremonies, each a skill; the
+three-round review engine is one of them.
 
 ```
 metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
@@ -18,20 +18,54 @@ metate-discover → metate-prep → (build) → metate-review → metate-smoke �
 It's a loop: `metate-aftercare` writes the next-sprint pointers that `metate-discover` reads
 to open the next cycle — with **you** as the stop-condition between iterations.
 
-Across the whole pipeline the **implementer** (an external CLI — `cursor-agent` ·
-`codex` · `claude` · `gemini`) is the **only writer**. The **orchestrator** that drives the
-ceremonies and runs the read-only review fan-out is itself pluggable (`claude` · `codex` ·
-`cursor`), selected by `orchestrator.backend` **independently** of the implementer — so
-"claude-cursor" (claude drives, cursor writes), "codex-only", or "codex-cursor" are all just
-config. The implementer's **build session is resumed across review rounds**, so it keeps the
-rationale behind its own code instead of re-deriving it.
+## Harness-first model
 
-Interactive users invoke the ceremonies as native skills in their runtime. The
-`metate run <stage>` dispatcher is installed on PATH for headless/noninteractive orchestration;
-`orchestrator.backend: claude` (the default) keeps the Claude Code plugin flow unchanged, and
-`orchestrator.backend: codex` drives the verified Codex automation path. Per-runtime adapter
-commands live in `metate-review/ORCHESTRATORS.md` (the orchestrator twin of
-`IMPLEMENTERS.md`).
+**The orchestrator is whichever agent harness you open.** There is no standalone bash driver —
+you invoke each stage as a skill (`metate-review`, `metate-prep`, …) and the harness executes
+the playbook.
+
+Two **swappable roles** (independent config in `.metate/profile.yml`):
+
+| Role | Config | Adapter table |
+|------|--------|---------------|
+| **Reviewers** (3 lenses) | `reviewer.backend` (+ optional per-lens overrides) | `metate-review/REVIEWERS.md` |
+| **Implementer** (only writer) | `implementer.backend` | `metate-review/IMPLEMENTERS.md` |
+
+Cross-harness spawn is the point: a Claude Code session can orchestrate three `codex exec`
+reviewers and a `cursor-agent` implementer. The implementer's **build session is resumed across
+review rounds** so it keeps the rationale behind its own code.
+
+**Soft enforcement:** reviewers report findings; the orchestrator verifies or routes fixable
+ones to the implementer. There is no sandbox/read-only hard boundary — use on **trusted**
+branches only. A diff that modifies the review engine's own instruction files (lens prompts,
+`prompt-clause`, `SKILL.md`) can subvert its own review; never run review on an untrusted branch.
+
+## Quickstart
+
+One backend end-to-end (Cursor orchestrator + Cursor implementer — the simplest path):
+
+```bash
+# 1. Install skills (user-level) and init the project
+curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
+cd your-repo && metate-init
+
+# 2. Edit .metate/profile.yml — at minimum replace reviewFocus placeholders with your invariants
+#    Defaults: reviewer.backend: claude, implementer.backend: cursor (template)
+
+# 3. Run ceremonies in order inside Cursor (invoke each as a skill):
+#    metate-discover → metate-prep → metate-build → metate-review → metate-smoke → metate-aftercare → metate-ship
+```
+
+For **cross-harness** review (e.g. codex reviewers + cursor writer), set in the profile:
+
+```yaml
+reviewer:
+  backend: codex
+implementer:
+  backend: cursor
+```
+
+Then `metate-review` fans out per `REVIEWERS.md` and resumes the implementer per `IMPLEMENTERS.md`.
 
 ## The ceremonies
 
@@ -41,41 +75,37 @@ right stage. The seven stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-discover` | the pre-plan: survey signals (aftercare, graph, issues, git, **captures from smoke + review**), rank candidate sprints in `steady` or `explore` mode, **you pick**, write the plan doc prep consumes |
-| 1 | `metate-prep` | read handoff docs in order, triage tech debt, fix sprint mode, file the issue ledger from the plan, cut the branch |
+| 0 | `metate-discover` | the pre-plan: survey signals, rank candidate sprints, **you pick**, write the plan doc prep consumes |
+| 1 | `metate-prep` | read handoff docs, triage tech debt, fix sprint mode, file the issue ledger, cut the branch |
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
-| 3 | `metate-review` | ≤3 rounds of parallel read-only review; patch fixable findings via the implementer (same session); **capture survivors** (out-of-diff bugs → signals, deferred wants → tech-debt); re-gate |
-| 4 | `metate-smoke` | run e2e/smoke bound to the DoD matrix (T1…Tn); classify failures by diff-attribution — regressions go back to build, **pre-existing finds are captured as signals** (not fixed in-branch); human approves UX only |
-| 5 | `metate-aftercare` | from the diff, update the project's close-out deliverables (handoff, coverage, roadmap, debt-with-triggers) |
-| 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close — only when green and confirmed |
+| 3 | `metate-review` | ≤3 rounds: parallel reviewers → route fixable findings → resume implementer → re-gate |
+| 4 | `metate-smoke` | e2e/smoke bound to the DoD matrix; capture pre-existing failures as signals |
+| 5 | `metate-aftercare` | update close-out deliverables from the diff |
+| 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close |
 
-## Architecture: engine vs profile
+## Architecture: skills vs profile
 
 ```
 skills (generic, install once)        .metate/profile.yml (per-repo, versioned)
-├─ metate-discover/                     ├─ fastGate / shipGate     (your commands)
-├─ metate-prep/                         ├─ implementer.backend     (cursor/codex/…)
-├─ metate-build/                        ├─ reviewFocus             (your invariants)
-├─ metate-review/   ← review engine     ├─ discover / prep / smoke / aftercare / ship blocks
-│   ├─ IMPLEMENTERS.md  (CLI adapters) └─ sessionFile / isolation
-│   ├─ profile.template.yml
+├─ metate-discover/                     ├─ fastGate / shipGate
+├─ metate-prep/                         ├─ reviewer.backend / implementer.backend
+├─ metate-build/                        ├─ reviewFocus
+├─ metate-review/                       ├─ discover / prep / smoke / aftercare / ship
+│   ├─ SKILL.md      (review loop)      └─ sessionFile / signalsFile / techDebtFile
+│   ├─ REVIEWERS.md  (reviewer CLIs)
+│   ├─ IMPLEMENTERS.md (writer CLIs)
 │   └─ bootstrap.sh
 ├─ metate-smoke/ · metate-aftercare/ · metate-ship/
 ```
 
-Nothing project-specific lives in the skills. Porting to a new codebase = one
-`bootstrap.sh` run + editing the profile (above all, `reviewFocus`).
+Nothing project-specific lives in the skills. Porting = `bootstrap.sh` + editing the profile.
 
 ## Prerequisites
 
 - **git** — required.
-- An **implementer CLI** — one of `cursor-agent` · `codex` · `claude` · `gemini`
-  (the only writer across the pipeline).
-- **[codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)** —
-  **required**. Gives review/build a structural knowledge graph. The installer and
-  per-project bootstrap detect it (CLI on PATH *or* registered as an MCP server in
-  `~/.claude.json` / `~/.cursor/mcp.json` / `~/.codex/config.toml`), leave it on when
-  present, and never reinstall it — and **abort if it's missing**. Install once:
+- An **implementer CLI** — `cursor-agent` · `codex` · `claude` · `gemini`.
+- **[codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)** — **required**.
+  Install once:
 
   ```bash
   curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash
@@ -83,129 +113,48 @@ Nothing project-specific lives in the skills. Porting to a new codebase = one
 
 ## Install
 
-The model is **install once globally, then init per project**. The same
-`skills/metate-*` source is installed into both native skill surfaces:
-Claude (`.claude/skills`) and Codex (`.agents/skills`).
-
-**From GitHub, one line** (no clone; the installer fetches itself):
+**From GitHub:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
+cd your-repo && metate-init
 ```
 
-Or hand the line to an agent like Claude Code — "install metate user-level from GitHub"
-and it runs exactly that. Pin a ref with `METATE_REF=v1.0.0` if you want a fixed version.
-
-**From a local checkout — user level** (skills global for Claude + Codex, available in every project; leaves a `metate-init` you run per project):
+**From a local checkout:**
 
 ```bash
-./install.sh --user
-# then, inside any repo:
-metate-init
+./install.sh --user    # or --project /path/to/repo
 ```
 
-**Project level** (skills vendored into the repo under both `.claude/skills` and `.agents/skills`; bootstraps that project immediately):
-
-```bash
-./install.sh --project /path/to/repo
-```
-
-**As a Claude Code plugin** (for teams): this repo is also a valid Claude plugin
-(`.claude-plugin/plugin.json` + `skills/`). Add it as a marketplace and
-`claude plugin install metate`, then run `metate-init` per project.
+Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex surfaces).
 
 ## Updating
 
-Refresh an existing install to a newer metate without losing your tuned profile:
-
 ```bash
-./install.sh --update --user              # refresh the global skills
-metate-init --update                      # in each project: reconcile its profile
-# or, project-vendored skills + profile in one step:
-./install.sh --update --project /path/to/repo
+./install.sh --update --user
+metate-init --update    # reconcile profile in each project
 ```
 
-`--update` re-copies the skills and **reconciles `.metate/profile.yml` against the
-template**: keys added in the new version are appended with their defaults, while your
-existing values and comments are left untouched. It's idempotent — an up-to-date profile
-comes out byte-identical — and it prints exactly which keys it added so you can tune them.
+## First run — profile decisions
 
-## First run in a project — the decisions you make
+`metate-init` autodetects gates. You edit `.metate/profile.yml`:
 
-`metate-init` (or `bootstrap.sh`) autodetects your toolchain (pnpm / npm / yarn / python /
-cargo / go), writes `.metate/profile.yml`, and gitignores the session handoff. It never
-clobbers an existing profile. Everything else is decisions **you** make by editing that
-file — the bootstrap only guesses the gates. In order of importance:
+1. **`reviewFocus`** — your real invariants (the highest-value field).
+2. **`reviewer.backend`** + **`implementer.backend`** — see `REVIEWERS.md` / `IMPLEMENTERS.md`.
+3. **Gates** — confirm autodetected `fastGate` / `shipGate`.
+4. **`prep`**, **`smoke`**, **`aftercare`**, **`ship`** — project-specific paths and commands.
 
-1. **`reviewFocus`** *(the one that matters)* — your real invariants, e.g. "tenant scope on
-   every transactional query", "money math at the cent", "state changes go through the
-   domain guard". This is the difference between a generic review and one that catches your
-   domain's actual failure modes. The template ships with placeholders you must replace.
-2. **`implementer.backend` + `model`** — who writes the code: `cursor` (verified end-to-end),
-   `codex`, `claude`, or `gemini` (probe first). Blank model = adapter default. See
-   `metate-review/IMPLEMENTERS.md` for the per-backend commands and verification status.
-   **`orchestrator.backend`** (independent) — who *drives* the ceremonies and the review
-   fan-out: `claude` (default; the plugin flow) or `codex` (verified live). `cursor` as an
-   orchestrator is **not yet wired** — `bin/metate` intentionally `die`s on it pending a
-   future sprint (it *is* verified as an *implementer*, above). See
-   `metate-review/ORCHESTRATORS.md`.
-3. **Gates** — confirm the autodetected `fastGate` (run each review round) and `shipGate`
-   (full pre-PR, mirrors CI). A `make verify` target is picked up automatically if present.
-4. **`prep`** — `baseBranch` (set to `dev` if you gitflow), `readingOrder` (handoff docs to
-   read before building), `techDebtFile`, and `issues` (file one issue per test-matrix item
-   from the text plan → the ledger that `ship` auto-closes; set `issues.create: false` to opt out).
-5. **`smoke`** — `command` (your e2e/smoke suite) and an idempotent `seedCommand`.
-6. **`aftercare.deliverables`** — close-out docs to update from the diff (handoff, coverage,
-   roadmap, debt ledger). `{N}` interpolates the sprint number.
-7. **`ship`** — `prTarget` (match `baseBranch`), `commitStyle`, `issueCloseKeyword`.
-8. **`isolation`** — `none`, or `worktree` to run the auto-approving implementer in an
-   isolated git worktree and review the diff before merging back.
-9. **`discover`** — defaults are usually fine: all five `discover.sources` source toggles on
-   (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`), `planFile`
-   `.metate/plan.md` (what `prep` reads), `candidates: 5`. This is the pre-plan that helps
-   you decide *what* to work on; you always pick — it never starts a sprint on its own.
-
-Then run the ceremonies in order:
-`metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship`.
-
-**Interactive skill UX** is native to each runtime:
-
-- **`claude`** (default) — invoke the stage as a Claude Code skill: `metate-review`,
-  `metate-prep`, etc. The plugin loads the matching `SKILL.md`.
-- **`codex`** — invoke the same stage as a Codex skill: `$metate-review`,
-  `$metate-prep`, etc. Codex discovers these from `.agents/skills` or `~/.agents/skills`.
-- **`cursor`** — invoke the stage as a Cursor skill (`metate-review`, etc.) or run
-  `metate run <stage>`. Review and discover fan out via **parallel Task subagents**
-  (`readonly: true`) inside the IDE — no shell driver. Headless `metate run` drives
-  `runStage` stages with `cursor-agent -p`; fanOut stages print the IDE ceremony to run.
-
-`metate run <stage>` is the headless dispatcher for automation and noninteractive
-orchestration. It reads `orchestrator.backend` from `.metate/profile.yml` and routes the
-ceremony to that runtime. Under `codex`, `metate run review` runs the verified
-`fanOut → resume → gate` loop headlessly via `codex-review.sh`. Under `cursor`, review
-stays IDE-native (Task fanOut). Blank/absent backend ⇒ `claude`.
+Then run ceremonies in order inside your harness.
 
 ### Graph-augmented review
 
-When `codebaseMemory.enabled: true` (default), reviewers prefer the codebase-memory knowledge
-graph over grep for structural reach, and the loop re-indexes between rounds. Set
-`codebaseMemory.enabled: false` to opt a repo out entirely — no graph calls, no MCP approval
-override, grep-only review.
+When `codebaseMemory.enabled: true` (default), reviewers prefer the knowledge graph and the loop
+re-indexes between rounds. Set `enabled: false` to opt out.
 
-## Adding an implementer
+## Adding a backend
 
-Add a row + start/resume commands to `metate-review/IMPLEMENTERS.md`. The contract:
-`start → sessionId`, `resume(sessionId, prompt)` headless with write access, a fast model.
-
-## Adding an orchestrator
-
-Add a row + per-runtime command blocks to `metate-review/ORCHESTRATORS.md`, then a `case` arm
-in `bin/metate`. The contract is two primitives: `runStage(skill)` — execute a `SKILL.md`
-playbook end to end — and `fanOut(reviewers[], read-only)` — launch N concurrent read-only
-reviewers returning typed findings. A new backend must clear one bar: **resume a headless
-session by id** (so review rounds resume the build session, not an amnesiac one). `claude`,
-`codex`, and `cursor` (IDE Task fanOut + headless `runStage`) are verified orchestrators;
-`gemini` is implementer-only.
+- **Reviewer:** add a row to `metate-review/REVIEWERS.md` (typed JSON fan-out).
+- **Implementer:** add start/resume commands to `metate-review/IMPLEMENTERS.md`.
 
 ## License
 
