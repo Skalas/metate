@@ -18,6 +18,8 @@ while [ $# -gt 0 ]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/yaml.sh"
 TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 RECONCILE="$SCRIPT_DIR/reconcile-profile.awk"
 # cursor-rule.mdc and codex-rule.md are rendered from sources/ — run `make render`.
@@ -134,18 +136,6 @@ gi_ignore_untrack() {
   fi
 }
 
-# Scalar nested under `implementer:` (e.g. backend, autonomous).
-read_implementer_field() {
-  awk -v k="$1" '
-    /^implementer:/ { f = 1; next }
-    f && /^[^[:space:]]/ { f = 0 }
-    f && $0 ~ ("^[[:space:]]+" k ":") {
-      sub(/^[[:space:]]*[A-Za-z0-9_.-]+:[[:space:]]*/, ""); print; exit
-    }
-  ' "$PROFILE" | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//' \
-                     -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
-}
-
 # Per-sprint local state: these files are runtime-only and never committed, so
 # they need the .gitignore entry but no untrack pass — hence hand-rolled rather
 # than routed through gi_ignore_untrack (whose untrack step would be a no-op).
@@ -198,13 +188,12 @@ fi
 if [ "$FRESH" = 1 ]; then
   echo "  ✓ codebaseMemory.enabled: true (template default)"
 else
-  awk '/^codebaseMemory:/{f=1;next} /^[^[:space:]]/{f=0} f' "$PROFILE" | grep -qE '^\s*enabled:\s*true' \
+  [ "$(yaml_nested_scalar "$PROFILE" codebaseMemory enabled)" = "true" ] \
     || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
 fi
 
 # Report the reviewer backend. A fresh profile carries the template default (claude).
-REVIEWER_BACKEND="$(awk '/^reviewer:/{f=1;next} /^[^[:space:]]/{f=0} f && /^[[:space:]]+backend:/{sub(/^[[:space:]]*backend:[[:space:]]*/,"");print;exit}' "$PROFILE" \
-  | sed -e 's/[[:space:]]*#.*$//' -e 's/[[:space:]]*$//')"
+REVIEWER_BACKEND="$(yaml_nested_scalar "$PROFILE" reviewer backend)"
 echo "  ✓ reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides optional; see metate-review/REVIEWERS.md)"
 
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
@@ -291,8 +280,8 @@ fi
 # can't self-grant this rule (the self-modification guard rightly blocks it) — but this
 # installer is user-invoked, so it's the one place that legitimately can. Personal +
 # gitignored + opt-in: only when implementer.autonomous is true and backend is recognized.
-IMPL_BACKEND="$(read_implementer_field backend)"
-IMPL_AUTONOMOUS="$(read_implementer_field autonomous)"
+IMPL_BACKEND="$(yaml_nested_scalar "$PROFILE" implementer backend)"
+IMPL_AUTONOMOUS="$(yaml_nested_scalar "$PROFILE" implementer autonomous)"
 RULE=""
 case "$IMPL_BACKEND" in
   claude) RULE='Bash(claude -p:*)' ;;
