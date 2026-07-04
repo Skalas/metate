@@ -109,6 +109,19 @@ defaults unless the user uses a different convention.
 
 After writing, show the user the filled profile and confirm before they run the pipeline.
 
+## Step 2b — reconcile an existing profile (after a metate update)
+
+Profile reconciliation is prose, not code — no script merges YAML. When metate has been
+updated and the project already has a profile:
+
+1. Read `.metate/profile.yml` and the shipped template (`profile.template.yml`, beside
+   `metate-review/bootstrap.sh` in the installed skill).
+2. List keys present in the template but missing from the profile.
+3. For each missing key, propose a value fitted to THIS repo (detect it as in Step 2 —
+   never paste the template placeholder verbatim when a real value is detectable).
+4. Show the additions as a diff and confirm with the user before editing.
+5. **Additions only** — never remove, reorder, or rewrite existing keys, values, or comments.
+
 ## Step 3 — route to the ceremony
 
 | You are… | Run |
