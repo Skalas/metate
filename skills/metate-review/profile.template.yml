@@ -1,10 +1,11 @@
 # .metate/profile.yml — per-repo config for the `metate` pipeline.
 # The skill engines are codebase-agnostic; everything project-specific lives here.
-# bootstrap.sh fills in the gates from detected tooling — adjust everything else.
+# The `metate` wizard skill fills the gates and the rest with detected defaults.
 
 # --- gates ---------------------------------------------------------------
-fastGate: "__FASTGATE__"   # quick loop, run after each review round
-shipGate: "__SHIPGATE__"   # full pre-PR gate (mirrors CI)
+# Placeholders fail loudly — run the `metate` wizard skill to detect the real gates.
+fastGate: "echo 'fastGate not set — run the metate wizard skill' && false"   # quick loop, run after each review round
+shipGate: "echo 'shipGate not set — run the metate wizard skill' && false"   # full pre-PR gate (mirrors CI)
 
 # --- reviewer (parallel lenses; spawned as other-harness CLIs) ------------
 # The orchestrator is whichever agent harness you open. Reviewers are separate
@@ -86,6 +87,7 @@ smoke:
 # --- aftercare (metate-aftercare) -----------------------------------------
 aftercare:
   deliverables: []
+  postCommand: ""          # optional; run after deliverables sync (e.g. regenerate docs)
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:

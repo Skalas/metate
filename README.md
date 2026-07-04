@@ -49,8 +49,9 @@ One backend end-to-end (Cursor orchestrator + Cursor implementer — the simples
 curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
 cd your-repo && metate-init
 
-# 2. Edit .metate/profile.yml — at minimum replace reviewFocus placeholders with your invariants
-#    Defaults: reviewer.backend: claude, implementer.backend: cursor (template)
+# 2. In your harness, run the `metate` wizard skill — it detects fastGate/shipGate from the
+#    repo's real tooling and fills reviewFocus + backends with you (gates ship as fail-loudly
+#    placeholders until then). Defaults: reviewer.backend: claude, implementer.backend: cursor
 
 # 3. Run ceremonies in order inside Cursor (invoke each as a skill):
 #    metate-discover → metate-prep → metate-build → metate-review → metate-smoke → metate-aftercare → metate-ship
@@ -132,16 +133,18 @@ Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex surfaces
 
 ```bash
 ./install.sh --update --user
-metate-init --update    # reconcile profile in each project
+metate-init --update    # refresh harness artifacts in each project
 ```
+
+Profile reconciliation is handled by the `metate` wizard skill (Step 2b).
 
 ## First run — profile decisions
 
-`metate-init` autodetects gates. You edit `.metate/profile.yml`:
+`metate-init` scaffolds the profile; the `metate` wizard skill fills it with you:
 
 1. **`reviewFocus`** — your real invariants (the highest-value field).
 2. **`reviewer.backend`** + **`implementer.backend`** — see `REVIEWERS.md` / `IMPLEMENTERS.md`.
-3. **Gates** — confirm autodetected `fastGate` / `shipGate`.
+3. **Gates** — `fastGate` / `shipGate`, detected by the wizard from the repo's real tooling.
 4. **`prep`**, **`smoke`**, **`aftercare`**, **`ship`** — project-specific paths and commands.
 
 Then run ceremonies in order inside your harness.

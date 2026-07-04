@@ -8,9 +8,8 @@
 #                                    skill roots (.claude/skills and .agents/skills)
 #                                    AND run the bootstrap for that project right away
 #   ./install.sh --update [--user|--project [PATH]]
-#                                    refresh installed skills to this version; for
-#                                    --project also reconcile the profile with the
-#                                    template (add new keys, keep existing values)
+#                                    refresh installed skills to this version;
+#                                    profile reconciliation → metate wizard (Step 2b)
 #
 # Run from a local checkout, or straight from GitHub:
 #   curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
@@ -128,7 +127,8 @@ EOF
 
   echo ""
   if [ "$UPDATE" = 1 ]; then
-    echo "Skills updated. In each project, reconcile its profile with:  metate-init --update"
+    echo "Skills updated. In each project, refresh harness artifacts with:  metate-init --update"
+    echo "(profile reconciliation → metate wizard skill, Step 2b)"
   else
     echo "Skills are global for Claude and Codex. In ANY project run:  metate-init"
   fi

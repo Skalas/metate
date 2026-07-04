@@ -82,6 +82,7 @@ smoke:
 # --- aftercare (metate-aftercare) ----------------------------------------
 aftercare:
   deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md"]
+  postCommand: "bash install.sh --user"   # dogfood: installed skills never drift from the repo
 
 # --- ship (metate-ship) --------------------------------------------------
 ship:
