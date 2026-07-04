@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Per-project bootstrap for the `metate` pipeline.
-# Scaffolds .metate/profile.yml (gates autodetected) and updates .gitignore.
+#
+# SCOPE CONTRACT: deterministic file provisioning ONLY — prerequisite check, template
+# copy, .gitignore/untrack passes, harness rule/agent installs, permission whitelist.
+# Anything requiring judgment (gate detection, profile values, reconciling new template
+# keys) lives in the `metate` wizard skill as prose. Resist growing this file.
+#
 # Self-contained: works whether the skills are installed user-level or per-project.
 #
 #   bootstrap.sh             create the profile if absent; never touch an existing one
@@ -55,43 +60,14 @@ if ! cbm_present; then
   exit 1
 fi
 
-# --- detect the fast + ship gates from project tooling ---------------------
-fast="echo 'set fastGate in .metate/profile.yml' && false"
-ship="$fast"
-has_make_verify() { [ -f "$PROJECT_ROOT/Makefile" ] && grep -qE '^verify:' "$PROJECT_ROOT/Makefile"; }
-
-if   [ -f "$PROJECT_ROOT/pnpm-lock.yaml" ]; then
-  fast="pnpm lint && pnpm test && pnpm build"; ship="pnpm verify"
-elif [ -f "$PROJECT_ROOT/yarn.lock" ]; then
-  fast="yarn lint && yarn test && yarn build"; ship="yarn verify"
-elif [ -f "$PROJECT_ROOT/package-lock.json" ]; then
-  fast="npm run lint && npm test && npm run build"; ship="npm run verify"
-elif [ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/requirements.txt" ]; then
-  fast="ruff check . && pytest"; ship="ruff check . && mypy . && pytest"
-elif [ -f "$PROJECT_ROOT/Cargo.toml" ]; then
-  fast="cargo clippy && cargo test && cargo build"; ship="cargo clippy -- -D warnings && cargo test"
-elif [ -f "$PROJECT_ROOT/go.mod" ]; then
-  fast="go vet ./... && go test ./... && go build ./..."; ship="$fast"
-fi
-# A `make verify` target is the canonical CI mirror — prefer it for any toolchain.
-has_make_verify && ship="make verify"
-echo "  detected fastGate: $fast"
-
 # --- write the profile ------------------------------------------------------
-# Escape chars that are special in a sed replacement (\, &) and our | delimiter.
-sed_escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
 mkdir -p "$METATE_DIR"
-
-FILLED="$(mktemp)"
-trap 'rm -f "$FILLED"' EXIT
-sed -e "s|__FASTGATE__|$(sed_escape "$fast")|" \
-    -e "s|__SHIPGATE__|$(sed_escape "$ship")|" "$TEMPLATE" > "$FILLED"
 
 FRESH=0
 if [ ! -s "$PROFILE" ]; then   # missing or empty → fresh write
-  cp "$FILLED" "$PROFILE"
+  cp "$TEMPLATE" "$PROFILE"
   FRESH=1
-  echo "  ✓ wrote $PROFILE"
+  echo "  ✓ wrote $PROFILE (gates are placeholders — the metate wizard skill detects them)"
 else
   echo "  ✓ $PROFILE already exists — left untouched. New template keys are"
   echo "    reconciled by the metate wizard skill (compare with $TEMPLATE)"
@@ -305,7 +281,8 @@ fi
 cat <<EOF
 
 ✓ bootstrap complete. Next:
-  1. Edit .metate/profile.yml → reviewFocus (your invariants), reviewer/implementer backends, discover/prep/smoke/aftercare/ship.
+  1. Run the \`metate\` wizard skill in your harness — it detects fastGate/shipGate and
+     fills reviewFocus (your invariants), backends, and the stage config with you.
   2. Run the pipeline ceremonies as skills in your harness, in order:
        metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
   3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).

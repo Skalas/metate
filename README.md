@@ -141,11 +141,11 @@ values fitted to the repo — additions only, confirmed before writing.
 
 ## First run — profile decisions
 
-`metate-init` autodetects gates. You edit `.metate/profile.yml`:
+`metate-init` scaffolds the profile; the `metate` wizard skill fills it with you:
 
 1. **`reviewFocus`** — your real invariants (the highest-value field).
 2. **`reviewer.backend`** + **`implementer.backend`** — see `REVIEWERS.md` / `IMPLEMENTERS.md`.
-3. **Gates** — confirm autodetected `fastGate` / `shipGate`.
+3. **Gates** — `fastGate` / `shipGate`, detected by the wizard from the repo's real tooling.
 4. **`prep`**, **`smoke`**, **`aftercare`**, **`ship`** — project-specific paths and commands.
 
 Then run ceremonies in order inside your harness.

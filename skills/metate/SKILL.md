@@ -57,9 +57,20 @@ git branch --show-current
 
 ## Step 2 — first-run setup (fill the profile with detected defaults)
 
-Bootstrap already set `fastGate`/`shipGate` from the package manager. Fill the rest by
+Bootstrap writes the template with failing placeholder gates. Fill everything by
 **autodetecting, proposing a default, and confirming with the user** before writing.
 Edit `.metate/profile.yml` in place.
+
+**gates** (`fastGate` / `shipGate`) — read the repo's real tooling, don't guess from the
+lockfile alone:
+```bash
+grep -E '^(verify|check|test|lint):' Makefile 2>/dev/null          # make verify = canonical CI mirror
+jq -r '.scripts | keys[]' package.json 2>/dev/null                 # lint / test / build / verify scripts
+ls pnpm-lock.yaml yarn.lock package-lock.json pyproject.toml Cargo.toml go.mod 2>/dev/null
+ls .github/workflows/*.yml 2>/dev/null                             # what CI actually runs
+```
+`fastGate` = the quick loop (lint + unit tests + build), run after each review round.
+`shipGate` = the full pre-PR gate — mirror CI; prefer `make verify` when the target exists.
 
 **implementer** — pick from what's installed; default to the first found:
 ```bash
