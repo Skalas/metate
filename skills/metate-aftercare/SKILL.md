@@ -4,8 +4,9 @@ version: 1.0.0
 description: |
   Stage 5 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
   updates the project's required close-out deliverables (handoff notes, coverage
-  docs, roadmap, tech-debt with triggers, next-sprint pointers). Reads the
-  deliverable list from `.metate/profile.yml`. Codebase-agnostic; docs only.
+  docs, roadmap, tech-debt with triggers, next-sprint pointers), then runs the
+  optional `aftercare.postCommand`. Reads the deliverable list from
+  `.metate/profile.yml`. Codebase-agnostic; docs only.
 license: MIT
 compatibility:
   - claude-code
@@ -24,7 +25,8 @@ Runs after Smoke is green, on the same branch, so the docs ship in the sprint PR
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` for the sprint
-number). If empty, ask the user for the close-out doc set.
+number) and `aftercare.postCommand` (optional). If deliverables is empty, ask the user for
+the close-out doc set.
 
 ## Steps
 1. **Read the diff** — `git diff <baseBranch>...HEAD` to know what actually changed.
@@ -36,6 +38,9 @@ number). If empty, ask the user for the close-out doc set.
    - next-sprint pointers / agent-context → advance to N+1.
 3. **Stay factual** — derive everything from the diff and the prep brief; don't invent
    scope. Intentional omissions are documented `—` placeholders, not silent gaps.
+4. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
+   after the deliverables are updated and report its result (e.g. metate itself uses
+   `bash install.sh --user` so the installed skills never drift from the repo).
 
 ## Output
 List the deliverables updated and the one-line change to each. These commit on the branch

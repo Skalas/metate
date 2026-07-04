@@ -49,8 +49,9 @@ One backend end-to-end (Cursor orchestrator + Cursor implementer — the simples
 curl -fsSL https://raw.githubusercontent.com/Skalas/metate/main/install.sh | bash -s -- --user
 cd your-repo && metate-init
 
-# 2. Edit .metate/profile.yml — at minimum replace reviewFocus placeholders with your invariants
-#    Defaults: reviewer.backend: claude, implementer.backend: cursor (template)
+# 2. In your harness, run the `metate` wizard skill — it detects fastGate/shipGate from the
+#    repo's real tooling and fills reviewFocus + backends with you (gates ship as fail-loudly
+#    placeholders until then). Defaults: reviewer.backend: claude, implementer.backend: cursor
 
 # 3. Run ceremonies in order inside Cursor (invoke each as a skill):
 #    metate-discover → metate-prep → metate-build → metate-review → metate-smoke → metate-aftercare → metate-ship

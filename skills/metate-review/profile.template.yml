@@ -87,6 +87,7 @@ smoke:
 # --- aftercare (metate-aftercare) -----------------------------------------
 aftercare:
   deliverables: []
+  postCommand: ""          # optional; run after deliverables sync (e.g. regenerate docs)
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:
