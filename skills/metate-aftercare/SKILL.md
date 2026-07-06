@@ -1,6 +1,6 @@
 ---
 name: metate-aftercare
-version: 1.0.0
+version: 1.1.0
 description: |
   Stage 5 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
   updates the project's required close-out deliverables (handoff notes, coverage
@@ -41,9 +41,13 @@ the close-out doc set.
 4. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
    after the deliverables are updated and report its result (e.g. metate itself uses
    `bash install.sh --user` so the installed skills never drift from the repo).
+5. **Commit the deliverables** — commit them on the branch (e.g.
+   `docs(aftercare): sprint N close-out`, following `ship.commitStyle` if set). Ship
+   expects a clean working tree; it restructures commits anyway, so this commit is
+   cheap and never final.
 
 ## Output
-List the deliverables updated and the one-line change to each. These commit on the branch
-and ship in the PR (never direct to the base branch). The roadmap, next-sprint pointers, and
+List the deliverables updated and the one-line change to each. They are committed on the
+branch (step 5) and ship in the sprint PR (never direct to the base branch). The roadmap, next-sprint pointers, and
 triggered debt written here are the **primary input to the next cycle's `metate-discover`** —
 write them as decisions, not vague notes. Hand off to `metate-ship`.
