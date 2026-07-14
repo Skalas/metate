@@ -2,6 +2,7 @@
 .metate/session.json
 .metate/.session-start.json
 .metate/issues.json
+.metate/release.json
 .metate/*.bak
 # metate working scratch — plan doc + transient build/review/fix capture buffers
 .metate/plan.md

@@ -1,12 +1,13 @@
 ---
 name: metate-aftercare
-version: 1.1.0
+version: 1.2.0
 description: |
   Stage 5 (Aftercare) of the `metate` pipeline. From the branch diff, creates or
   updates the project's required close-out deliverables (handoff notes, coverage
-  docs, roadmap, tech-debt with triggers, next-sprint pointers), then runs the
+  docs, roadmap, tech-debt with triggers, next-sprint pointers), optionally
+  proposes a semver release (tag/GitHub) for user confirmation, then runs the
   optional `aftercare.postCommand`. Reads the deliverable list from
-  `.metate/profile.yml`. Codebase-agnostic; docs only.
+  `.metate/profile.yml`. Codebase-agnostic; docs (+ optional release plan) only.
 license: MIT
 compatibility:
   - claude-code
@@ -25,8 +26,9 @@ Runs after Smoke is green, on the same branch, so the docs ship in the sprint PR
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` for the sprint
-number) and `aftercare.postCommand` (optional). If deliverables is empty, ask the user for
-the close-out doc set.
+number), `aftercare.postCommand` (optional), and optional `aftercare.release`
+(`enabled`, `scheme`, `tagPrefix`, `currentFrom`, `githubRelease`, `planFile`,
+`bumpFiles`). If deliverables is empty, ask the user for the close-out doc set.
 
 ## Steps
 1. **Read the diff** — `git diff <baseBranch>...HEAD` to know what actually changed.
@@ -40,16 +42,67 @@ the close-out doc set.
    scope. Intentional omissions are documented `—` placeholders, not silent gaps. If
    `smoke.humanGates.ledger` has `deferred` items, name them in the handoff / next-sprint
    pointers so the next `metate-discover` resurfaces them (with the written reason).
-4. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
-   after the deliverables are updated and report its result (e.g. metate itself uses
-   `bash install.sh --user` so the installed skills never drift from the repo).
-5. **Commit the deliverables** — commit them on the branch (e.g.
+4. **Release proposal (when configured)** — only if `aftercare.release.enabled` is true
+   (typical when the repo already has semver tags / GitHub Releases). Do **not** invent
+   a versioning scheme for a repo that has none.
+
+   Detect current version:
+   - `currentFrom: git-tag` (default) → latest matching tag
+     (`git tag -l "${tagPrefix}*.*.*" --sort=-v:refname | head -1`);
+   - `currentFrom: file` → read the first path in `bumpFiles` (project-specific).
+
+   From the sprint diff, **propose** one SemVer bump and justify it in plain language:
+   - **patch** — fixes, docs-only, no new capability;
+   - **minor** — new backward-compatible capability / opt-in behavior;
+   - **major** — breaking change for consumers of the published artifact.
+
+   Show a short proposal and **stop for the human** — never auto-bump or tag:
+
+   ```
+   ▸ RELEASE PROPOSAL
+     current:  v1.4.0
+     proposed: v1.5.0  (minor)
+     why:      optional smoke.humanGates walkthrough — additive, default path unchanged
+     publish:  git tag + GitHub Release (per profile)
+   > approve as proposed · change to patch/minor/major · skip release this sprint
+   ```
+
+   After the human answers, write `aftercare.release.planFile` (default
+   `.metate/release.json`) with the **`Write` tool**:
+
+   ```json
+   { "sprint": "<topic>",
+     "current": "v1.4.0",
+     "proposed": "v1.5.0",
+     "bump": "minor",
+     "rationale": "…",
+     "githubRelease": true,
+     "status": "approved" }
+   ```
+
+   `status` is `approved` | `skipped`. If they pick a different bump class, recompute
+   `proposed` and confirm once more before writing.
+
+   When `status: approved` and `bumpFiles` is non-empty, apply those file bumps on the
+   branch now (so the version lands in the sprint PR). When `bumpFiles` is empty, the
+   published version is the **git tag** alone (fine for skill/tooling repos).
+
+   Name the planned tag in the handoff / roadmap entry so discover sees it next cycle.
+   Ship is the only stage that creates the tag / GitHub Release — and only after merge,
+   with a second confirmation.
+5. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
+   after the deliverables (and any approved file bumps) are updated and report its result
+   (e.g. metate itself uses `bash install.sh --user` so the installed skills never drift
+   from the repo).
+6. **Commit the deliverables** — commit them on the branch (e.g.
    `docs(aftercare): sprint N close-out`, following `ship.commitStyle` if set). Ship
    expects a clean working tree; it restructures commits anyway, so this commit is
-   cheap and never final.
+   cheap and never final. Do **not** commit `planFile` (gitignored sprint-local state).
 
 ## Output
-List the deliverables updated and the one-line change to each. They are committed on the
-branch (step 5) and ship in the sprint PR (never direct to the base branch). The roadmap, next-sprint pointers, and
-triggered debt written here are the **primary input to the next cycle's `metate-discover`** —
-write them as decisions, not vague notes. Hand off to `metate-ship`.
+List the deliverables updated and the one-line change to each, plus the release decision
+(`approved` → planned tag, `skipped`, or `n/a` when release is disabled). They are
+committed on the branch (step 6) and ship in the sprint PR (never direct to the base
+branch). The roadmap, next-sprint pointers, and triggered debt written here are the
+**primary input to the next cycle's `metate-discover`** — write them as decisions, not
+vague notes. Hand off to `metate-ship`.

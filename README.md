@@ -81,8 +81,8 @@ right stage. The seven stage skills do the actual work:
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
 | 3 | `metate-review` | ≤3 rounds: parallel reviewers → route fixable findings → resume implementer → re-gate |
 | 4 | `metate-smoke` | e2e/smoke bound to the DoD matrix; walk open human gates (when configured); capture pre-existing failures as signals |
-| 5 | `metate-aftercare` | update close-out deliverables from the diff |
-| 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close |
+| 5 | `metate-aftercare` | update close-out deliverables; optional semver release proposal |
+| 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close; optional tag/release |
 
 ## Architecture: skills vs profile
 

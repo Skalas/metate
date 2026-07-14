@@ -94,9 +94,22 @@ smoke:
   #   required: true
 
 # --- aftercare (metate-aftercare) -----------------------------------------
+# Optional release gate: when the repo already publishes semver tags / GitHub
+# Releases, aftercare proposes patch|minor|major from the sprint diff and stops
+# for confirmation; ship cuts the tag (+ optional gh release) only after merge
+# and a second confirmation. Leave enabled:false (or omit) when the project has
+# no versioning scheme — do not invent one.
 aftercare:
   deliverables: []
   postCommand: ""          # optional; run after deliverables sync (e.g. regenerate docs)
+  # release:
+  #   enabled: true
+  #   scheme: semver
+  #   tagPrefix: "v"
+  #   currentFrom: git-tag   # git-tag | file
+  #   githubRelease: true
+  #   planFile: .metate/release.json
+  #   bumpFiles: []          # optional paths to bump on approve (e.g. package.json)
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:

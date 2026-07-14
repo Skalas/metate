@@ -83,6 +83,14 @@ smoke:
 aftercare:
   deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md"]
   postCommand: "bash install.sh --user"   # dogfood: installed skills never drift from the repo
+  release:
+    enabled: true
+    scheme: semver
+    tagPrefix: "v"
+    currentFrom: git-tag
+    githubRelease: true
+    planFile: ".metate/release.json"
+    bumpFiles: []   # published version is the git tag; skill frontmatter bumps in-sprint
 
 # --- ship (metate-ship) --------------------------------------------------
 ship:
