@@ -80,14 +80,39 @@ prep:
     milestone: ""
 
 # --- smoke (metate-smoke) -------------------------------------------------
+# Optional human-validation gates (H1…Hn beside the T1…Tn DoD matrix). When set,
+# prep seeds the ledger from the plan; smoke walks the human through open items
+# (explain why / what to do / what approved means — never a bare H1…Hn list);
+# ship refuses to open a PR while any current-sprint item is `open` if required: true.
+# The ledger is tracked project state (commit with the sprint).
+# Ledger entry shape: id, title, type (ux|live|graduation|other),
+# status (open|approved|deferred), reason, sprint, date.
 smoke:
   command: ""
   seedCommand: ""
+  # humanGates:
+  #   ledger: .metate/human-gates.json
+  #   required: true
 
 # --- aftercare (metate-aftercare) -----------------------------------------
+# Optional release gate: when the repo already publishes semver tags / GitHub
+# Releases, aftercare proposes patch|minor|major from the sprint diff and stops
+# for confirmation; ship cuts the tag (+ optional gh release) only after merge
+# and a second confirmation. Leave enabled:false (or omit) when the project has
+# no versioning scheme — do not invent one.
+# Version-file bumps (package.json, etc.) belong to Build/implementer so Review
+# and Smoke still see them — aftercare only proposes the git tag.
 aftercare:
   deliverables: []
   postCommand: ""          # optional; run after deliverables sync (e.g. regenerate docs)
+  # release:
+  #   enabled: true
+  #   scheme: semver
+  #   tagPrefix: "v"
+  #   currentFrom: git-tag   # git-tag | file
+  #   versionFile: ""        # when currentFrom: file — read-only path for current version
+  #   githubRelease: true
+  #   planFile: .metate/release.json
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:

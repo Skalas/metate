@@ -1,0 +1,13 @@
+{
+  "gates": [
+    {
+      "id": "H1",
+      "title": "deferred without reason",
+      "type": "live",
+      "status": "deferred",
+      "reason": "",
+      "sprint": "s59",
+      "date": ""
+    }
+  ]
+}

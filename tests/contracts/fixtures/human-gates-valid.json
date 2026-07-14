@@ -1,0 +1,22 @@
+{
+  "gates": [
+    {
+      "id": "H1",
+      "title": "PO walkthrough of onboarding with temp password",
+      "type": "ux",
+      "status": "open",
+      "reason": "",
+      "sprint": "s60",
+      "date": ""
+    },
+    {
+      "id": "H2",
+      "title": "Spot-check pay/refund after money extract",
+      "type": "ux",
+      "status": "approved",
+      "reason": "PO signed off",
+      "sprint": "s60",
+      "date": "2026-07-13"
+    }
+  ]
+}

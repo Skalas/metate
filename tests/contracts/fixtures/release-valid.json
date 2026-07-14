@@ -1,0 +1,10 @@
+{
+  "sprint": "human-gates-walkthrough",
+  "current": "v1.4.0",
+  "proposed": "v1.5.0",
+  "bump": "minor",
+  "rationale": "optional human-gates + release gate",
+  "githubRelease": true,
+  "status": "approved",
+  "mergeCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

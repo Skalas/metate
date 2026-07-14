@@ -1,0 +1,13 @@
+{
+  "gates": [
+    {
+      "id": "H1",
+      "title": "broken status",
+      "type": "ux",
+      "status": "done",
+      "reason": "",
+      "sprint": "s60",
+      "date": ""
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: metate-discover
-version: 1.0.0
+version: 1.1.0
 description: |
   Stage 0 (Discover) of the `metate` pipeline — the pre-plan. Surveys the
   project's signals (last sprint's aftercare deliverables, the codebase-memory
@@ -112,6 +112,12 @@ up as both a roadmap line and a debt trigger). Each candidate states:
 - **mode hint** — a *suggested* REDUCE / HOLD / EXPAND (prep makes the final call);
 - **seed DoD + test matrix** — a first-cut Definition of Done and `T1…Tn` rows, enough for
   prep to formalize into issues.
+- **seed H-matrix (when human sign-off is in scope)** — `H1…Hn` rows for things only a
+  person can approve (PO/UX, live graduation, anything tagged `BLOCKED:human`). Write each
+  as what the human will *do*, not a label. Prefer `type` hints smoke understands
+  (`ux`|`live`|`graduation`|`other`). If the profile has no `smoke.humanGates` block, the
+  H-matrix stays plan prose only (prep will not seed a ledger) — still useful as a
+  checklist in the plan, but say so in the brief.
 - *(explore mode only)* **assumption + validation** — what the bet wagers is true, and the
   observation that confirms or kills it.
 
@@ -143,9 +149,10 @@ every cycle. Never auto-select. Example shape:
 
 ## Step 4 — write the chosen plan (and close signal loops)
 Once the human chooses, use the **`Write` tool** (never a `Bash` heredoc/redirect) to write
-the selected candidate(s) to `discover.planFile` as prose: the goal, the seed DoD, and the
-`T1…Tn` test matrix. Do **not** file issues, cut a branch, or touch code — those are
-`metate-prep`'s job, and prep finalizes the sprint mode.
+the selected candidate(s) to `discover.planFile` as prose: the goal, the seed DoD, the
+`T1…Tn` test matrix, and (when applicable) the `H1…Hn` human-validation matrix. Do **not**
+file issues, cut a branch, or touch code — those are `metate-prep`'s job, and prep
+finalizes the sprint mode.
 
 **Close the signal loop.** For any `signalsFile` entry the human dispositioned this round, stamp its
 `status` with the **`Write` tool** so it never resurfaces:
