@@ -47,12 +47,15 @@ number), `aftercare.postCommand` (optional), and optional `aftercare.release`
    a versioning scheme for a repo that has none.
 
    Detect current version:
-   - `currentFrom: git-tag` (default) → latest matching tag
-     (`git tag -l "${tagPrefix}*.*.*" --sort=-v:refname | head -1`);
+   - `currentFrom: git-tag` (default) → **fetch first** (`git fetch --tags origin` or
+     equivalent) so local tags are not stale. Then list only **exact** release tags matching
+     `^${tagPrefix}[0-9]+\.[0-9]+\.[0-9]+$` (no prerelease / no junk suffixes), sort by
+     version, take the latest. If none exist after filtering, 🛑 STOP and ask — do not guess.
    - `currentFrom: file` → read `aftercare.release.versionFile` (a path whose contents are
      the current version string). **Do not edit that file here** — version-file bumps belong
      to the implementer during Build (so Review + Smoke still see them). Aftercare only
-     *reads* current and proposes the next tag.
+     *reads* current and proposes the next tag. If the file is missing/blank/non-semver,
+     🛑 STOP.
 
    From the sprint diff, **propose** one SemVer bump and justify it in plain language:
    - **patch** — fixes, docs-only, no new capability;

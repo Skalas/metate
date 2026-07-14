@@ -42,7 +42,8 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
 2. **Ship gate** — run `shipGate`. Must be **fully green** before anything is pushed. This
    mirrors CI; do not skip steps. If `smoke.humanGates.required` is true, also read the
-   human-gates ledger (fail closed if missing/malformed — same as smoke). Block only on
+   human-gates ledger and apply **the same strict entry validation + fail-closed rules as
+   smoke** (missing/malformed/invalid entry/no current-sprint batch → 🛑 STOP). Block only on
    **current-sprint** items still `status: open`, and on any **prior-sprint** item still
    `open` (those should have been deferred or folded in smoke). Explain each blocking gate
    the same way smoke does (why / what to do / what approved means) — do not paste a bare
@@ -116,17 +117,26 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
    **Resumable publish** (never treat a correct existing tag as stale):
    1. Let `tag=<proposed>` (use the validated string only; pass as a quoted argv, never
       unquoted interpolation into a larger shell string).
-   2. If `git rev-parse "refs/tags/$tag"` exists:
-      - if it points at `mergeCommit` → tag step is done;
-      - if it points elsewhere → 🛑 STOP (stale / collision).
-   3. Else create the annotated tag **on that OID**, not on whatever HEAD is now:
-      `git tag -a "$tag" "$mergeCommit" -m "$tag"` then `git push origin "refs/tags/$tag"`
+   2. Resolve the tag's **target commit** with peel syntax (annotated tags point at a tag
+      object — bare `rev-parse refs/tags/$tag` is the wrong comparison):
+      `git rev-parse "refs/tags/$tag^{commit}"` when the local ref exists.
+      - if that commit equals `mergeCommit` → local tag step is done;
+      - if it equals something else → 🛑 STOP (stale / collision).
+   3. Check the remote the same way: `git ls-remote --tags origin "refs/tags/$tag"`.
+      If remote has the tag, fetch/peel and confirm it matches `mergeCommit`; mismatch → 🛑.
+      If local is correct but remote is missing → `git push origin "refs/tags/$tag"`
       (never `--force`).
-   4. If `githubRelease` is true and `gh release view "$tag"` is missing →
-      `gh release create "$tag" --generate-notes` (or a short body from the PR). If the
-      release already exists, skip. Tag-push success + release failure → leave the plan
-      file intact and say to re-run step 9 (resume at the release-only branch).
-   5. On full success, clear the plan file to `{ "sprint": null, "status": null }` (or delete).
+   4. If neither local nor remote has the tag → create the annotated tag **on that OID**,
+      not on whatever HEAD is now:
+      `git tag -a "$tag" "$mergeCommit" -m "$tag"` then
+      `git push origin "refs/tags/$tag"` (never `--force`).
+   5. If `githubRelease` is true:
+      - if `gh release view "$tag"` exists → release step done;
+      - else `gh release create "$tag" --verify-tag --generate-notes` (or a short body from
+        the PR). `--verify-tag` requires the tag to exist on the remote first.
+      Tag-push success + release failure → leave the plan file intact and say to re-run
+      step 9 (resume at the release-only branch; do not re-create a correct tag).
+   6. On full success, clear the plan file to `{ "sprint": null, "status": null }` (or delete).
 
    If the user declines or defers, leave the plan file and say how to re-run step 9 later.
    If the plan is missing/`skipped`, do not tag — report and move on.

@@ -70,33 +70,39 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      metate-review). If no ledger file exists yet (first sprint), treat it as a new sprint and
      clear `sessionFile`.
    - If `create` is false, skip filing and note that the ledger is externally managed.
-5. **Seed human gates (when configured)** — if `smoke.humanGates.ledger` is set and the plan
-   carries an H-matrix (H1…Hn), materialize this sprint's items into that ledger with the
-   **`Write` tool**. Smoke walks the human through them later; prep only seeds.
+5. **Cut the branch** — from `prep.baseBranch` **before** writing any tracked sprint
+   files (human-gates ledger is tracked and must land on the working branch, not the base):
+   ```bash
+   git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
+   ```
+   Name the branch from the sprint/topic. Confirm with the user before pushing anything.
+6. **Seed human gates (when configured)** — if `smoke.humanGates.ledger` is set, always
+   materialize **this sprint's batch** into that ledger with the **`Write` tool** — even when
+   the plan has **no H-matrix** (write an explicit zero-gate batch for this `sprint` so
+   required smoke does not fail closed on a missing sprint scope). Smoke walks open items
+   later; prep only seeds.
 
    **Entry shape (required fields — match smoke's schema):** for each H row write
    `{ id, title, type, status, reason, sprint, date }` — `id` from the plan (`H1`…),
    `title` an actionable description a person can follow (not a cryptic label),
    `type` one of `ux`|`live`|`graduation`|`other` (infer from the plan; default `other`),
    `status: "open"`, `reason: ""`, `sprint` = this sprint's id, `date: ""`.
+   Zero-gate batch: keep prior history; ensure this sprint has **no** residual rows (delete
+   any same-sprint leftovers from a re-run) and do not invent placeholder H ids.
 
    **Overwrite semantics (mirror the issue ledger):**
-   - **Same-sprint re-run** — replace only this sprint's entries with the plan's H-matrix;
-     leave other sprints' history untouched.
-   - **New sprint** — append this sprint's open items; keep historical `approved`/`deferred`
-     entries. If any **prior-sprint** item is still `open`, 🛑 stop and ask before writing —
-     only two dispositions are allowed: **fold** it into this sprint (rewrite `sprint`), or
-     mark it **`deferred`** with a written reason (discover resurfaces deferred). Never leave
-     it `open` (smoke/ship would block forever) and never silently drop it.
+   - **Same-sprint re-run** — replace only this sprint's entries with the plan's H-matrix
+     (or empty); leave other sprints' history untouched.
+   - **New sprint** — append this sprint's items (or record the empty batch); keep historical
+     `approved`/`deferred` entries. If any **prior-sprint** item is still `open`, 🛑 stop and
+     ask before writing — only two dispositions are allowed: **fold** it into this sprint
+     (rewrite `sprint`), or mark it **`deferred`** with a written reason (discover resurfaces
+     deferred). Never leave it `open` (smoke/ship would block forever) and never silently drop it.
    - The human-gates ledger is **tracked project state** (commit with the sprint) — not
      gitignored like `issues.json` / `release.json`.
    - If the profile has no `smoke.humanGates` block, skip — H-matrix stays prose in the plan.
-6. **Cut the branch** — from `prep.baseBranch`:
-   ```bash
-   git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
-   ```
-   Name the branch from the sprint/topic. Confirm with the user before pushing anything.
 
 ## Output
 A short prep brief: goal + DoD, mode (with justification), debt-fold decisions, the filed
-issues (id → #number), any seeded H items, and the branch name. Hand off to Build.
+issues (id → #number), any seeded H items (or explicit zero-gate), and the branch name.
+Hand off to Build.

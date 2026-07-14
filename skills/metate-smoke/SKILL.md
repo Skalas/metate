@@ -36,16 +36,22 @@ topic). Human-gate blocking is scoped to that sprint only.
 When `smoke.humanGates` is configured:
 - The ledger path is **tracked project state** (commit it with the sprint — unlike
   `issues.json` / `release.json`). Expect JSON: a top-level array of gate objects, or an
-  object with a `gates` / `items` array. Each object: `id`, `title`, `type`
-  (`ux`|`live`|`graduation`|`other`), `status` (`open`|`approved`|`deferred`), `reason`,
-  `sprint`, `date`.
-- **Fail closed when `required: true`:** if the ledger file is missing, unreadable, or not
-  valid JSON with a gate list, 🛑 STOP — do not fall through to the thin UX path. Prep must
-  have seeded this sprint (an explicit empty list is valid when the plan has no H-matrix).
-- Partition gates: **current-sprint** vs **prior-sprint**. Only current-sprint `open` items
-  are this smoke's walkthrough backlog. Prior-sprint still-`open` items are a separate
-  escalation (see step 4) — they must not be ignored, and they must not be confused with
-  this sprint's H-matrix.
+  object with a `gates` / `items` array.
+- **Strict entry validation (every object, before partitioning):** required keys present —
+  `id`, `title`, `type`, `status`, `reason`, `sprint`, `date`; `type` ∈
+  `ux`|`live`|`graduation`|`other`; `status` ∈ `open`|`approved`|`deferred`; `id` and
+  `sprint` are non-empty strings; `id` unique within the ledger; when `status` is
+  `deferred`, `reason` is a non-empty string; when `status` is `open`, `reason` may be
+  `""`. Any missing key, bad enum, blank id/sprint, duplicate id, or deferred-without-reason
+  → 🛑 STOP (do not treat invalid rows as non-open and proceed).
+- **Fail closed when `required: true`:** if the ledger file is missing, unreadable, not
+  valid JSON with a gate list, fails strict entry validation, **or has no sprint-scoped
+  batch for the current sprint** (prep must always seed one — including an explicit
+  zero-gate batch), 🛑 STOP — do not fall through to the thin UX path. An explicit empty
+  current-sprint set (zero gates after validation) is green.
+- Partition **valid** gates only: **current-sprint** vs **prior-sprint**. Only
+  current-sprint `open` items are this smoke's walkthrough backlog. Prior-sprint still-
+  `open` items are a separate escalation (see step 4).
 
 ## Steps
 1. **Seed idempotency** — run `smoke.seedCommand` twice; the second run must not error or

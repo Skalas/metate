@@ -59,3 +59,4 @@ test: ## metadata + installer sanity
 		[ "$$val" = claude ] \
 		&& echo "  ✓ yaml.sh reads nested profile keys" \
 		|| { echo "  ✗ yaml.sh nested read on profile.template.yml failed"; exit 1; }
+	@bash tests/contracts/validate.sh
