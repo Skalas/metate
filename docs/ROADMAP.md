@@ -8,6 +8,15 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`human-gates-walkthrough` (2026-07-13, PR #87, tag `v1.5.0`)** — optional `smoke.humanGates`
+  (H1…Hn): prep seeds a sprint-scoped ledger (incl. zero-gate) after cutting the branch;
+  smoke walks the human through open gates (why / what / done — never a bare checklist) with
+  strict entry validation and fail-closed `required`; ship scopes blocks to the current sprint
+  and routes dispositions back to smoke. Optional `aftercare.release`: propose
+  patch|minor|major from the sprint diff, confirm, then ship tags the recorded merge commit
+  (+ optional GitHub Release) only after a second yes — annotated-tag peel, remote verify,
+  resumable publish. Fixture contract tests under `tests/contracts/`. Opus + Sol review passes
+  applied before land.
 - **`polish-bootstrap` (2026-07-03)** — REDUCE polish after the shrink: bootstrap reads the
   profile via shared `lib/yaml.sh`; `reconcile-profile.awk` retired — profile reconciliation is
   wizard prose (metate skill, Step 2b); gate detection moved to the wizard (template ships
