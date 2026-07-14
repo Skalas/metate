@@ -84,9 +84,12 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    - **Same-sprint re-run** — replace only this sprint's entries with the plan's H-matrix;
      leave other sprints' history untouched.
    - **New sprint** — append this sprint's open items; keep historical `approved`/`deferred`
-     entries. If any **prior-sprint** item is still `open`, 🛑 stop and ask before writing:
-     fold it into this sprint, mark it `deferred` with a written reason, or leave it for
-     discover — never silently drop a still-open gate.
+     entries. If any **prior-sprint** item is still `open`, 🛑 stop and ask before writing —
+     only two dispositions are allowed: **fold** it into this sprint (rewrite `sprint`), or
+     mark it **`deferred`** with a written reason (discover resurfaces deferred). Never leave
+     it `open` (smoke/ship would block forever) and never silently drop it.
+   - The human-gates ledger is **tracked project state** (commit with the sprint) — not
+     gitignored like `issues.json` / `release.json`.
    - If the profile has no `smoke.humanGates` block, skip — H-matrix stays prose in the plan.
 6. **Cut the branch** — from `prep.baseBranch`:
    ```bash

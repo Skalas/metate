@@ -18,6 +18,7 @@ allowed-tools:
   - Read
   - Bash
   - Agent
+  - Write
 ---
 
 # metate-ship — land it
@@ -32,19 +33,20 @@ clean, current base.
 Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
 `ship.issueCloseKeyword`, the top-level `issueLedger` (the issues prep filed),
 `sessionFile` (retired in step 7), optional `smoke.humanGates` (`ledger`, `required`) —
-ship honors open required human gates but does **not** write the ledger (smoke owns
-dispositions) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPrefix`,
+ship honors open required human gates but does **not** write gate dispositions (smoke
+owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPrefix`,
 `githubRelease`). If release is enabled, also read the plan file (default
-`.metate/release.json`).
+`.metate/release.json`). Identify the **current sprint id** the same way smoke does.
 
 ## Steps
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
 2. **Ship gate** — run `shipGate`. Must be **fully green** before anything is pushed. This
    mirrors CI; do not skip steps. If `smoke.humanGates.required` is true, also read the
-   human-gates ledger: any item still `status: open` is a 🛑 stop — do not push or open the
-   PR. Explain each open gate the same way smoke does (why / what to do / what approved
-   means) — do not paste a bare H1…Hn list — then **route back to `metate-smoke`** so the
-   human can disposition them (ship has no `Write` on the ledger).
+   human-gates ledger (fail closed if missing/malformed — same as smoke). Block only on
+   **current-sprint** items still `status: open`, and on any **prior-sprint** item still
+   `open` (those should have been deferred or folded in smoke). Explain each blocking gate
+   the same way smoke does (why / what to do / what approved means) — do not paste a bare
+   H1…Hn list — then **route back to `metate-smoke`** for disposition.
 3. **Bisectable commits** — restructure the branch into commits per `ship.commitStyle`
    (typically one per layer, each compiling alone, dependencies first; conventional +
    scoped). Don't bury a refactor inside a feature commit.
@@ -68,6 +70,11 @@ dispositions) — and optional `aftercare.release` (`enabled`, `planFile`, `tagP
 5. **Merge — on explicit human approval only.** Ask. If approved, merge the PR with
    `gh pr merge <N> --merge` (or `--rebase`; **never `--squash`** — it flattens the
    bisectable commits step 3 just built), then verify the ledger issues actually closed.
+   **Capture the merge commit OID** immediately:
+   `gh pr view <N> --json mergeCommit -q .mergeCommit.oid` (or the merge commit from
+   `gh pr merge`'s result). If release is in play, write that OID into the plan file's
+   `mergeCommit` field with the **`Write` tool** (ship may Write **only** to
+   `aftercare.release.planFile` for this field and for clearing the plan in step 9).
    If the user defers, stop after step 7 and tell them to re-run ship's close-out
    (steps 5–9) once the PR merges — keep `release.json` if present so the tag can still
    land later.
@@ -91,16 +98,38 @@ dispositions) — and optional `aftercare.release` (`enabled`, `planFile`, `tagP
    This leaves the repo clean and current, ready for the next cycle's `metate-discover`.
    `-d` (not `-D`) is deliberate: it refuses if the branch didn't merge.
 9. **Release — on explicit human approval only** (when `aftercare.release.enabled` and the
-   plan file has `status: approved`). Re-read the plan after the pull in step 8 so the tag
-   lands on the merged base tip. Show current vs proposed once more and ask. If approved:
-   - create an annotated tag at HEAD: `git tag -a <proposed> -m "<proposed>"`;
-   - push it: `git push origin <proposed>` (never `--force`);
-   - if `githubRelease` is true (plan or profile): `gh release create <proposed> --generate-notes`
-     (or a short body from the PR summary);
-   - then clear the plan file to `{ "sprint": null, "status": null }` (or delete it).
+   plan file has `status: approved`). Re-read the plan after the pull in step 8.
+
+   **Validate before any shell that interpolates plan fields:**
+   - required keys: `sprint`, `current`, `proposed`, `bump`, `status`, `mergeCommit`;
+   - `status` is `approved`; `bump` is exactly `patch`|`minor`|`major`;
+   - `current` and `proposed` match `^v?[0-9]+\.[0-9]+\.[0-9]+$` (with the configured
+     `tagPrefix` if set — typically `v`);
+   - **recompute** expected `proposed` from `current` + `bump` (SemVer + prefix); if the
+     file's `proposed` ≠ recomputed, 🛑 STOP — do not tag;
+   - `mergeCommit` is a 40-char hex OID that exists locally after the pull
+     (`git cat-file -t <oid>` → `commit`);
+   - `sprint` matches this ship (same staleness idea as the issue ledger).
+
+   Show current vs proposed (and the merge OID) once more and ask. If approved:
+
+   **Resumable publish** (never treat a correct existing tag as stale):
+   1. Let `tag=<proposed>` (use the validated string only; pass as a quoted argv, never
+      unquoted interpolation into a larger shell string).
+   2. If `git rev-parse "refs/tags/$tag"` exists:
+      - if it points at `mergeCommit` → tag step is done;
+      - if it points elsewhere → 🛑 STOP (stale / collision).
+   3. Else create the annotated tag **on that OID**, not on whatever HEAD is now:
+      `git tag -a "$tag" "$mergeCommit" -m "$tag"` then `git push origin "refs/tags/$tag"`
+      (never `--force`).
+   4. If `githubRelease` is true and `gh release view "$tag"` is missing →
+      `gh release create "$tag" --generate-notes` (or a short body from the PR). If the
+      release already exists, skip. Tag-push success + release failure → leave the plan
+      file intact and say to re-run step 9 (resume at the release-only branch).
+   5. On full success, clear the plan file to `{ "sprint": null, "status": null }` (or delete).
+
    If the user declines or defers, leave the plan file and say how to re-run step 9 later.
-   If the plan is missing/`skipped`/stale (proposed tag already exists, or `sprint` doesn't
-   match this ship), do not tag — report and move on.
+   If the plan is missing/`skipped`, do not tag — report and move on.
 
 ## Guardrails
 - Confirm before commit / push / PR / merge / tag. Approval for one is not approval for the next.
@@ -108,6 +137,8 @@ dispositions) — and optional `aftercare.release` (`enabled`, `planFile`, `tagP
 - If the gate is red, STOP and report — never push past a failing ship gate.
 - Never wire auto-close from a stale ledger — run the step 4 staleness guard first.
 - Open required human gates block ship — explain them, then hand off to `metate-smoke` for
-  disposition. Do not write the human-gates ledger from ship.
+  disposition. Do not write gate dispositions from ship. Ship may Write only to
+  `aftercare.release.planFile` (mergeCommit + clear).
 - Never cut a tag or GitHub Release without an aftercare-approved plan **and** a fresh
-  ship-time confirmation. Never force-push tags.
+  ship-time confirmation. Never force-push tags. Never tag `HEAD` after pull — tag the
+  recorded `mergeCommit` only. Never pass unvalidated plan fields to the shell.

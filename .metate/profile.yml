@@ -90,7 +90,7 @@ aftercare:
     currentFrom: git-tag
     githubRelease: true
     planFile: ".metate/release.json"
-    bumpFiles: []   # published version is the git tag; skill frontmatter bumps in-sprint
+    # versionFile unused — published version is the git tag; skill frontmatter bumps in Build
 
 # --- ship (metate-ship) --------------------------------------------------
 ship:

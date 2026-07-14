@@ -1,6 +1,6 @@
 ---
 name: metate-smoke
-version: 1.1.0
+version: 1.2.0
 description: |
   Stage 4 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
   bound to the DoD test matrix (T1…Tn) on seeded data, checks seed idempotency,
@@ -30,9 +30,22 @@ Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`, optional
 are appended; e.g. `.metate/signals.json`). If `smoke.command` is empty, ask the user
 how the e2e/smoke suite runs.
 
-When `smoke.humanGates.ledger` is set, read that file too. Open items (`status: open`)
-are the human-verification backlog for this sprint; `approved` / `deferred` are already
-dispositioned.
+Identify the **current sprint id** (from `issueLedger.sprint`, the plan, or the branch
+topic). Human-gate blocking is scoped to that sprint only.
+
+When `smoke.humanGates` is configured:
+- The ledger path is **tracked project state** (commit it with the sprint — unlike
+  `issues.json` / `release.json`). Expect JSON: a top-level array of gate objects, or an
+  object with a `gates` / `items` array. Each object: `id`, `title`, `type`
+  (`ux`|`live`|`graduation`|`other`), `status` (`open`|`approved`|`deferred`), `reason`,
+  `sprint`, `date`.
+- **Fail closed when `required: true`:** if the ledger file is missing, unreadable, or not
+  valid JSON with a gate list, 🛑 STOP — do not fall through to the thin UX path. Prep must
+  have seeded this sprint (an explicit empty list is valid when the plan has no H-matrix).
+- Partition gates: **current-sprint** vs **prior-sprint**. Only current-sprint `open` items
+  are this smoke's walkthrough backlog. Prior-sprint still-`open` items are a separate
+  escalation (see step 4) — they must not be ignored, and they must not be confused with
+  this sprint's H-matrix.
 
 ## Steps
 1. **Seed idempotency** — run `smoke.seedCommand` twice; the second run must not error or
@@ -52,13 +65,20 @@ dispositioned.
 4. **Human verification** — after the suite is green (or gaps documented), hand the person
    only what they still need to sign off on.
 
-   **No `smoke.humanGates` / no open H items** — summarize what the suite proved; ask only
-   for the aesthetic / flow approval the suite can't make. Keep it short.
+   **No `smoke.humanGates` configured** — summarize what the suite proved; ask only for the
+   aesthetic / flow approval the suite can't make. Keep it short.
 
-   **Open H items exist** — walk the human through the gates. **Do not dump H1…Hn as a
-   bare checklist or table and stop.** Treat the ledger as a path the person travels:
+   **`smoke.humanGates` configured** — first honor the fail-closed rules in Step 0.
 
-   For **each** open item, in ledger order, before asking for a disposition:
+   **Prior-sprint still-`open`:** escalate once before (or alongside) this sprint's gates.
+   Options: fold into this sprint (rewrite `sprint`), or mark `deferred` with a written
+   reason (discover resurfaces deferred). Do **not** leave them `open` and proceed — that
+   parks a permanent ship blocker. Do **not** silently drop them.
+
+   **Current-sprint open items** — walk the human through the gates. **Do not dump H1…Hn
+   as a bare checklist or table and stop.** Treat the ledger as a path the person travels:
+
+   For **each** current-sprint open item, in ledger order, before asking for a disposition:
    1. **Why this gate** — one or two sentences tying it to *this* sprint's risk (what
       breaks, or what only a person can judge).
    2. **What to do** — concrete steps: where to look (URL, env, box), which flow to run,
@@ -70,12 +90,11 @@ dispositioned.
       is fine. A naked `H1 · H2 · …` list is not.
 
    After dispositions, update the ledger with the **`Write` tool** (`status`, `reason`,
-   `date`). Schema (one object per H item): `id`, `title`, `type`
-   (`ux`|`live`|`graduation`|`other`), `status` (`open`|`approved`|`deferred`), `reason`,
-   `sprint`, `date`.
+   `date`).
 
-   If `smoke.humanGates.required` is true (typical when the block is configured), smoke
-   is **not green** while any item remains `open`.
+   If `required: true`, smoke is **not green** while any **current-sprint** item remains
+   `open` (or any prior-sprint item is still `open` after the escalation above). An
+   explicit empty current-sprint gate list is green.
 
 ## Exit
 Route each failure by attribution — one red bucket no longer means "back to build":
@@ -84,4 +103,5 @@ Route each failure by attribution — one red bucket no longer means "back to bu
   the release base, rebase) or explicit scope-expand (add a named T-row). Don't fix it silently in-branch.
 - **out-of-diff / exposed-latent + doesn't block DoD** → captured as a signal (Step 2); smoke continues.
 - All T1…Tn covered (pass or documented gap) + seed idempotent, with any out-of-diff finds parked as
-  signals, and (when `smoke.humanGates.required`) every H item dispositioned → ✅ advance to Aftercare.
+  signals, and (when `smoke.humanGates.required`) every current-sprint H item dispositioned and no
+  prior-sprint item left `open` → ✅ advance to Aftercare.

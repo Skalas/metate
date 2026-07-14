@@ -27,8 +27,8 @@ Runs after Smoke is green, on the same branch, so the docs ship in the sprint PR
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` for the sprint
 number), `aftercare.postCommand` (optional), and optional `aftercare.release`
-(`enabled`, `scheme`, `tagPrefix`, `currentFrom`, `githubRelease`, `planFile`,
-`bumpFiles`). If deliverables is empty, ask the user for the close-out doc set.
+(`enabled`, `scheme`, `tagPrefix`, `currentFrom`, `versionFile`, `githubRelease`,
+`planFile`). If deliverables is empty, ask the user for the close-out doc set.
 
 ## Steps
 1. **Read the diff** — `git diff <baseBranch>...HEAD` to know what actually changed.
@@ -49,7 +49,10 @@ number), `aftercare.postCommand` (optional), and optional `aftercare.release`
    Detect current version:
    - `currentFrom: git-tag` (default) → latest matching tag
      (`git tag -l "${tagPrefix}*.*.*" --sort=-v:refname | head -1`);
-   - `currentFrom: file` → read the first path in `bumpFiles` (project-specific).
+   - `currentFrom: file` → read `aftercare.release.versionFile` (a path whose contents are
+     the current version string). **Do not edit that file here** — version-file bumps belong
+     to the implementer during Build (so Review + Smoke still see them). Aftercare only
+     *reads* current and proposes the next tag.
 
    From the sprint diff, **propose** one SemVer bump and justify it in plain language:
    - **patch** — fixes, docs-only, no new capability;
@@ -60,10 +63,10 @@ number), `aftercare.postCommand` (optional), and optional `aftercare.release`
 
    ```
    ▸ RELEASE PROPOSAL
-     current:  v1.4.0
-     proposed: v1.5.0  (minor)
-     why:      optional smoke.humanGates walkthrough — additive, default path unchanged
-     publish:  git tag + GitHub Release (per profile)
+     current:  <tagPrefix><X.Y.Z>
+     proposed: <tagPrefix><X'.Y'.Z'>  (<patch|minor|major>)
+     why:      <1–2 sentences from THIS sprint's diff — capability added, fix only, or break>
+     publish:  git tag[+ GitHub Release if profile.githubRelease]
    > approve as proposed · change to patch/minor/major · skip release this sprint
    ```
 
@@ -72,28 +75,29 @@ number), `aftercare.postCommand` (optional), and optional `aftercare.release`
 
    ```json
    { "sprint": "<topic>",
-     "current": "v1.4.0",
-     "proposed": "v1.5.0",
-     "bump": "minor",
+     "current": "<tagPrefix><X.Y.Z>",
+     "proposed": "<tagPrefix><X'.Y'.Z'>",
+     "bump": "patch|minor|major",
      "rationale": "…",
      "githubRelease": true,
-     "status": "approved" }
+     "status": "approved",
+     "mergeCommit": null }
    ```
 
-   `status` is `approved` | `skipped`. If they pick a different bump class, recompute
-   `proposed` and confirm once more before writing.
+   `status` is `approved` | `skipped`. If they pick a different bump class, **recompute**
+   `proposed` from `current` + the new `bump` (SemVer rules + `tagPrefix`) and confirm once
+   more before writing. `proposed` must always equal that recomputation — ship will reject
+   mismatches. Leave `mergeCommit` null; ship fills it after merge.
 
-   When `status: approved` and `bumpFiles` is non-empty, apply those file bumps on the
-   branch now (so the version lands in the sprint PR). When `bumpFiles` is empty, the
-   published version is the **git tag** alone (fine for skill/tooling repos).
+   The published artifact for tag-only repos is the **git tag**. Do **not** modify
+   package manifests or other version files from aftercare.
 
    Name the planned tag in the handoff / roadmap entry so discover sees it next cycle.
    Ship is the only stage that creates the tag / GitHub Release — and only after merge,
    with a second confirmation.
 5. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
-   after the deliverables (and any approved file bumps) are updated and report its result
-   (e.g. metate itself uses `bash install.sh --user` so the installed skills never drift
-   from the repo).
+   after the deliverables are updated and report its result (e.g. metate itself uses
+   `bash install.sh --user` so the installed skills never drift from the repo).
 6. **Commit the deliverables** — commit them on the branch (e.g.
    `docs(aftercare): sprint N close-out`, following `ship.commitStyle` if set). Ship
    expects a clean working tree; it restructures commits anyway, so this commit is
