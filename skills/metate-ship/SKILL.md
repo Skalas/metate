@@ -28,13 +28,19 @@ merges, closes the milestone, and returns the repo to the base branch — the ne
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
-`ship.issueCloseKeyword`, the top-level `issueLedger` (the issues prep filed), and
-`sessionFile` (retired in step 6).
+`ship.issueCloseKeyword`, the top-level `issueLedger` (the issues prep filed),
+`sessionFile` (retired in step 6), and optional `smoke.humanGates` (`ledger`,
+`required`) — ship honors open required human gates but does **not** write the ledger
+(smoke owns dispositions).
 
 ## Steps
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
 2. **Ship gate** — run `shipGate`. Must be **fully green** before anything is pushed. This
-   mirrors CI; do not skip steps.
+   mirrors CI; do not skip steps. If `smoke.humanGates.required` is true, also read the
+   human-gates ledger: any item still `status: open` is a 🛑 stop — do not push or open the
+   PR. Explain each open gate the same way smoke does (why / what to do / what approved
+   means) — do not paste a bare H1…Hn list — then **route back to `metate-smoke`** so the
+   human can disposition them (ship has no `Write` on the ledger).
 3. **Bisectable commits** — restructure the branch into commits per `ship.commitStyle`
    (typically one per layer, each compiling alone, dependencies first; conventional +
    scoped). Don't bury a refactor inside a feature commit.
@@ -81,3 +87,5 @@ Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
 - Never squash-merge — it destroys the bisectable history step 3 built.
 - If the gate is red, STOP and report — never push past a failing ship gate.
 - Never wire auto-close from a stale ledger — run the step 4 staleness guard first.
+- Open required human gates block ship — explain them, then hand off to `metate-smoke` for
+  disposition. Do not write the human-gates ledger from ship.

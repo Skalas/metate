@@ -1,13 +1,15 @@
 ---
 name: metate-prep
-version: 1.0.0
+version: 1.1.0
 description: |
   Stage 1 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
   order, triages tech debt, fixes the sprint mode (REDUCE/HOLD/EXPAND), files the
-  sprint issue ledger from the text plan, and cuts the working branch from the
-  base branch — before any code is written. Reads config from
+  sprint issue ledger from the text plan, optionally seeds human-validation gates
+  (H1…Hn) when `smoke.humanGates` is configured, and cuts the working branch from
+  the base branch — before any code is written. Reads config from
   `.metate/profile.yml`. Codebase-agnostic; produces no code edits — its only side
-  effects are the filed issues, the issue ledger, and the working branch.
+  effects are the filed issues, the issue ledger, an optional human-gates ledger
+  update, and the working branch.
 license: MIT
 compatibility:
   - claude-code
@@ -16,6 +18,7 @@ compatibility:
 allowed-tools:
   - Read
   - Bash
+  - Write
 ---
 
 # metate-prep — prepare the terrain
@@ -31,13 +34,15 @@ Read `.metate/profile.yml`. Use the `prep:` block:
 - `prep.issues` — whether/how to file the sprint issues (`create`, `tracker`,
   `granularity`, `labels`, `milestone`).
 - `issueLedger` (top-level) — where to record the filed issue numbers for ship.
+- `smoke.humanGates` (optional) — when set, step 5 seeds its ledger from the plan's
+  H-matrix.
 
 ## Steps
 1. **Read the handoff** — read every doc in `prep.readingOrder`, in order. If the **file at**
    `discover.planFile` exists on disk (written by a prior `metate-discover` run), read it
    first as the entry doc; otherwise, if `readingOrder` is empty, ask the user for the entry
-   doc (e.g. a sprint README / plan). Summarize the active goal, the DoD, and any test matrix
-   (T1…Tn) you find.
+   doc (e.g. a sprint README / plan). Summarize the active goal, the DoD, any test matrix
+   (T1…Tn), and any **human-validation matrix (H1…Hn)** you find.
 2. **Triage debt** — open `prep.techDebtFile`; surface items whose **trigger** the
    upcoming work would hit. Recommend which to fold in vs defer. Don't fix anything.
 3. **Fix the sprint mode** — declare **REDUCE** / **HOLD** / **EXPAND**, justified by
@@ -65,7 +70,25 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      metate-review). If no ledger file exists yet (first sprint), treat it as a new sprint and
      clear `sessionFile`.
    - If `create` is false, skip filing and note that the ledger is externally managed.
-5. **Cut the branch** — from `prep.baseBranch`:
+5. **Seed human gates (when configured)** — if `smoke.humanGates.ledger` is set and the plan
+   carries an H-matrix (H1…Hn), materialize this sprint's items into that ledger with the
+   **`Write` tool**. Smoke walks the human through them later; prep only seeds.
+
+   **Entry shape (required fields — match smoke's schema):** for each H row write
+   `{ id, title, type, status, reason, sprint, date }` — `id` from the plan (`H1`…),
+   `title` an actionable description a person can follow (not a cryptic label),
+   `type` one of `ux`|`live`|`graduation`|`other` (infer from the plan; default `other`),
+   `status: "open"`, `reason: ""`, `sprint` = this sprint's id, `date: ""`.
+
+   **Overwrite semantics (mirror the issue ledger):**
+   - **Same-sprint re-run** — replace only this sprint's entries with the plan's H-matrix;
+     leave other sprints' history untouched.
+   - **New sprint** — append this sprint's open items; keep historical `approved`/`deferred`
+     entries. If any **prior-sprint** item is still `open`, 🛑 stop and ask before writing:
+     fold it into this sprint, mark it `deferred` with a written reason, or leave it for
+     discover — never silently drop a still-open gate.
+   - If the profile has no `smoke.humanGates` block, skip — H-matrix stays prose in the plan.
+6. **Cut the branch** — from `prep.baseBranch`:
    ```bash
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
    ```
@@ -73,4 +96,4 @@ Read `.metate/profile.yml`. Use the `prep:` block:
 
 ## Output
 A short prep brief: goal + DoD, mode (with justification), debt-fold decisions, the filed
-issues (id → #number), and the branch name. Hand off to Build.
+issues (id → #number), any seeded H items, and the branch name. Hand off to Build.

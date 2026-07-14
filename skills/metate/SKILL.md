@@ -111,6 +111,9 @@ ls playwright.config.* cypress.config.* 2>/dev/null                    # → com
 grep -oE '"(e2e|test:e2e|db:seed|seed)"\s*:' package.json 2>/dev/null  # → command / seedCommand
 ```
 Map: Playwright/Cypress present → `command: "<pm> e2e"`; a `db:seed` script → that.
+If the product needs PO/UX or live graduations a suite cannot sign off on, propose optional
+`smoke.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
+smoke will then walk the human through open H items instead of a bare checklist.
 
 **aftercare** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
 coverage docs, roadmap, this profile's sibling rules). Confirm with the user.

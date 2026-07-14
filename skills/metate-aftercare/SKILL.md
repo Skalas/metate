@@ -37,7 +37,9 @@ the close-out doc set.
    - tech-debt ledger → new debt **with a trigger** (the condition that forces the fix);
    - next-sprint pointers / agent-context → advance to N+1.
 3. **Stay factual** — derive everything from the diff and the prep brief; don't invent
-   scope. Intentional omissions are documented `—` placeholders, not silent gaps.
+   scope. Intentional omissions are documented `—` placeholders, not silent gaps. If
+   `smoke.humanGates.ledger` has `deferred` items, name them in the handoff / next-sprint
+   pointers so the next `metate-discover` resurfaces them (with the written reason).
 4. **Post-sync command** — if `aftercare.postCommand` is set, run it from the repo root
    after the deliverables are updated and report its result (e.g. metate itself uses
    `bash install.sh --user` so the installed skills never drift from the repo).
