@@ -20,8 +20,8 @@ grep -q 'zero-gate' "$ROOT/skills/metate-prep/SKILL.md" \
 grep -q 'Cut the branch' "$ROOT/skills/metate-prep/SKILL.md" \
   || die "prep SKILL.md missing Cut the branch step"
 # branch must be cut before seeding tracked ledger
-prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^5\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1)"
-prep_seed_line="$(grep -n 'Seed human gates' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1)"
+prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^[0-9]\+\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
+prep_seed_line="$(grep -n '^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
 [ -n "$prep_branch_line" ] && [ -n "$prep_seed_line" ] \
   && [ "$prep_branch_line" -lt "$prep_seed_line" ] \
   || die "prep must cut the branch before seeding human gates (branch@$prep_branch_line seed@$prep_seed_line)"
