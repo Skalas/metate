@@ -1,11 +1,12 @@
 ---
 name: metate-smoke
-version: 1.2.0
+version: 1.3.0
 description: |
   Stage 4 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
-  bound to the DoD test matrix (T1…Tn) on seeded data, checks seed idempotency,
-  and hands the human any remaining verification — either a thin UX check or,
-  when configured, a walkthrough of open human-validation gates (H1…Hn).
+  bound to the DoD test matrix (T1…Tn) on seeded data — or, for non-`sprint`
+  plans, verifies the completion condition via the `C1` ledger item — checks seed
+  idempotency, and hands the human any remaining verification — either a thin UX
+  check or, when configured, a walkthrough of open human-validation gates (H1…Hn).
   Reads `.metate/profile.yml`. Codebase-agnostic.
 license: MIT
 compatibility:
@@ -57,9 +58,10 @@ When `smoke.humanGates` is configured:
 1. **Seed idempotency** — run `smoke.seedCommand` twice; the second run must not error or
    duplicate data. Report any drift.
 2. **Run the suite** — `smoke.command`. Map results back to the **DoD matrix (T1…Tn)** from
-   Prep: each row either has a passing assertion or a documented gap. Flag rows that the
-   fresh-tenant specs skip but a seeded-tenant smoke should cover (role/KPI/money claims).
-   For each **failure**, classify it against `git diff <base>` before routing (see Exit):
+   Prep: each row either has a passing assertion or a documented gap; for non-`sprint` plans,
+   verify the plan's **completion condition** via the **`C1`** ledger item instead (`smoke.command`
+   still runs). Flag rows that the fresh-tenant specs skip but a seeded-tenant smoke should cover
+   (role/KPI/money claims). For each **failure**, classify it against `git diff <base>` before routing (see Exit):
    in-diff = a regression you own; out-of-diff / exposed-latent = a pre-existing find to
    **capture, not fix here**. Append captures to `signalsFile` with the **`Write` tool**, per
    `signal.schema.json` (title, repro, evidence, attribution, optional severityGuess/blocksDoD,
@@ -108,6 +110,7 @@ Route each failure by attribution — one red bucket no longer means "back to bu
 - **out-of-diff / exposed-latent + blocks DoD** → 🛑 escalate to the user: hotfix-first (fix off
   the release base, rebase) or explicit scope-expand (add a named T-row). Don't fix it silently in-branch.
 - **out-of-diff / exposed-latent + doesn't block DoD** → captured as a signal (Step 2); smoke continues.
-- All T1…Tn covered (pass or documented gap) + seed idempotent, with any out-of-diff finds parked as
-  signals, and (when `smoke.humanGates.required`) every current-sprint H item dispositioned and no
-  prior-sprint item left `open` → ✅ advance to Aftercare.
+- All T1…Tn covered (pass or documented gap), or for non-`sprint` plans the **completion
+  condition** / **`C1`** verified (pass or documented gap), + seed idempotent, with any out-of-diff
+  finds parked as signals, and (when `smoke.humanGates.required`) every current-sprint H item
+  dispositioned and no prior-sprint item left `open` → ✅ advance to Aftercare.
