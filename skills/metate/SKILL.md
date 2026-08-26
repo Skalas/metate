@@ -94,9 +94,12 @@ Read those, extract the real invariants (auth/tenant isolation, money/precision,
 guards, "don't duplicate X", design-system rules), draft 3–6 bullets, and **ask the user
 to confirm or correct**. This is what makes the review catch real failure modes.
 
-**discover** — keep the template defaults unless the user objects: all four `signals` on,
-`planFile: .metate/plan.md`, `candidates: 5`. Turn `codebaseMemory` off here only if
-`codebaseMemory.enabled` is false. The `planFile` is what `prep` reads as its entry doc.
+**discover** — keep the template defaults unless the user objects: all six `sources` on
+(`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`, `productIntent`),
+`mode: steady`, `planFile: .metate/plan.md`, `candidates: 5`. Turn `codebaseMemory` off
+here only if `codebaseMemory.enabled` is false. `productIntent` reads README plus
+`prep.readingOrder` for stated goals — no separate path config. The `planFile` is what
+`prep` reads as its entry doc.
 
 **prep** — detect docs + base branch:
 ```bash

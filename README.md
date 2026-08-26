@@ -76,11 +76,11 @@ right stage. The seven stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-discover` | the pre-plan: survey signals, rank candidate sprints, **you pick**, write the plan doc prep consumes |
-| 1 | `metate-prep` | read handoff docs, triage tech debt, fix sprint mode, file the issue ledger, cut the branch |
+| 0 | `metate-discover` | the pre-plan: survey signals, **read the situation**, rank candidates within posture by kind (sprint · decision · spike · retire · process), **you pick**, write the plan doc prep consumes |
+| 1 | `metate-prep` | read handoff docs, triage tech debt, fix sprint mode, file the issue ledger (T-rows, or a `C1` tracking issue for a non-sprint kind), cut the branch |
 | 2 | `metate-build` | start a **resumable** implementer session, write `.metate/session.json`, build in layers, fast gate |
 | 3 | `metate-review` | ≤3 rounds: parallel reviewers → route fixable findings → resume implementer → re-gate |
-| 4 | `metate-smoke` | e2e/smoke bound to the DoD matrix; walk open human gates (when configured); capture pre-existing failures as signals |
+| 4 | `metate-smoke` | e2e/smoke bound to the DoD matrix (or the completion condition for a non-sprint kind); walk open human gates (when configured); capture pre-existing failures as signals |
 | 5 | `metate-aftercare` | update close-out deliverables; optional semver release proposal |
 | 6 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close; optional tag/release |
 

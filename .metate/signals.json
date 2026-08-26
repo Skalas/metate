@@ -1,0 +1,14 @@
+{
+  "signals": [
+    {
+      "title": "tests/contracts/validate.sh dies silently under `set -euo pipefail` when a prose-drift grep finds nothing, so `make verify` fails with zero diagnostic output.",
+      "repro": "Rename or renumber a step heading the validator greps for (e.g. change prep's `5. **Cut the branch**` to `6.`), then run `bash tests/contracts/validate.sh`. Exit code is 1 and nothing is printed — not even the script's own `die` message.",
+      "evidence": "validate.sh:26-28 assigns via a pipeline: `prep_branch_line=\"$(grep -n '...' file | head -1 | cut -d: -f1)\"`. With `set -euo pipefail` (line 4) a no-match grep fails the pipeline, so the assignment itself aborts the script before control ever reaches the `|| die \"prep must cut the branch before seeding human gates\"` on line 31. `bash -x` trace ends at `+ prep_branch_line=` with no further output. The same construct is used for `prep_seed_line`. Fix: append `|| true` to the command substitution (or use a `grep ... || echo` fallback) so the intended die message actually prints. Found while diagnosing a red gate in sprint `discover-judgment`, where the missing message turned a one-line regex fix into a bash -x investigation.",
+      "attribution": "exposed-latent",
+      "severityGuess": "S2",
+      "blocksDoD": false,
+      "foundIn": "smoke:T9",
+      "status": "open"
+    }
+  ]
+}

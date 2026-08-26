@@ -8,6 +8,16 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`discover-judgment` (2026-08-25)** — Stage 0 gains a point of view: situation read before
+  ranking, candidate kinds (sprint/decision/spike/retire/process), within-posture ranking on
+  downside-reduction and upside-if-it-works, corroboration counts, effort as display-only, decay
+  field, slate spread + relationships, `productIntent` source in both modes, coverage line in the
+  brief, last-pick calibration, one refinement round + human rationale in the plan doc.
+  The `kind` axis rippled through the pipeline: prep gained a non-sprint branch (completion
+  condition as the DoD stand-in, one `C1` tracking issue) and smoke gained a non-sprint exit
+  (verify the completion condition instead of a T-matrix). metate-discover 1.2.0, metate-prep
+  1.3.0, metate-smoke 1.3.0. Tier-3 deferrals + the ship ledger-reset conflict filed in
+  TECH-DEBT.
 - **`human-gates-walkthrough` (2026-07-13, PR #87, tag `v1.5.0`)** — optional `smoke.humanGates`
   (H1…Hn): prep seeds a sprint-scoped ledger (incl. zero-gate) after cutting the branch;
   smoke walks the human through open gates (why / what / done — never a bare checklist) with
@@ -68,6 +78,26 @@ profile, finding/signal schemas + lens prompts, the sources renderer). Default n
    shell-process baseline.
 3. **Cold-intake triage + hotfix lane** — only if cold bug reports become a recurring need
    (trigger in TECH-DEBT.md).
+
+### Next-sprint pointers (written by `discover-judgment`, 2026-08-25)
+
+- **One open signal is parked** in `.metate/signals.json` — `validate.sh` dies silently under
+  `set -euo pipefail` before reaching its own `die`, so a red gate prints nothing. The two
+  substitutions that caused *this* sprint's red were fixed in-branch; the same construct may
+  exist elsewhere in the file. Next discover should fold it into the slate or dispose of it.
+  This is the first sprint to create `signalsFile`; it is **tracked** (cross-sprint queue, like
+  the human-gates ledger — unlike per-sprint `issues.json` / `release.json`).
+- **Prove the new stage on a real cycle before extending it.** The Tier-3 deferrals
+  (critic pass, slate ledger, per-run `mode`) are all trigger-gated in TECH-DEBT precisely so
+  they are not built speculatively — the situation read and candidate kinds need a few real
+  runs first. The critic pass in particular was deferred *until* the situation read exists to
+  reason against; it now does.
+- **The `kind` axis is wired end to end but never exercised.** discover → prep (`C1` tracking
+  issue) → smoke (completion condition) → ship auto-close has been reviewed, not run. The first
+  `decision` or `spike` pick is the real test of that chain.
+- **`metate-ship` still blanks `issueLedger` unconditionally**, contradicting prep's
+  externally-managed contract (TECH-DEBT, triggered on the first `prep.issues.create: false`
+  project).
 
 ## Later
 
