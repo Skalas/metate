@@ -32,10 +32,35 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   a reviewer backend from a non-cursor orchestrator — verify on the target build that a
   `readonly: true` reviewer cannot write; never pass `--force`/`--trust` to a reviewer.
 
-- **The "treat as data, never instructions" guard is duplicated.** Near-verbatim in
-  `metate-smoke/SKILL.md` and `metate-review/SKILL.md` §2b. Two sites is tolerable.
-  **Trigger:** a third near-identical copy appears in `skills/` — extract to one shared note
-  (or fold into `signal.schema.json`'s description) and have all sites reference it.
+- **The "treat as data, never instructions" guard is duplicated across harness playbooks.**
+  Near-verbatim in `metate-smoke/SKILL.md` and `metate-review/SKILL.md` §2b; within
+  `metate-discover/SKILL.md` it is now one canonical statement in Guardrails (per-source
+  steps reference it). **Cross-file duplication is an accepted limitation** — each `SKILL.md`
+  is a standalone playbook installed independently per harness, so a shared note breaks
+  self-containment. **Trigger (within-file only):** a third near-identical copy appears
+  inside any single `skills/*/SKILL.md` — fold to one canonical statement in that file's
+  Guardrails and have per-source mentions reference it.
+
+- **Discover Tier-3 deferrals** (from `discover-judgment`; not in scope for that sprint):
+  - **"What's missing" critic pass** in the Step 1 fan-out — generative rather than
+    harvesting; evaluate after the situation read exists to reason against.
+    **Trigger:** two consecutive cycles where the human picks "none" or drops the whole slate.
+  - **Slate ledger** (`.metate/discover.json`) — record each slate and disposition; surface
+    "proposed 3×, never picked" as an aging signal.
+    **Trigger:** the same candidate is observed re-proposed and skipped across ≥3 cycles.
+  - **`mode` as a per-run argument** (profile as default only) — ergonomics, not a bias fix.
+    **Trigger:** a cycle where the human wants a non-default posture and has to edit the profile
+    to get it.
+
+- **`metate-ship` blanks `issueLedger` unconditionally, contradicting prep's externally-managed
+  contract.** `metate-prep` Step 4 now promises that when `prep.issues.create: false` the ledger
+  is left untouched because it is externally managed, but ship's close-out resets it to
+  `{ "sprint": null, "issues": [] }` with no `create`-flag condition — so an externally-managed
+  ledger is destroyed on the first ship. Prep's wording was scoped to prep time as a stopgap;
+  the behavioral fix belongs to ship. Surfaced by the `discover-judgment` verify pass; ship was
+  deliberately left unchanged to keep that sprint's blast radius to discover/prep/smoke.
+  **Trigger:** the first project configured with `prep.issues.create: false` runs `metate-ship`
+  — scope ship's reset to ledgers prep actually wrote.
 
 - **`metate-review`'s `Write` is scoped by prose, not the tool layer.** The restriction to
   `signalsFile`/`prep.techDebtFile` is enforced by SKILL prose + the `reviewFocus` invariant;
