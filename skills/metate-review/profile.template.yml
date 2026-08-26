@@ -58,12 +58,16 @@ review:
 
 # --- discover (metate-discover) -------------------------------------------
 discover:
+  mode: steady             # steady = mature product: harvest signals, read situation, rank within posture.
+                           # explore = product not well-defined: lean on productIntent + architecture,
+                           #           frame candidates as bets, rank by learning value + reversibility.
   sources:
     aftercare: true
     codebaseMemory: true
     issues: true
     gitHistory: true
     captures: true
+    productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight steady, high explore)
   planFile: ".metate/plan.md"
   candidates: 5
 
