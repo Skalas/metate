@@ -4,8 +4,8 @@ version: 1.1.0
 description: |
   Stage 3 (Review) of the `metate` pipeline — the three-round review engine.
   Orchestrates up to 3 rounds of parallel review (correctness · security · elegance)
-  and routes fixable findings to a pluggable implementer CLI (cursor-agent · codex ·
-  claude · gemini), resuming the SAME implement session so the implementer keeps the
+  and routes fixable findings to a pluggable implementer (cursor-agent · codex · claude ·
+  gemini · in-process subagent), resuming the SAME implement session so the implementer keeps the
   rationale behind its own code. One unanchored lens per round from round 2 on. Re-runs the
   project's fast gate each round; stops when 0 blockers remain or after round 3.
   Project-specific settings live in `.metate/profile.yml` — this engine is
@@ -74,10 +74,11 @@ filled in sends three reviewers to enforce invariants belonging to some other pr
 - `reviewFocus` empty, or still matching the template placeholder (`<invariant`) → STOP and tell
   the user to run the `metate` wizard. This is the field the engine's own docs call
   highest-value; it must not be possible to run green without it.
-- `fastGate` or `shipGate` still carrying the fail-loudly placeholder (`set fastGate in
-  .metate/profile.yml`, or any `&& false` sentinel) → STOP. Check each key against **its own**
-  name while you are there: a `shipGate` whose placeholder text says *fastGate* is a copy-paste
-  that has been frozen into the profile.
+- `fastGate` or `shipGate` still carrying the fail-loudly placeholder — the template ships
+  `"echo '<key> not set — run the metate wizard skill' && false"`, and older bootstraps left
+  other `&& false` sentinels → STOP. Check each key against **its own** name while you are
+  there: a `shipGate` whose placeholder text says *fastGate* is a copy-paste frozen into the
+  profile, and it is in the field today.
 
 **`signalsFile` resolution.** If the key is unset but `.metate/signals.json` exists on disk, say
 so loudly and use it — state exists that the profile cannot address, and the fix is a one-line
@@ -94,9 +95,10 @@ most valuable by-product and discover's only `captures` source.
 - **The session must belong to THIS sprint.** STOP unless `sessionFile.sprint` matches the
   current sprint (branch topic / `issueLedger.sprint`). Existence is not freshness: ship retires
   sprint-local state only when a sprint fully lands, so abandoned session files sit in repos for
-  months and look identical to live ones. A mismatch — or a missing `sprint` on a file written
-  before this rule — means the session belongs to prior work: report both values and ask, never
-  resume it.
+  months and look identical to live ones. A **mismatch** means the session belongs to prior work:
+  report both values and refuse to resume it. A **missing** `sprint` (a file written before this
+  rule) is not proof of staleness — report it, ask the user whether the session is this sprint's,
+  and have build rewrite the file with `sprint` set either way.
 - **Resume by EXPLICIT session id** — never "most recent" / `--last` when the orchestrator
   shares a backend with reviewers (intervening reviewer sessions would hijack resume).
   If `sessionId` is empty or `"--last"` while unsafe, STOP and ask for the real id.

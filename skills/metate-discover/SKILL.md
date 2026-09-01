@@ -204,7 +204,8 @@ discover and runs 16%, with `invalid` and `wontfix` used **zero** times in seven
 Enforcement is what drains a queue.
 
 **Walk them the way smoke walks human gates** (`metate-smoke` Step 4 — the mechanism with the
-77% rate). Never a bare list or table. For **each** open capture, oldest `capturedAt` first:
+77% rate). Never a bare list or table. For **each** open capture, oldest `capturedAt` first
+(entries with no `capturedAt` — legacy captures — come first, in file order):
 1. **What was seen** — the title and repro in plain language, plus where it surfaced
    (`foundIn`) and how long it has been sitting.
 2. **Why it might matter now** — tie it to the current situation read; say honestly when the
@@ -215,8 +216,12 @@ Enforcement is what drains a queue.
    nothing is ever rejected is a queue no one is really reading.
 4. **Ask** — one ruling, plus a one-line `disposition` for anything not promoted. Then the next.
 
-Leaving an entry `open` is allowed only as an explicit "ask me again next cycle," and only for
-entries under the backlog threshold. Stamp every ruling per Step 4.
+**The walk is what is mandatory, not a particular outcome.** The human may re-park anything —
+`open` remains a valid answer, meaning "ask me again next cycle." Once every open capture has
+been *put to them*, proceed to the slate regardless of how they ruled; discover must never
+deadlock behind a queue the human has chosen to keep. But say the count out loud when you
+proceed ("N still open after this pass"), because a backlog that never shrinks across cycles is
+itself a finding worth raising in the situation read. Stamp every ruling per Step 4.
 
 Then show the situation read, the last-pick grade, the ranked slate, and a **coverage line** naming
 which sources were swept, which came back empty, and which were skipped — then **stop for the

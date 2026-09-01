@@ -45,6 +45,7 @@ budget: ## fail when a SKILL.md grows past its recorded line cap
 	while read -r file cap; do \
 	  case "$$file" in ''|\#*) continue ;; esac; \
 	  [ -f "$$file" ] || { echo "  ✗ budget: $$file listed but missing"; fail=1; continue; }; \
+	  case "$$cap" in ''|*[!0-9]*) echo "  ✗ budget: bad cap for $$file: '$$cap'"; fail=1; continue ;; esac; \
 	  n=$$(wc -l < "$$file" | tr -d ' '); \
 	  if [ "$$n" -gt "$$cap" ]; then \
 	    echo "  ✗ $$file: $$n lines > cap $$cap — remove prose, or raise the cap in $(BUDGET) explicitly"; \

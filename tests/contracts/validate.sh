@@ -28,7 +28,9 @@ validate_signals() {
   err="$(jq --argjson allowed \
       "$(jq -c '.properties.signals.items.properties | keys' "$ROOT/skills/metate-smoke/signal.schema.json")" \
       --argjson required \
-      "$(jq -c '.properties.signals.items.required' "$ROOT/skills/metate-smoke/signal.schema.json")" '
+      "$(jq -c '.properties.signals.items.required' "$ROOT/skills/metate-smoke/signal.schema.json")" \
+      --argjson statuses \
+      "$(jq -c '.properties.signals.items.properties.status.enum' "$ROOT/skills/metate-smoke/signal.schema.json")" '
     if (.signals|type) != "array" then error("signals[] missing") else . end
     | if (keys - ["signals"]) != [] then error("stray top-level key: \((keys - ["signals"])|join(","))") else . end
     | .signals as $s
@@ -40,7 +42,7 @@ validate_signals() {
         | if $extra != [] then error("unknown key \($extra|join(","))") else . end
         | if $e.attribution == "in-diff" and $e.status == "open"
           then error("in-diff may not be open — fix it in-branch, then record it") else . end
-        | if ($e.status|IN("open","promoted","fixed","invalid","wontfix")|not)
+        | if ([$e.status] - $statuses) != []
           then error("bad status \($e.status)") else . end
       )
   ' "$file" 2>&1 >/dev/null)" && rc=0 || rc=$?
@@ -54,8 +56,12 @@ validate_signals() {
 validate_signals "$FIX/signals-valid.json" ok
 validate_signals "$FIX/signals-indiff-open.json" bad
 validate_signals "$FIX/signals-unknown-key.json" bad
-[ -f "$ROOT/.metate/signals.json" ] && validate_signals "$ROOT/.metate/signals.json" ok
-ok "signal ledger schema (fixtures + this repo's live signals.json)"
+live_note="fixtures only — no .metate/signals.json in this repo"
+if [ -f "$ROOT/.metate/signals.json" ]; then
+  validate_signals "$ROOT/.metate/signals.json" ok
+  live_note="fixtures + this repo's live signals.json"
+fi
+ok "signal ledger schema ($live_note)"
 
 # --- human-gates fixture validator (jq) ------------------------------------
 validate_gates() {

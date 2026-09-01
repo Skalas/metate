@@ -44,6 +44,9 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
    - claude → `claude -p --output-format json …` → `.session_id`, read from
      `.metate/.session-start.json` *after* the backgrounded call completes (see IMPLEMENTERS.md
      → claude section for the redirect), then proceed to step 2.
+   - claude-subagent → spawn the in-process implementer agent and record the ref it returns;
+     there is no CLI and no JSON envelope, so the UUID check below does not apply — the ref must
+     simply be non-empty. Resume is `SendMessage`, never a fresh agent (IMPLEMENTERS.md).
 
    **Validate the id before writing it.** Read it out of the JSON envelope with `jq` — never a
    substring of raw stdout — and check it against the backend's id form (a UUID for
