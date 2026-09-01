@@ -8,28 +8,60 @@ FIX="$ROOT/tests/contracts/fixtures"
 die() { echo "  ✗ contracts: $*" >&2; exit 1; }
 ok() { echo "  ✓ $*"; }
 
-# --- prose drift: critical MUST phrases still in the skills -----------------
-grep -q 'refs/tags/\$tag\^{commit}' "$ROOT/skills/metate-ship/SKILL.md" \
-  || grep -q 'refs/tags/\$tag^{commit}' "$ROOT/skills/metate-ship/SKILL.md" \
-  || grep -q '^{commit}' "$ROOT/skills/metate-ship/SKILL.md" \
-  || die "ship SKILL.md missing annotated-tag peel (^{commit})"
-grep -q '\-\-verify-tag' "$ROOT/skills/metate-ship/SKILL.md" \
-  || die "ship SKILL.md missing gh release --verify-tag"
-grep -q 'zero-gate' "$ROOT/skills/metate-prep/SKILL.md" \
-  || die "prep SKILL.md missing zero-gate seed requirement"
-grep -q 'Cut the branch' "$ROOT/skills/metate-prep/SKILL.md" \
-  || die "prep SKILL.md missing Cut the branch step"
-# branch must be cut before seeding tracked ledger
+# --- structural ordering: prep cuts the branch before seeding the tracked ledger ---
+# Anchored on ORDER, not wording. Phrase greps were deleted deliberately: a probe that gutted
+# four playbooks to frontmatter + five magic tokens passed all of them green, so they reported
+# coverage they did not have. Only checks that survive a rewrite of the surrounding prose belong
+# here — grep is this repo's sole enforcement, and a false gate is worse than an absent one.
 prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^[0-9]\+\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
 prep_seed_line="$(grep -n '^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
 [ -n "$prep_branch_line" ] && [ -n "$prep_seed_line" ] \
   && [ "$prep_branch_line" -lt "$prep_seed_line" ] \
   || die "prep must cut the branch before seeding human gates (branch@$prep_branch_line seed@$prep_seed_line)"
-grep -q 'Strict entry validation' "$ROOT/skills/metate-smoke/SKILL.md" \
-  || die "smoke SKILL.md missing strict entry validation"
-grep -q 'fetch first' "$ROOT/skills/metate-aftercare/SKILL.md" \
-  || die "aftercare SKILL.md missing fetch-first tag detection"
-ok "skill prose contracts present (tag peel, zero-gate, branch-before-seed, strict validate, fetch tags)"
+ok "prep cuts the branch before seeding human gates"
+
+# --- signal ledger: the live file must satisfy the shipped schema ----------
+# additionalProperties:false is only a guarantee if something points it at real data.
+validate_signals() {
+  local file="$1" expect="$2" # expect: ok | bad
+  local err rc
+  err="$(jq --argjson allowed \
+      "$(jq -c '.properties.signals.items.properties | keys' "$ROOT/skills/metate-smoke/signal.schema.json")" \
+      --argjson required \
+      "$(jq -c '.properties.signals.items.required' "$ROOT/skills/metate-smoke/signal.schema.json")" \
+      --argjson statuses \
+      "$(jq -c '.properties.signals.items.properties.status.enum' "$ROOT/skills/metate-smoke/signal.schema.json")" '
+    if (.signals|type) != "array" then error("signals[] missing") else . end
+    | if (keys - ["signals"]) != [] then error("stray top-level key: \((keys - ["signals"])|join(","))") else . end
+    | .signals as $s
+    | if ($s|map(.id)|unique|length) != ($s|length) then error("duplicate or missing id") else . end
+    | reduce $s[] as $e (true;
+          ($required - ($e|keys)) as $missing
+        | if $missing != [] then error("missing \($missing|join(","))") else . end
+        | (($e|keys) - $allowed) as $extra
+        | if $extra != [] then error("unknown key \($extra|join(","))") else . end
+        | if $e.attribution == "in-diff" and $e.status == "open"
+          then error("in-diff may not be open — fix it in-branch, then record it") else . end
+        | if ([$e.status] - $statuses) != []
+          then error("bad status \($e.status)") else . end
+      )
+  ' "$file" 2>&1 >/dev/null)" && rc=0 || rc=$?
+  if [ "$expect" = ok ]; then
+    [ "$rc" = 0 ] || die "expected valid signals in $(basename "$file"): $err"
+  else
+    [ "$rc" != 0 ] || die "expected invalid signals in $(basename "$file") to fail"
+  fi
+}
+
+validate_signals "$FIX/signals-valid.json" ok
+validate_signals "$FIX/signals-indiff-open.json" bad
+validate_signals "$FIX/signals-unknown-key.json" bad
+live_note="fixtures only — no .metate/signals.json in this repo"
+if [ -f "$ROOT/.metate/signals.json" ]; then
+  validate_signals "$ROOT/.metate/signals.json" ok
+  live_note="fixtures + this repo's live signals.json"
+fi
+ok "signal ledger schema ($live_note)"
 
 # --- human-gates fixture validator (jq) ------------------------------------
 validate_gates() {
@@ -86,7 +118,7 @@ recompute_ok="$(jq -r '
      else error("bad bump") end) as $n
   | ("v" + ($n|map(tostring)|join("."))) as $expect
   | if $p.proposed == $expect then "ok" else "mismatch:\($p.proposed)!=\($expect)" end
-' "$FIX/release-valid.json")"
+' "$FIX/release-valid.json" || true)"
 [ "$recompute_ok" = ok ] || die "release-valid recompute failed: $recompute_ok"
 
 recompute_bad="$(jq -r '
@@ -97,12 +129,12 @@ recompute_bad="$(jq -r '
   | (if $p.bump == "minor" then [$c[0], ($c[1]+1), 0] else error("bad bump") end) as $n
   | ("v" + ($n|map(tostring)|join("."))) as $expect
   | if $p.proposed == $expect then "ok" else "mismatch" end
-' "$FIX/release-bad-proposed.json")"
+' "$FIX/release-bad-proposed.json" || true)"
 [ "$recompute_bad" = mismatch ] || die "release-bad-proposed should mismatch"
 ok "release-plan recompute (valid + mismatch rejected)"
 
 # --- exact semver tag filter (aftercare detection) -------------------------
 filtered="$(printf '%s\n' 'v1.4.0' 'v1.5.0-rc.1' 'v1.3.0' 'release-2' 'v2.0.0' \
-  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
 [ "$filtered" = 'v2.0.0' ] || die "semver filter failed (got $filtered)"
 ok "exact semver tag filter excludes prereleases"

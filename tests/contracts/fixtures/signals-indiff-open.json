@@ -1,0 +1,11 @@
+{
+  "signals": [
+    {
+      "id": "sig-unfixed-regression",
+      "title": "This sprint broke pagination.",
+      "repro": "Page 2 of any list.",
+      "attribution": "in-diff",
+      "status": "open"
+    }
+  ]
+}

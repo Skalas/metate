@@ -44,10 +44,24 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
    - claude → `claude -p --output-format json …` → `.session_id`, read from
      `.metate/.session-start.json` *after* the backgrounded call completes (see IMPLEMENTERS.md
      → claude section for the redirect), then proceed to step 2.
+   - claude-subagent → spawn the in-process implementer agent and record the ref it returns;
+     there is no CLI and no JSON envelope, so the UUID check below does not apply — the ref must
+     simply be non-empty. Resume is `SendMessage`, never a fresh agent (IMPLEMENTERS.md).
+
+   **Validate the id before writing it.** Read it out of the JSON envelope with `jq` — never a
+   substring of raw stdout — and check it against the backend's id form (a UUID for
+   cursor/codex/claude). An envelope that does not parse, an empty id, or a leading CLI warning
+   line is a 🛑 **STOP**: report the first line verbatim and fix the invocation (nearly always a
+   missing `< /dev/null`). Never write a blank or garbage `sessionId` — review would resume an
+   amnesiac session and the sprint's rationale is gone.
 2. **Write the handoff** to `sessionFile`:
    ```json
-   { "implementer": "<backend>", "sessionId": "<id|--last>", "model": "<model>" }
+   { "implementer": "<backend>", "sessionId": "<id|--last>", "sprint": "<topic>", "model": "<model>" }
    ```
+   `sprint` is **required** — the branch topic, matching `issueLedger.sprint`. It is what lets
+   review tell a live session from a dead one (metate-review → Inputs); without it a two-month-old
+   session file is indistinguishable from today's. `model` is **optional** — omit it rather than
+   writing a placeholder.
 3. **Build in layers** — domain → application → infrastructure → presentation. Pass the
    plan + DoD from Prep to the implementer. Honor project invariants (`reviewFocus`).
    **When `codebaseMemory.enabled`**, prepend the tool-priority clause (see

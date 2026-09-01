@@ -83,6 +83,10 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `claude -p --dangerously-skip-permissions` loop without the explicit dangerous-flag rule.
   **Trigger:** next time the headless `claude` implementer is provisioned via bootstrap —
   emit the explicit rule (or document the manual step in IMPLEMENTERS.md).
+  **Fired in production** (`internal_lucho_tool`, sprint `s1-rieles`): the nested call was denied
+  and the operator hand-rolled an in-process subagent to get past it. That workaround is now the
+  documented `claude-subagent` adapter (IMPLEMENTERS.md), so the sprint is unblocked — but the
+  bootstrap rule itself is still too broad and remains open.
 
 - **Validation residuals (open issues).**
   - **#37** — live proof that a genuinely-down codebase-memory MCP produces a *disclosed* grep
@@ -90,6 +94,52 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
     **Trigger:** next review run with the MCP actually down — capture the log, close.
   - **#40** — dedicated branch-behind scenario (base strictly ahead of the feature branch) for
     the merge-base→working-tree anchoring. **Trigger:** next review on a branch behind its base.
+
+- **Review Tier-3 deferrals** (from `review-aperture`; not in scope for that sprint):
+  - **Rotate the unanchored slot across rounds** (elegance → correctness → security) instead of
+    defaulting to elegance. Better aperture, but a correctness round with no memo risks the
+    convergence the memo protects. **Trigger:** a sprint where a blocker is found in round 3 in
+    a file no earlier round flagged.
+  - **Deferred T4/T6 sprint — round-1 intent context and `stop-scope`.** Cut from
+    `review-aperture` at review round 4; re-plan as its own sprint allowed a state file.
+    - **What:** round-1 intent context (review reads the sprint plan + issue ledger and judges
+      the diff against stated intent), plan-contradiction blockers, Intent-coverage warnings, and
+      the `stop-scope` verdict.
+    - **Why it was cut:** every blocker after review round 1 came from this machinery,
+      relocating each time it was fixed — out of the memo, then out of `fixable`, then out of the
+      finding set, then out of an unbacked in-memory round state.
+    - **Binding constraint:** an open intent finding must survive rounds, and every other
+      cross-round artifact in this engine (`sessionFile`, `issueLedger`, `signalsFile`) is a file
+      because the loop spans sessions. A prose-only sprint could not give it a carrier.
+    - **Requirements for the re-sprint** (what four review rounds bought):
+      1. a **durable carrier** for open intent findings — a file, not orchestrator memory;
+      2. **structural classification** — a finding is an intent finding when the violation names a
+         clause of the plan's out-of-scope/constraint section, NOT when its rationale merely cites
+         the plan (the loose test let an ordinary security blocker be reclassified out of routing);
+      3. **no self-serving disposition** — the `accepted` path must not be effectable by the
+         implementer amending the plan it is being judged against, and `resolved` must not be a
+         unilateral orchestrator re-read with no second reader;
+      4. **classification before clustering** — otherwise a contradiction spread across ≥3 sites
+         is absorbed into a systemic rollup that carries no intent marker and gets routed;
+      5. decide explicitly whether intent findings are **terminal** (an intent blocker ends the
+         loop immediately) — that collapse removes requirements 1 and 3 entirely and is the
+         cheapest known design.
+    - **Trigger:** the next sprint where review lets scope drift or a missing DoD item reach
+      smoke.
+  - **§1/§2 restructure in `metate-review`.** Split §2 into a linear pipeline (dedupe → cluster →
+    bucket → autoFix) and lift any cross-round bookkeeping out of it; promote the pre-fan-out
+    reads to their own step so §1 is about fanning out. Deferred during `review-aperture` to keep
+    the patch verifiable under the round cap.     **Trigger:** the next edit to either section.
+
+- **Engine prose accretes under review.** Review of a prose product answers each objection by
+  adding a clause where the objection landed; nothing in the loop says "this section is now too
+  long to execute." `review-aperture` added 38 lines to `metate-review/SKILL.md` for four small
+  features before being trimmed twice. **Rule:** a change that adds prose to a `skills/*/SKILL.md`
+  must remove prose. **Trigger:** any sprint that touches a `SKILL.md` — state a line budget in
+  the plan and hold to it.
+  **Now mechanical:** `make budget` (in `verify`) enforces a per-file cap from
+  `tests/contracts/prose-budget.txt`. Raising a cap is allowed and must appear as an explicit
+  line in the diff. The rule above stays as the reason the caps exist.
 
 ## Decided — not doing (yet)
 

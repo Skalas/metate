@@ -1,0 +1,36 @@
+{
+  "signals": [
+    {
+      "id": "sig-export-truncates",
+      "capturedAt": "2026-08-20",
+      "title": "CSV export truncates rows past 10k without warning.",
+      "repro": "Export a tenant with >10k rows; the file ends at 10000.",
+      "attribution": "out-of-diff",
+      "scope": "product",
+      "severityGuess": "S2",
+      "foundIn": "smoke:T4",
+      "status": "open"
+    },
+    {
+      "id": "sig-regression-fixed-in-branch",
+      "capturedAt": "2026-08-21",
+      "title": "Round-2 refactor dropped the tenant scope on the export query.",
+      "repro": "Any cross-tenant export during review round 2.",
+      "attribution": "in-diff",
+      "status": "fixed",
+      "disposition": "Fixed in-branch the same round; recorded for the audit trail.",
+      "severityGuess": "S0"
+    },
+    {
+      "id": "sig-engine-smoke-contracts",
+      "capturedAt": "2026-08-28",
+      "title": "Profile smoke command does not run tests/contracts, where most of the DoD lives.",
+      "repro": "Run metate-smoke with the bootstrapped default smoke.command.",
+      "attribution": "out-of-diff",
+      "scope": "engine",
+      "severityGuess": "S3",
+      "foundIn": "smoke:T2",
+      "status": "open"
+    }
+  ]
+}

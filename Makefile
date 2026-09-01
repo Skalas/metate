@@ -1,6 +1,7 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-review/bootstrap.sh sources/render.sh
+SCRIPTS := install.sh skills/metate-review/bootstrap.sh sources/render.sh tests/contracts/validate.sh
 RENDER_SCRIPT := sources/render.sh
+BUDGET := tests/contracts/prose-budget.txt
 RENDERED := skills/metate-review/cursor-rule.mdc \
 	skills/metate-review/codex-rule.md \
 	skills/metate-review/cursor-agents/metate-correctness-reviewer.md \
@@ -11,7 +12,7 @@ RENDERED := skills/metate-review/cursor-rule.mdc \
 	skills/metate-review/generated/lens-prompts/security.txt \
 	skills/metate-review/generated/lens-prompts/elegance.txt
 
-.PHONY: verify check lint test render render-check help
+.PHONY: verify check lint test render render-check drift budget help
 .DEFAULT_GOAL := help
 
 help: ## list targets
@@ -19,7 +20,7 @@ help: ## list targets
 
 check: lint ## fast loop (run each review round)
 
-verify: lint test render-check ## full gate (mirrors CI; run before shipping)
+verify: lint test render-check budget ## full gate (mirrors CI; run before shipping)
 
 render: ## regenerate harness artifacts from sources/
 	bash $(RENDER_SCRIPT)
@@ -38,6 +39,48 @@ render-check: ## fail if rendered artifacts drift from sources/ (does not rewrit
 	done; \
 	rm -rf "$$tmp"; \
 	[ "$$fail" -eq 0 ] && echo "  ✓ rendered harness artifacts match sources/"
+
+budget: ## fail when a SKILL.md grows past its recorded line cap
+	@fail=0; \
+	while read -r file cap; do \
+	  case "$$file" in ''|\#*) continue ;; esac; \
+	  [ -f "$$file" ] || { echo "  ✗ budget: $$file listed but missing"; fail=1; continue; }; \
+	  case "$$cap" in ''|*[!0-9]*) echo "  ✗ budget: bad cap for $$file: '$$cap'"; fail=1; continue ;; esac; \
+	  n=$$(wc -l < "$$file" | tr -d ' '); \
+	  if [ "$$n" -gt "$$cap" ]; then \
+	    echo "  ✗ $$file: $$n lines > cap $$cap — remove prose, or raise the cap in $(BUDGET) explicitly"; \
+	    fail=1; \
+	  fi; \
+	done < $(BUDGET); \
+	for f in skills/*/SKILL.md; do \
+	  grep -q "^$$f " $(BUDGET) || { echo "  ✗ $$f has no cap in $(BUDGET)"; fail=1; }; \
+	done; \
+	[ "$$fail" -eq 0 ] || exit 1; \
+	echo "  ✓ every SKILL.md within its prose budget"
+
+drift: ## warn when the copies harnesses actually load are stale (never fails the build)
+	@stale=0; \
+	for pair in \
+	  ".cursor/agents/metate-correctness-reviewer.md:skills/metate-review/cursor-agents/metate-correctness-reviewer.md" \
+	  ".cursor/agents/metate-security-reviewer.md:skills/metate-review/cursor-agents/metate-security-reviewer.md" \
+	  ".cursor/agents/metate-elegance-reviewer.md:skills/metate-review/cursor-agents/metate-elegance-reviewer.md" \
+	  ".cursor/rules/codebase-memory.mdc:skills/metate-review/cursor-rule.mdc" \
+	; do \
+	  dst=$${pair%%:*}; src=$${pair#*:}; \
+	  [ -f "$$dst" ] || continue; \
+	  diff -q "$$src" "$$dst" >/dev/null 2>&1 || { \
+	    echo "  ! stale: $$dst differs from $$src"; stale=1; }; \
+	done; \
+	for root in "$$HOME/.claude/skills" "$$HOME/.agents/skills"; do \
+	  [ -d "$$root" ] || continue; \
+	  for s in skills/*/SKILL.md; do \
+	    d="$$root/$$(basename $$(dirname $$s))/SKILL.md"; \
+	    [ -f "$$d" ] || continue; \
+	    diff -q "$$s" "$$d" >/dev/null 2>&1 || { echo "  ! stale: $$d"; stale=1; }; \
+	  done; \
+	done; \
+	if [ "$$stale" -eq 0 ]; then echo "  ✓ installed harness copies match the repo"; \
+	else echo "  → run: bash install.sh --update --user && metate-init --update"; fi
 
 lint: ## bash -n on every script + shellcheck when available
 	@for f in $(SCRIPTS); do bash -n "$$f" && echo "  ✓ syntax $$f"; done

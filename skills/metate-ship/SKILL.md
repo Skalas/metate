@@ -53,10 +53,12 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
    scoped). Don't bury a refactor inside a feature commit.
 4. **Open the PR** → `ship.prTarget`, with a commit table, verification evidence,
    out-of-scope notes, and one `<issueCloseKeyword> #N` line **per issue** in the body
-   (not ranges/lists). Read the numbers from `issueLedger` — emit one line per ledger
-   entry so the merge auto-closes every issue prep filed; on merge to the default branch
-   GitHub closes them automatically. If the ledger is absent (prep skipped filing), fall
-   back to the issues referenced on the branch/PR.
+   (not ranges/lists). Read the numbers from **`issueLedger.issues[]` only** — one line per
+   entry in that array, so the merge auto-closes every issue prep filed; on merge to the
+   default branch GitHub closes them automatically. **Never emit a close line for a
+   `deferred[]` entry** — that work was cut and its issue must stay open; name the deferred
+   ids in the out-of-scope notes instead, so the PR records the cut. If the ledger is absent
+   (prep skipped filing), fall back to the issues referenced on the branch/PR.
    - **Staleness guard — run before emitting any `<issueCloseKeyword>` line.** The ledger
      (the file at `issueLedger`, e.g. `.metate/issues.json`) is per-sprint local state; one
      left from a *previous* sprint would auto-close unrelated issues. **Both** must hold for
@@ -64,7 +66,9 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
      (2) the ledger's `sprint` matches the work on the branch/diff. If either fails for any
      entry, treat the ledger as **stale** — STOP and ask the user, never wire auto-close from
      it. (This is what catches a skipped prep: a ledger that doesn't match the branch is never
-     trusted into a blind close.)
+     trusted into a blind close.) For **`deferred[]`** the check inverts: a deferred issue
+     that is **CLOSED** is the anomaly — someone closed work that was cut. Report it and ask;
+     never emit a close line for it either way.
    - Confirm auto-close wiring after creation.
    - If `aftercare.release.planFile` has `status: approved`, mention the planned tag in the
      PR body (informational — the tag is cut only after merge + a second confirmation).

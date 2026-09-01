@@ -1,0 +1,12 @@
+{
+  "signals": [
+    {
+      "id": "sig-invented-key",
+      "title": "Something odd in the importer.",
+      "repro": "unknown",
+      "attribution": "out-of-diff",
+      "status": "open",
+      "githubIssue": "#42"
+    }
+  ]
+}

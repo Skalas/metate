@@ -40,12 +40,13 @@ reviewFocus: |
   - bootstrap.sh stays idempotent: never clobbers an existing profile.yml; .gitignore append is one-shot.
   - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
-    ONLY code writer; reviewers report findings and the orchestrator verifies or routes them to the
-    implementer — the orchestrator may Write ONLY to `signalsFile` and `prep.techDebtFile`.
+    ONLY code writer; reviewers report findings and the orchestrator adjudicates findings and
+    routes them to the implementer — the orchestrator may Write ONLY to `signalsFile` and
+    `prep.techDebtFile`.
 
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 review:
-  autoFix: all
+  autoFix: blockers
 
 # --- discover (metate-discover) ------------------------------------------
 discover:
@@ -61,6 +62,7 @@ discover:
     productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight in steady, high in explore)
   planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
   candidates: 5            # how many ranked candidates to propose
+  captureBacklog: 5        # max `open` signals before Step 3 must disposition them first (0 = always)
 
 # --- prep (metate-prep) --------------------------------------------------
 prep:
@@ -82,7 +84,9 @@ smoke:
 # --- aftercare (metate-aftercare) ----------------------------------------
 aftercare:
   deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md"]
-  postCommand: "bash install.sh --user"   # dogfood: installed skills never drift from the repo
+  postCommand: "bash install.sh --update --user && metate-init --update"  # skills AND this project's
+                                          # harness artifacts (.cursor/agents, rules) — --user alone
+                                          # never refreshes the per-project copies reviewers load
   release:
     enabled: true
     scheme: semver
