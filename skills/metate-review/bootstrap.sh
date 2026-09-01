@@ -152,8 +152,15 @@ echo "  ✓ reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides op
 if [ -d "$HOME/.cursor" ]; then
   RULE_DIR="$PROJECT_ROOT/.cursor/rules"
   RULE_DEST="$RULE_DIR/codebase-memory.mdc"
-  if [ -f "$RULE_DEST" ]; then
+  if [ -f "$RULE_DEST" ] && [ "$UPDATE" -eq 0 ]; then
     echo "  ✓ Cursor rule already present — left untouched"
+  elif [ -f "$RULE_DEST" ] && [ -f "$CURSOR_RULE" ]; then
+    if cmp -s "$CURSOR_RULE" "$RULE_DEST"; then
+      echo "  ✓ Cursor rule already current"
+    else
+      cp "$CURSOR_RULE" "$RULE_DEST"
+      echo "  ✓ refreshed Cursor rule: .cursor/rules/codebase-memory.mdc (--update)"
+    fi
   elif [ -f "$CURSOR_RULE" ]; then
     mkdir -p "$RULE_DIR"
     cp "$CURSOR_RULE" "$RULE_DEST"

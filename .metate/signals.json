@@ -14,6 +14,20 @@
       "scope": "product",
       "tracker": "review-aperture sprint (validate.sh fix)",
       "disposition": "Promoted into the review-aperture sprint and fixed there; the `|| true` guard landed with that sprint."
+    },
+    {
+      "id": "sig-bootstrap-untracks-deliberately-versioned-rule",
+      "capturedAt": "2026-09-01",
+      "title": "bootstrap.sh untracks .cursor/rules/codebase-memory.mdc even when the project deliberately committed it.",
+      "repro": "In a repo that has `git add`ed .cursor/rules/codebase-memory.mdc, run `metate-init --update`. bootstrap's gi_ignore_untrack stages a deletion and adds a .gitignore rule, reverting the project's decision.",
+      "evidence": "grouphead committed the file on purpose in PR #92 ('chore: versionar la config de metate y la regla de cursor'). Fleet propagation on 2026-09-01 staged `D .cursor/rules/codebase-memory.mdc` there and appended two ignore rules. Reverted by hand. gi_ignore_untrack assumes these paths are always installed tooling; a repo may legitimately vendor them.",
+      "notes": "Fix direction: gi_ignore_untrack should no-op when the path is already tracked in HEAD — untrack only what bootstrap itself introduced. It must never stage a deletion of a file a human committed.",
+      "attribution": "out-of-diff",
+      "scope": "engine",
+      "severityGuess": "S2",
+      "blocksDoD": false,
+      "foundIn": "live-test:fleet-propagation 2026-09-01",
+      "status": "open"
     }
   ]
 }
