@@ -18,7 +18,9 @@ reviewer:
 
 # --- implementer (the only writer) ---------------------------------------
 implementer:
-  backend: cursor          # cursor | codex | claude | gemini
+  backend: cursor          # cursor | codex | claude | gemini | claude-subagent
+                           # claude-subagent: in-process fallback for harnesses that deny the
+                           # nested `claude -p`; resumes via SendMessage (see IMPLEMENTERS.md)
   model: ""                # e.g. composer-2.5 (blank = adapter default)
   autonomous: false        # claude backend only. true → bootstrap whitelists `Bash(claude -p:*)`
                            # in .claude/settings.local.json (personal, gitignored) so headless
@@ -70,6 +72,8 @@ discover:
     productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight steady, high explore)
   planFile: ".metate/plan.md"
   candidates: 5
+  captureBacklog: 5        # max `open` signals tolerated before discover must disposition them
+                           # ahead of showing a slate. 0 = disposition every open capture.
 
 # --- prep (metate-prep) ---------------------------------------------------
 prep:
@@ -92,6 +96,8 @@ prep:
 # Ledger entry shape: id, title, type (ux|live|graduation|other),
 # status (open|approved|deferred), reason, sprint, date.
 smoke:
+  matrix: ""               # optional: path to a T-row → command binding, e.g. ".metate/smoke-matrix.json".
+                           # Leave empty when one `command` proves the whole DoD.
   command: ""
   seedCommand: ""
   # humanGates:

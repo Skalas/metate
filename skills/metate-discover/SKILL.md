@@ -45,6 +45,9 @@ Read `.metate/profile.yml`. Use the `discover:` block:
 - `discover.planFile` — where to write the chosen plan (default `.metate/plan.md`). This
   becomes `metate-prep`'s entry doc.
 - `discover.candidates` — how many ranked candidates to propose (default 5).
+- `discover.captureBacklog` — how many `open` entries in `signalsFile` are tolerated before
+  Step 3 must disposition them ahead of showing a slate (default 5; `0` = disposition every
+  open capture, every cycle).
 
 Also read, for context: `signalsFile` (the capture log this stage consumes; e.g.
 `.metate/signals.json`), `prep.readingOrder`, `prep.techDebtFile`, `aftercare.deliverables`,
@@ -167,6 +170,11 @@ Each candidate states:
 **Candidate kinds** — stop letting the output format filter the input:
 - **`sprint`** *(default)* — a diff-shaped cycle; carries seed DoD + `T1…Tn` as today.
 - **`decision`** — a question that needs answering, not a diff (e.g. "do we keep supporting X?").
+  Its completion artifact is an **ADR**: a dated, numbered record of the question, the options,
+  the call, and its consequences, written to the repo's ADR directory (`docs/adr/`, or wherever
+  `prep.readingOrder` / `aftercare.deliverables` already point). A decision whose only output is
+  a conversation has not completed. Say so in the completion condition: *"ADR-NNNN written and
+  indexed."*
 - **`spike`** — deliverable is knowledge; states the question and what would end it.
 - **`retire`** — removing a capability that was a mistake, distinct from REDUCE's dead-code sweep.
 - **`process`** — the profile, reviewFocus, gates, or test conventions are decaying.
@@ -183,11 +191,38 @@ For candidates sourced from a **capture**, render provenance in the kind slot �
 `smoke:T4`), so the human's choice can close the loop in Step 4: picked → `promoted`, explicitly
 rejected → `invalid`/`wontfix`, untouched → stays `open`.
 
-## Step 3 — present the brief; you pick
-Show the situation read, the last-pick grade, the ranked slate, and a **coverage line** naming
+## Step 3 — disposition the capture queue, then present the brief
+
+**Gate: no slate while open captures are piling up.** If `signalsFile` holds more than
+**`discover.captureBacklog`** entries at `status: open` (default **5**), you may **not** show a
+slate yet — walk the human through them first. This is not politeness, it is arithmetic: a slate
+holds `discover.candidates` rows and at most one is picked, so every cycle that reads N open
+captures and dispositions none leaves N−1 to be re-read forever. The queue grows monotonically
+and crowds out everything else. The comparison is in this repo's own field data: the human-gates
+ledger *blocks* smoke and ship and runs 77% dispositioned; the capture lane merely *advises*
+discover and runs 16%, with `invalid` and `wontfix` used **zero** times in seven weeks.
+Enforcement is what drains a queue.
+
+**Walk them the way smoke walks human gates** (`metate-smoke` Step 4 — the mechanism with the
+77% rate). Never a bare list or table. For **each** open capture, oldest `capturedAt` first:
+1. **What was seen** — the title and repro in plain language, plus where it surfaced
+   (`foundIn`) and how long it has been sitting.
+2. **Why it might matter now** — tie it to the current situation read; say honestly when the
+   honest answer is "it probably doesn't."
+3. **What each ruling means** — `promoted` only if it is going into *this* plan; `fixed` if it
+   was already repaired in-branch; `invalid` if it is not a real defect; `wontfix` if it is real
+   and you are choosing to live with it. `wontfix` is a legitimate, common answer — a queue where
+   nothing is ever rejected is a queue no one is really reading.
+4. **Ask** — one ruling, plus a one-line `disposition` for anything not promoted. Then the next.
+
+Leaving an entry `open` is allowed only as an explicit "ask me again next cycle," and only for
+entries under the backlog threshold. Stamp every ruling per Step 4.
+
+Then show the situation read, the last-pick grade, the ranked slate, and a **coverage line** naming
 which sources were swept, which came back empty, and which were skipped — then **stop for the
 human**. Offer five moves: **pick** one, **merge** several into one sprint, **drop #** a
-signal-backed candidate as not-real (→ Step 4 stamps it `invalid`/`wontfix`), **none** (nothing
+signal-backed candidate (→ Step 4 stamps it `invalid` if it is not a real defect, `wontfix` if it
+is real and you are choosing to live with it — with a reason either way), **none** (nothing
 ripe — exit cleanly), or **refine** (exactly **one** round before choosing: e.g. "more like #2",
 "show #1 as REDUCE", "re-read the situation assuming X"). "none" defers, it does not reject —
 only an explicit **drop** closes a signal as not-real. Never auto-select. Example shape:
@@ -212,6 +247,15 @@ COVERAGE: swept aftercare, graph, captures, productIntent · empty: issues · sk
 ```
 
 ## Step 4 — write the chosen plan (and close signal loops)
+**When the human merges candidates** (`merge #,#`), the result is **one** plan, not a stapled
+pair. Take the **union** of their DoD / test-matrix rows, deduplicating overlaps; take the
+**widest** mode hint (EXPAND > HOLD > REDUCE) unless the merged scope is obviously smaller than
+either part; **sum corroboration** only across *distinct* sources — two candidates raised by the
+same signal corroborate once, not twice. `kind` must be a single value: a `sprint` merged with a
+`decision` is a sprint that carries the decision as an ADR deliverable, not a hybrid kind. Record
+in the plan which candidates were merged, so the pick is auditable. If the union no longer fits
+one sprint, say so and offer the larger half alone instead of silently widening scope.
+
 Once the human chooses, use the **`Write` tool** (never a `Bash` heredoc/redirect) to write
 the selected candidate(s) to `discover.planFile` as prose: the goal, **`kind`**, the human's
 stated **reason for picking** (ask once; if they decline, write `no reason stated` — never
@@ -228,7 +272,13 @@ human-validation matrix. Do **not** file issues, cut a branch, or touch code —
 - deferred (neither chosen nor rejected) → leave `open`; it resurfaces next cycle.
 
 This is the only write besides the plan file, and only for signals the human just ruled on. Match the
-entry by its `title` (+ `foundIn`) — the log has no id.
+entry by its **`id`**. A legacy entry with no `id` is backfilled first — slug the `title`, add
+`capturedAt` if absent, rewrite the file — then matched; never match on `title` alone, which
+breaks the moment anyone rewords one.
+
+Terminal statuses: `promoted` (went into **this plan** — and nothing else; record the issue in
+`tracker` once prep files it), `fixed` (already repaired in-branch, never planned), `invalid`,
+`wontfix`. Write a `disposition` for every ruling except `promoted`.
 
 ## Output
 Confirm the plan file written and its path, and name the next ceremony: hand off to

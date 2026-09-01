@@ -27,9 +27,25 @@ cannot sign off on — look-and-feel, live graduations, or other H-matrix items.
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`, optional
-`smoke.humanGates` (`ledger`, `required`), and `signalsFile` (where mid-flow captures
-are appended; e.g. `.metate/signals.json`). If `smoke.command` is empty, ask the user
-how the e2e/smoke suite runs.
+`smoke.humanGates` (`ledger`, `required`), optional `smoke.matrix`, and `signalsFile` (where
+mid-flow captures are appended; e.g. `.metate/signals.json`). If `smoke.command` is empty, ask
+the user how the e2e/smoke suite runs.
+
+**`smoke.matrix` — the T-row → command binding.** Step 2 must map results back to T1…Tn, and with
+only a single `smoke.command` string that mapping lives nowhere: it gets re-derived by hand every
+sprint, or duplicated into a runner script. When `smoke.matrix` names a file, read it:
+
+```json
+{ "sprint": "<topic>",
+  "description": "<what this binding covers>",
+  "requires": { "<name>": "<how to satisfy it, e.g. docker compose up -d postgres>" },
+  "rows": [ { "id": "T1", "title": "<what it proves>", "command": "<command that proves it>" } ] }
+```
+
+`id` may name a span (`T1-T3`) when one command covers several rows. Check `requires` before
+running and report anything unmet rather than failing opaquely. **`smoke.command` remains the
+fallback** — a repo with one suite needs no matrix, and an absent or empty `smoke.matrix` is not
+an error. When both are set, run the matrix rows and then `smoke.command`.
 
 Identify the **current sprint id** (from `issueLedger.sprint`, the plan, or the branch
 topic). Human-gate blocking is scoped to that sprint only.
@@ -107,6 +123,10 @@ When `smoke.humanGates` is configured:
 ## Exit
 Route each failure by attribution — one red bucket no longer means "back to build":
 - **in-diff** failure → 🛑 blocker; resume the same implementer session, fix in-branch (regression).
+  Record it in `signalsFile` **only after** it is dispositioned — `attribution: in-diff` with
+  `status: fixed` (repaired in-branch) or `wontfix` (real, and you are choosing to live with it).
+  **`in-diff` may never be `open`:** that is an unfixed regression parked in a queue nobody is
+  obliged to read. This is the one rule; the schema's `attribution` field repeats it.
 - **out-of-diff / exposed-latent + blocks DoD** → 🛑 escalate to the user: hotfix-first (fix off
   the release base, rebase) or explicit scope-expand (add a named T-row). Don't fix it silently in-branch.
 - **out-of-diff / exposed-latent + doesn't block DoD** → captured as a signal (Step 2); smoke continues.
