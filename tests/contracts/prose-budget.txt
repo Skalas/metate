@@ -8,12 +8,15 @@
 # Raising a cap is allowed. Raising it must be an explicit line in the diff, argued for in the
 # commit — that is the entire point. Lowering one after a real reduction is always welcome.
 #
-# Seeded 2026-09-01 from the field-audit pass (docs/FIELD-AUDIT-2026-08-31.md).
-skills/metate-build/SKILL.md 85
-skills/metate-prep/SKILL.md 130
-skills/metate-aftercare/SKILL.md 140
-skills/metate-smoke/SKILL.md 145
-skills/metate-ship/SKILL.md 165
-skills/metate/SKILL.md 195
-skills/metate-review/SKILL.md 285
-skills/metate-discover/SKILL.md 305
+# Seeded 2026-09-01 from the field-audit pass (docs/FIELD-AUDIT-2026-08-31.md), at EXACTLY the
+# post-audit line counts — zero slack, deliberately. That audit pass itself grew playbook prose
+# 1,210 -> 1,403 lines (+16%) in a change whose own diagnosis was that this prose accretes. The
+# caps start where that left off so the next change has to pay for its own additions.
+skills/metate-build/SKILL.md 82
+skills/metate-prep/SKILL.md 121
+skills/metate-aftercare/SKILL.md 132
+skills/metate-smoke/SKILL.md 136
+skills/metate-ship/SKILL.md 158
+skills/metate/SKILL.md 189
+skills/metate-review/SKILL.md 281
+skills/metate-discover/SKILL.md 304
