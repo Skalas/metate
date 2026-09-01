@@ -29,7 +29,9 @@ implementation here — just orient, decide scope, branch.
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml`. Use the `prep:` block:
-- `prep.readingOrder` — docs to read first, in order.
+- `prep.readingOrder` — docs to read first, in order. A path may carry `{N}` for the sprint
+  number; resolve it as metate-aftercare Step 0 defines, so a numbered handoff path is
+  configured once rather than hand-bumped each sprint.
 - `prep.techDebtFile` — the debt ledger to triage.
 - `prep.baseBranch` — branch new work from here.
 - `prep.issues` — whether/how to file the sprint issues (`create`, `tracker`,
@@ -54,7 +56,10 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    - **`kind: sprint`** — one issue per test-matrix item (T1…Tn) under `granularity: test-matrix`,
      plus any debt items folded in at step 2.
    - **non-`sprint`** — skip test-matrix filing; file **one** tracking issue summarizing the
-     completion condition (ledger id **`C1`**), plus any folded debt.
+     completion condition (ledger id **`C1`**), plus any folded debt. For **`kind: decision`**
+     the completion condition is an **ADR** (metate-discover → Candidate kinds): name the target
+     path in the `C1` body, and add the ADR directory to `aftercare.deliverables` if it is not
+     already there, so close-out writes it.
    When `create: false`, file no issues and leave `issueLedger` untouched at prep time (note:
    ship still clears it at close-out). **When `create` is true**, overwrite `issueLedger` with
    this sprint's topic for both kinds — never leave a stale ledger from a prior sprint.
@@ -65,12 +70,17 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      `labels` and `milestone`. Record each result to `issueLedger`, e.g. sprint:
      `{ "sprint": "<topic>", "issues": [ { "id": "T1", … }, { "id": "T2", … } ] }`; non-`sprint`:
      `{ "sprint": "<topic>", "issues": [ { "id": "C1", … } ] }`.
+   - **`deferred[]`** — an optional sibling of `issues[]` holding rows **filed but cut from
+     scope** mid-sprint, retained so aftercare and discover can re-plan them:
+     `{ id, number, title, reason }`. Prep seeds it empty or omits it; whoever cuts a row moves
+     it there. Its issues stay **open** in the tracker — ship never auto-closes them
+     (metate-ship step 4).
    - **Clean the ledger.** Writing the ledger **overwrites** any prior one — never append to a
      ledger whose `sprint` differs, or last sprint's issues leak into this sprint's auto-close
      at ship. Stamp the current `sprint` topic.
 5. **Reset session file** — only when starting a *new* sprint: if the plan's sprint topic differs
-   from what `sessionFile` (or the prior ledger's `sprint`, if present) records, clear `sessionFile`
-   so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
+   from `sessionFile.sprint` (or, on a legacy file that predates that key, the prior ledger's
+   `sprint`), clear `sessionFile` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
    (e.g. to refile an issue) — leave `sessionFile` untouched; deleting an in-flight Build session
    would make the next review STOP (see metate-review). No prior ledger → treat as a new sprint.
 6. **Cut the branch** — from `prep.baseBranch` **before** writing any tracked sprint
