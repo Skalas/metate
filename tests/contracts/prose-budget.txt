@@ -1,0 +1,19 @@
+# Per-file hard line caps for skills/*/SKILL.md, enforced by `make budget` (wired into `verify`).
+#
+# Why: playbook prose has grown 98 -> ~1,400 lines, monotonically. `shrink-engine` removed 600
+# lines of shell by harvesting the correctness INTO SKILL.md — complexity did not leave, it moved
+# to the medium with no type system. TECH-DEBT's rule ("a change that adds prose to a
+# skills/*/SKILL.md must remove prose") had nothing enforcing it.
+#
+# Raising a cap is allowed. Raising it must be an explicit line in the diff, argued for in the
+# commit — that is the entire point. Lowering one after a real reduction is always welcome.
+#
+# Seeded 2026-09-01 from the field-audit pass (docs/FIELD-AUDIT-2026-08-31.md).
+skills/metate-build/SKILL.md 85
+skills/metate-prep/SKILL.md 130
+skills/metate-aftercare/SKILL.md 140
+skills/metate-smoke/SKILL.md 145
+skills/metate-ship/SKILL.md 165
+skills/metate/SKILL.md 195
+skills/metate-review/SKILL.md 285
+skills/metate-discover/SKILL.md 305

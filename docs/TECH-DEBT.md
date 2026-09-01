@@ -83,6 +83,10 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `claude -p --dangerously-skip-permissions` loop without the explicit dangerous-flag rule.
   **Trigger:** next time the headless `claude` implementer is provisioned via bootstrap —
   emit the explicit rule (or document the manual step in IMPLEMENTERS.md).
+  **Fired in production** (`internal_lucho_tool`, sprint `s1-rieles`): the nested call was denied
+  and the operator hand-rolled an in-process subagent to get past it. That workaround is now the
+  documented `claude-subagent` adapter (IMPLEMENTERS.md), so the sprint is unblocked — but the
+  bootstrap rule itself is still too broad and remains open.
 
 - **Validation residuals (open issues).**
   - **#37** — live proof that a genuinely-down codebase-memory MCP produces a *disclosed* grep
@@ -133,6 +137,9 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   features before being trimmed twice. **Rule:** a change that adds prose to a `skills/*/SKILL.md`
   must remove prose. **Trigger:** any sprint that touches a `SKILL.md` — state a line budget in
   the plan and hold to it.
+  **Now mechanical:** `make budget` (in `verify`) enforces a per-file cap from
+  `tests/contracts/prose-budget.txt`. Raising a cap is allowed and must appear as an explicit
+  line in the diff. The rule above stays as the reason the caps exist.
 
 ## Decided — not doing (yet)
 
