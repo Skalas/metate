@@ -8,6 +8,14 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`review-aperture` (2026-08-28)** — Review widens aperture without added fan-out: one
+  unanchored lens per round from round 2 on (elegance) — reviewers read the whole diff cold
+  instead of working a checklist; neutral carry-forward wording (independent judgment, not "verify
+  the fix resolved"); systemic clustering at N >= 3 distinct sites before bucketing;
+  `validate.sh` silent-death fix under `set -euo pipefail`. metate-review 1.1.0. Tier-3
+  deferrals filed in TECH-DEBT. Reduced twice during review: T4/T6 cut for lack of a durable
+  carrier under HOLD; T1 and T8 cut because each produced a blocker every round and the machinery
+  cost exceeded the value.
 - **`discover-judgment` (2026-08-25)** — Stage 0 gains a point of view: situation read before
   ranking, candidate kinds (sprint/decision/spike/retire/process), within-posture ranking on
   downside-reduction and upside-if-it-works, corroboration counts, effort as display-only, decay
@@ -79,19 +87,15 @@ profile, finding/signal schemas + lens prompts, the sources renderer). Default n
 3. **Cold-intake triage + hotfix lane** — only if cold bug reports become a recurring need
    (trigger in TECH-DEBT.md).
 
-### Next-sprint pointers (written by `discover-judgment`, 2026-08-25)
+### Next-sprint pointers (written by `review-aperture`, 2026-08-28)
 
-- **One open signal is parked** in `.metate/signals.json` — `validate.sh` dies silently under
-  `set -euo pipefail` before reaching its own `die`, so a red gate prints nothing. The two
-  substitutions that caused *this* sprint's red were fixed in-branch; the same construct may
-  exist elsewhere in the file. Next discover should fold it into the slate or dispose of it.
-  This is the first sprint to create `signalsFile`; it is **tracked** (cross-sprint queue, like
-  the human-gates ledger — unlike per-sprint `issues.json` / `release.json`).
-- **Prove the new stage on a real cycle before extending it.** The Tier-3 deferrals
-  (critic pass, slate ledger, per-run `mode`) are all trigger-gated in TECH-DEBT precisely so
-  they are not built speculatively — the situation read and candidate kinds need a few real
-  runs first. The critic pass in particular was deferred *until* the situation read exists to
-  reason against; it now does.
+- **Intent context is a deferred sprint, not shipped.** Round-1 plan/ledger reading, plan-
+  contradiction blockers, Intent-coverage warnings, and `stop-scope` were cut — see TECH-DEBT for
+  design constraints; the re-sprint must be allowed a durable carrier file.
+- **Prove the widened review loop on a real sprint** — unanchored lens and systemic clustering
+  are prose-only; the first live run is the real test.
+- **One signal promoted** — `validate.sh` silent-death under `set -euo pipefail` fixed; discover
+  should not re-propose it.
 - **The `kind` axis is wired end to end but never exercised.** discover → prep (`C1` tracking
   issue) → smoke (completion condition) → ship auto-close has been reviewed, not run. The first
   `decision` or `spike` pick is the real test of that chain.

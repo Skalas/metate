@@ -46,7 +46,7 @@ reviewFocus: |
   - <invariant 2, e.g. money math at the cent in the payment path>
   - <invariant 3, e.g. state transitions go through the domain guard>
   - The implementer is the ONLY code writer; reviewers report findings and the orchestrator
-    verifies or routes them to the implementer — the orchestrator may Write ONLY to
+    adjudicates findings and routes them to the implementer — the orchestrator may Write ONLY to
     `signalsFile` and `prep.techDebtFile` to persist capture survivors.
 
 # Which buckets the implementer auto-fixes each round. Reporting is unconditional.

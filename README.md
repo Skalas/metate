@@ -35,8 +35,8 @@ Cross-harness spawn is the point: a Claude Code session can orchestrate three `c
 reviewers and a `cursor-agent` implementer. The implementer's **build session is resumed across
 review rounds** so it keeps the rationale behind its own code.
 
-**Soft enforcement:** reviewers report findings; the orchestrator verifies or routes fixable
-ones to the implementer. There is no sandbox/read-only hard boundary — use on **trusted**
+**Soft enforcement:** reviewers report findings; the orchestrator adjudicates findings and routes
+fixable ones to the implementer. There is no sandbox/read-only hard boundary — use on **trusted**
 branches only. A diff that modifies the review engine's own instruction files (lens prompts,
 `prompt-clause`, `SKILL.md`) can subvert its own review; never run review on an untrusted branch.
 

@@ -86,7 +86,7 @@ recompute_ok="$(jq -r '
      else error("bad bump") end) as $n
   | ("v" + ($n|map(tostring)|join("."))) as $expect
   | if $p.proposed == $expect then "ok" else "mismatch:\($p.proposed)!=\($expect)" end
-' "$FIX/release-valid.json")"
+' "$FIX/release-valid.json" || true)"
 [ "$recompute_ok" = ok ] || die "release-valid recompute failed: $recompute_ok"
 
 recompute_bad="$(jq -r '
@@ -97,12 +97,12 @@ recompute_bad="$(jq -r '
   | (if $p.bump == "minor" then [$c[0], ($c[1]+1), 0] else error("bad bump") end) as $n
   | ("v" + ($n|map(tostring)|join("."))) as $expect
   | if $p.proposed == $expect then "ok" else "mismatch" end
-' "$FIX/release-bad-proposed.json")"
+' "$FIX/release-bad-proposed.json" || true)"
 [ "$recompute_bad" = mismatch ] || die "release-bad-proposed should mismatch"
 ok "release-plan recompute (valid + mismatch rejected)"
 
 # --- exact semver tag filter (aftercare detection) -------------------------
 filtered="$(printf '%s\n' 'v1.4.0' 'v1.5.0-rc.1' 'v1.3.0' 'release-2' 'v2.0.0' \
-  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
 [ "$filtered" = 'v2.0.0' ] || die "semver filter failed (got $filtered)"
 ok "exact semver tag filter excludes prereleases"
