@@ -93,6 +93,11 @@ ls CLAUDE.md AGENTS.md .cursor/rules/* docs/adr/* docs/ADR* 2>/dev/null
 Read those, extract the real invariants (auth/tenant isolation, money/precision, state
 guards, "don't duplicate X", design-system rules), draft 3–6 bullets, and **ask the user
 to confirm or correct**. This is what makes the review catch real failure modes.
+**Reference, don't transcribe.** If an invariant is already written down in an ADR or an
+architecture doc, cite it (`ADR-0003 — <one-line gist>`) and make sure that doc is in
+`prep.readingOrder`; reviewers can be handed a bounded slice of it (REVIEWERS.md → Shared
+review prompt). Copying whole design records into this scalar is how it grows to 60+ lines
+and drifts out of sync with the source.
 
 **discover** — keep the template defaults unless the user objects: all six `sources` on
 (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`, `productIntent`),
@@ -147,7 +152,22 @@ updated and the project already has a profile:
 3. For each missing key, propose a value fitted to THIS repo (detect it as in Step 2 —
    never paste the template placeholder verbatim when a real value is detectable).
 4. Show the additions as a diff and confirm with the user before editing.
-5. **Additions only** — never remove, reorder, or rewrite existing keys, values, or comments.
+5. **Then a retire pass.** Additions alone make the profile a one-way ratchet: keys outlive the
+   playbooks that read them, and the operator goes on believing they configured something. List
+   every key in the profile that **no current playbook reads**, show them as a removal diff, and
+   delete on the user's confirmation. Known dead as of now:
+   - **`orchestrator:`** — read by nothing since the headless engine was deleted (`b713bea`).
+   - **`discover.signals`** — renamed to `discover.sources`; **migrate** it (rename the key,
+     keep the values) rather than leaning on the one-line alias.
+
+   The half of the old rule that stays: **never silently rewrite a value.** Removals and renames
+   are proposed as a diff and applied only on confirmation — the retire pass may not touch a key
+   a playbook still reads, and may never change a value the user chose.
+6. **Harness artifacts are separate from skills.** Updating metate at user level (`install.sh
+   --update --user`) refreshes the skill files but **not** the per-project copies harnesses
+   actually load — `.cursor/agents/metate-*.md`, `.cursor/rules/codebase-memory.mdc`. Those only
+   refresh under `metate-init --update`, per project. Tell the user to run it, and put it in
+   `aftercare.postCommand` so it is not a thing to remember.
 
 ## Step 3 — route to the ceremony
 
