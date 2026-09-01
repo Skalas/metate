@@ -69,12 +69,34 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `codebaseMemory` — when `enabled: true`, reviewers and the implementer prefer the
   codebase-memory-mcp graph; `reindex` controls refresh between rounds (`git` | `always` | `manual`).
 
+**Placeholder check — 🛑 STOP before any fan-out.** A profile that was bootstrapped and never
+filled in sends three reviewers to enforce invariants belonging to some other project:
+- `reviewFocus` empty, or still matching the template placeholder (`<invariant`) → STOP and tell
+  the user to run the `metate` wizard. This is the field the engine's own docs call
+  highest-value; it must not be possible to run green without it.
+- `fastGate` or `shipGate` still carrying the fail-loudly placeholder (`set fastGate in
+  .metate/profile.yml`, or any `&& false` sentinel) → STOP. Check each key against **its own**
+  name while you are there: a `shipGate` whose placeholder text says *fastGate* is a copy-paste
+  that has been frozen into the profile.
+
+**`signalsFile` resolution.** If the key is unset but `.metate/signals.json` exists on disk, say
+so loudly and use it — state exists that the profile cannot address, and the fix is a one-line
+profile edit. If neither exists, still report every captured survivor in the round output and
+tell the user to set the key. **Never drop a capture silently** — out-of-diff finds are review's
+most valuable by-product and discover's only `captures` source.
+
 ## Inputs
 
 - **Implement session:** read `sessionFile`
-  `{ "implementer": "...", "sessionId": "<explicit-id>" }`.
+  `{ "implementer": "...", "sessionId": "<explicit-id>", "sprint": "<topic>" }`.
   Build writes it (see `IMPLEMENTERS.md` §Build handshake). If missing, STOP — do **not**
   silently open a fresh session (loses the implementer's rationale).
+- **The session must belong to THIS sprint.** STOP unless `sessionFile.sprint` matches the
+  current sprint (branch topic / `issueLedger.sprint`). Existence is not freshness: ship retires
+  sprint-local state only when a sprint fully lands, so abandoned session files sit in repos for
+  months and look identical to live ones. A mismatch — or a missing `sprint` on a file written
+  before this rule — means the session belongs to prior work: report both values and ask, never
+  resume it.
 - **Resume by EXPLICIT session id** — never "most recent" / `--last` when the orchestrator
   shares a backend with reviewers (intervening reviewer sessions would hijack resume).
   If `sessionId` is empty or `"--last"` while unsafe, STOP and ask for the real id.
@@ -173,7 +195,8 @@ Which buckets get auto-fixed is governed by `review.autoFix`:
 After bucketing, persist findings that won't be fixed this sprint. Append with **`Write` only**
 to the capture sinks — never a reviewer, never a `Bash` redirect.
 
-- **Out-of-diff bug** → `signalsFile` per `metate-smoke/signal.schema.json` (if configured).
+- **Out-of-diff bug** → `signalsFile` per `metate-smoke/signal.schema.json` (resolved in Step 0;
+  when there is nowhere to write, report it in the round output rather than dropping it).
 - **Deferred want** (DESIGN or declined warning) → `prep.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
 
@@ -218,12 +241,16 @@ round on the patched tree. A green fast gate is necessary, not sufficient.
 | Round 3 **applied** fixes (patch this round) | 🛑 STOP — cap leaves no fan-out on the patched tree |
 | Blockers remain after round 3 (no patch this round) | 🛑 STOP — summarize survivors |
 
-When **no fixable findings** remain this round, evaluate top to bottom; the first matching row
-is the verdict:
+At the end of each fan-out round, evaluate top to bottom; the first matching row is the verdict.
+**Only blockers gate convergence.** Warnings and suggestions are still *routed* to the implementer
+under `blockers+warnings` / `all`, but they never hold the loop open — the elegance lens is
+suggestion-only and will find something on any diff, so waiting for it to fall silent is not a
+terminator, it is an infinite loop.
 
 | Condition | Verdict |
 |-----------|---------|
 | Any lens failed this round | 🛑 `stop-incomplete` — cannot certify 0 blockers |
+| Blockers remain and `autoFix` routes them | ↻ next round — route fixes, re-run |
 | Blockers remain but `autoFix` won't route them | 🛑 `stop-blockers` — hand back |
 | Last patch left fast gate red (`gate_red`) | 🛑 `stop-gate` — fix gate before done |
 | 0 blockers, gate never run yet this loop | Run `fastGate` once; green ⇒ ✅ `done`, red ⇒ `stop-gate` |
