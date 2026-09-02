@@ -111,9 +111,11 @@ Definition of Done. They become one file:
 - **Every row has exactly one of `command` or `gate`.** A `command` is evidence a script can
   produce; a `gate` points at a human-gates entry. A row with neither cannot be written — the
   validator refuses it. This is the whole of the "does the gate mean anything" fix.
-- **verify** runs every `command` row and reports; **ship re-runs them** at gate time. Nothing is
-  *recorded* as verified — a verified row is one whose command exits 0 **on the commit being
-  shipped**. Re-running is cheaper than trusting a stored claim, and cannot be faked by a wrong LLM.
+- **verify** runs every `command` row and reports. **`shipGate` includes them** — ship already
+  re-runs the project's gate because it restructures commits and merges the base branch, so the
+  tree it ships is not the tree build reviewed. The DoD rows simply become part of that existing
+  run; no new step, no new latency. Nothing is *recorded* as verified — a verified row is one whose
+  command exits 0 on the commit being shipped, which a wrong LLM cannot fake.
 - **ship** refuses the PR while any row is neither passing nor `cut`-with-reason, and emits
   `Closes #N` from passing rows only. `cut` rows are named in the PR as out of scope. This replaces
   the `deferred[]` construct and the two-condition staleness guard added in #107.
@@ -157,10 +159,12 @@ every run and can never be checked. The entry carries it:
   "status": "open" }
 ```
 
-`steps` and `expected` are required and non-empty. A vague gate now fails at `start`, when it is
-cheap, rather than at `verify`, when a human is waiting — the enforcement rule applied to gates.
-`reason` and `date` keep their current semantics; the three tolerated container layouts collapse
-to one.
+`steps` and `expected` are required and non-empty **for entries written from this rule on**. Nothing
+is backfilled: ship only ever blocks on current-sprint gates and prior ones still `open`, so closed
+gates are history nobody reads again, and the validator grandfathers any entry whose `sprint`
+predates the rule. A vague gate now fails at `start`, when it is cheap, rather than at `verify`,
+when a human is waiting. `reason` and `date` keep their current semantics; the three tolerated
+container layouts collapse to one.
 
 ### 4 · One enforcement rule
 
@@ -208,8 +212,8 @@ time the gate has meant that. Two fewer stages to invoke, explain, and keep in s
 keys. The enforcement story is decided, and it is the one that scored 77%.
 
 **Bad, accepted.** Every T-row must now be bound to a command or a gate at `start` time, and every gate must say why a script can't do it and exactly what the human does; that is work
-`start` did not previously force, and it will surface rows that were never really testable. Ship
-re-runs the DoD commands, so ship takes longer. Merging stages loses the option of running build
+`start` did not previously force, and it will surface rows that were never really testable.
+Merging stages loses the option of running build
 without review, or aftercare without ship — nobody in the field is recorded doing either.
 
 ## Alternatives considered
@@ -219,7 +223,7 @@ without review, or aftercare without ship — nobody in the field is recorded do
 | **Slips** — a typed file-per-record store all ledgers migrate into, with a schema, validator, provenance arrays, and per-stage refusal rules | Proposed by the author, drafted in detail, then withdrawn as over-stated by the drafter. It generalises what human-gates already does at the cost of a new subsystem, a directory of hundreds of files per heavy sprint, and a migration across 15 repos — while the enforcement it promised is delivered by move 4 with one file and one rule. Its genuine insight survives: *checkable files block, prose advises*. |
 | **Collapse to 3 stages** (plan · build · ship) | Loses the smoke confirmation moment, which is where human gates — the one mechanism that measurably works — live. Five keeps every distinct product. |
 | **Keep 7, delete only keys** | Certain, and insufficient: the ledger sprawl and the two thin stages are the complexity the author named. |
-| **Record `verified` state instead of re-running** | A stored claim is prose in JSON; an LLM can write it without doing it. A re-run cannot be faked. |
+| **Record `verified` state instead of running at ship** | A stored claim is prose in JSON; an LLM can write it without doing it. `shipGate` already runs on the shipped tree; the rows ride along. |
 | **Make `dod.json` optional** | Then it is the 16%-dispositioned signals lane again. Rows without evidence are the problem, not a use case. |
 
 ## Open questions — carried, not decided
@@ -238,8 +242,6 @@ without review, or aftercare without ship — nobody in the field is recorded do
 2. **Collapse + rename** — one PR per merge (`build`→`review` first; it's the smaller one), each
    carrying its renames. Each must land net-negative on the budget.
 3. **DoD file + gate admission + enforcement rule** — one PR, after the collapse so it is written
-   into five stages, not seven. Includes the gates-ledger migration: existing entries get
-   `type` mapped from the old enum where unambiguous (`live` → `device` or `external` by title),
-   and `steps`/`expected` backfilled from `title` for the human to sharpen at the next walkthrough.
+   into five stages, not seven. No gates migration: prior-sprint entries are grandfathered.
 4. **Measure** — one real sprint on the result before touching anything else. Then the review-yield
    question.
