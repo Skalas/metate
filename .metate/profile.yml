@@ -18,10 +18,6 @@ implementer:
   backend: cursor          # implementer/writer runs via cursor-agent
   model: ""                # blank = adapter default
   autonomous: true         # dogfood runs headless; Bash(cursor-agent:*) is committed in .claude/settings.json
-
-sessionFile: ".metate/session.json"
-issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
-signalsFile: ".metate/signals.json"  # tier-1 captures from smoke + review; read + dispositioned by discover
 isolation: none
 
 # --- codebase memory (structural context provider) -----------------------
@@ -60,7 +56,6 @@ discover:
     gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
     captures: true         # signalsFile — tier-1 captures from smoke + review awaiting triage (read side)
     productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight in steady, high in explore)
-  planFile: ".metate/plan.md"   # discover writes here; prep reads it as its entry doc
   candidates: 5            # how many ranked candidates to propose
   captureBacklog: 5        # max `open` signals before Step 3 must disposition them first (0 = always)
 
@@ -93,7 +88,6 @@ aftercare:
     tagPrefix: "v"
     currentFrom: git-tag
     githubRelease: true
-    planFile: ".metate/release.json"
     # versionFile unused — published version is the git tag; skill frontmatter bumps in Build
 
 # --- ship (metate-ship) --------------------------------------------------

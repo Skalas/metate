@@ -45,7 +45,7 @@ modifies the review engine's own instruction files (lens prompts, prompt-clause,
 can subvert its own review; on a trusted repo treat such a diff as suspect, and never run
 review on an untrusted branch.
 
-The orchestrator may **`Write` only to `signalsFile` and `prep.techDebtFile`** to persist
+The orchestrator may **`Write` only to `.metate/signals.json` and `prep.techDebtFile`** to persist
 capture survivors (see §2b).
 
 ## Step 0 — load the project profile
@@ -58,8 +58,6 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `reviewer.backend` — default backend for all three lenses (`codex` · `cursor` · `claude`).
   Optional per-lens overrides: `reviewer.correctness`, `reviewer.security`, `reviewer.elegance`.
 - `implementer.backend` / `implementer.model` — which adapter + model to drive fixes.
-- `sessionFile` — path to the implement-session handoff (default `.metate/session.json`).
-- `signalsFile` — where out-of-diff bug captures are appended (e.g. `.metate/signals.json`).
 - `prep.techDebtFile` — where deferred review wants are appended (e.g. `docs/TECH-DEBT.md`).
 - `prep.baseBranch` — branch the sprint cut from (default `main`).
 - `reviewFocus` — the invariants the reviewers must scrutinize in THIS codebase.
@@ -80,20 +78,18 @@ filled in sends three reviewers to enforce invariants belonging to some other pr
   there: a `shipGate` whose placeholder text says *fastGate* is a copy-paste frozen into the
   profile, and it is in the field today.
 
-**`signalsFile` resolution.** If the key is unset but `.metate/signals.json` exists on disk, say
-so loudly and use it — state exists that the profile cannot address, and the fix is a one-line
-profile edit. If neither exists, still report every captured survivor in the round output and
-tell the user to set the key. **Never drop a capture silently** — out-of-diff finds are review's
-most valuable by-product and discover's only `captures` source.
+State files are fixed paths, not config: the implement session is `.metate/session.json`; out-of-diff
+captures are appended to `.metate/signals.json` (create it if absent — **never drop a capture
+silently**; they are review's most valuable by-product and discover's only `captures` source).
 
 ## Inputs
 
-- **Implement session:** read `sessionFile`
+- **Implement session:** read `.metate/session.json`
   `{ "implementer": "...", "sessionId": "<explicit-id>", "sprint": "<topic>" }`.
   Build writes it (see `IMPLEMENTERS.md` §Build handshake). If missing, STOP — do **not**
   silently open a fresh session (loses the implementer's rationale).
-- **The session must belong to THIS sprint.** STOP unless `sessionFile.sprint` matches the
-  current sprint (branch topic / `issueLedger.sprint`). Existence is not freshness: ship retires
+- **The session must belong to THIS sprint.** STOP unless `.metate/session.json` → `sprint` matches the
+  current sprint (branch topic / `.metate/issues.json` → `sprint`). Existence is not freshness: ship retires
   sprint-local state only when a sprint fully lands, so abandoned session files sit in repos for
   months and look identical to live ones. A **mismatch** means the session belongs to prior work:
   report both values and refuse to resume it. A **missing** `sprint` (a file written before this
@@ -197,8 +193,7 @@ Which buckets get auto-fixed is governed by `review.autoFix`:
 After bucketing, persist findings that won't be fixed this sprint. Append with **`Write` only**
 to the capture sinks — never a reviewer, never a `Bash` redirect.
 
-- **Out-of-diff bug** → `signalsFile` per `metate-smoke/signal.schema.json` (resolved in Step 0;
-  when there is nowhere to write, report it in the round output rather than dropping it).
+- **Out-of-diff bug** → `.metate/signals.json` per `metate-smoke/signal.schema.json`.
 - **Deferred want** (DESIGN or declined warning) → `prep.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
 
@@ -207,7 +202,7 @@ to the capture sinks — never a reviewer, never a `Bash` redirect.
 Let **fixable** = findings in buckets selected by `review.autoFix`.
 
 If any fixable findings exist, resume the implementer per `IMPLEMENTERS.md` using the **explicit
-`sessionId`** from `sessionFile`. The prompt:
+`sessionId`** from `.metate/session.json`. The prompt:
 - lists only fixable findings by `file:line` + fix intent;
 - forbids unrelated changes;
 - when `codebaseMemory.enabled`, prepends the Code Discovery clause.
@@ -274,7 +269,7 @@ that elegance ran unanchored. End with the verdict and uncaptured survivors.
 
 ## Guardrails
 
-- `Write` scoped to `signalsFile` and `prep.techDebtFile` only.
+- `Write` scoped to `.metate/signals.json` and `prep.techDebtFile` only.
 - Implementer write mode is auto-approving; use `isolation: worktree` when you want an isolated
   tree (see `IMPLEMENTERS.md`).
 - Route every in-branch fix through the implementer — reviewers do not edit code.

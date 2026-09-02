@@ -15,8 +15,8 @@
 skills/metate-build/SKILL.md 82
 skills/metate-prep/SKILL.md 121
 skills/metate-aftercare/SKILL.md 132
-skills/metate-smoke/SKILL.md 136
+skills/metate-smoke/SKILL.md 135
 skills/metate-ship/SKILL.md 158
-skills/metate/SKILL.md 189
-skills/metate-review/SKILL.md 281
-skills/metate-discover/SKILL.md 304
+skills/metate/SKILL.md 196
+skills/metate-review/SKILL.md 276
+skills/metate-discover/SKILL.md 302

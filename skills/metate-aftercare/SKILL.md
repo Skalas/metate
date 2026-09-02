@@ -26,13 +26,13 @@ Runs after Smoke is green, on the same branch, so the docs ship in the sprint PR
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `aftercare.deliverables` (paths, may use `{N}` — see below),
-`aftercare.postCommand` (optional), and optional `aftercare.release`
-(`enabled`, `scheme`, `tagPrefix`, `currentFrom`, `versionFile`, `githubRelease`,
-`planFile`). If deliverables is empty, ask the user for the close-out doc set.
+`aftercare.postCommand` (optional), and optional `aftercare.release` (`enabled`, `scheme`,
+`tagPrefix`, `currentFrom`, `versionFile`, `githubRelease`; a proposed plan is written to
+`.metate/release.json`). If deliverables is empty, ask the user for the close-out doc set.
 
 **`{N}` — the sprint number.** Any `{N}` in a deliverable path is substituted before the path is
 used. Resolve it once, in this order, and **state the resolved value** in the output:
-1. the first integer in the sprint topic (`issueLedger.sprint`, the plan, or the branch name) —
+1. the first integer in the sprint topic (`.metate/issues.json` → `sprint`, the plan, or the branch name) —
    `s70-billing` → `70`;
 2. otherwise the highest integer already present in files matching the same pattern, **+1** —
    `docs/handoff/post-sprint-{N}.md` with `…-69.md` on disk → `70`;
@@ -49,7 +49,7 @@ path is written once in config instead of hand-bumped every sprint.
    - roadmap / status → mark this sprint done, next in progress;
    - tech-debt ledger → new debt **with a trigger** (the condition that forces the fix);
    - next-sprint pointers / agent-context → advance to N+1.
-3. **Surface engine-scoped signals** — read `signalsFile` and pull every entry with
+3. **Surface engine-scoped signals** — read `.metate/signals.json` and pull every entry with
    `scope: engine` that is still `open`. These are defects in **metate itself**, filed from this
    repo's use of it; nothing else carries them out of this repo. Name them in the handoff and in
    the next-sprint pointers, with `id`, `title` and `foundIn`, under a heading that says plainly
@@ -57,7 +57,7 @@ path is written once in config instead of hand-bumped every sprint.
    change their status — this stage's job is to make them visible at the sprint boundary.
 4. **Stay factual** — derive everything from the diff and the prep brief; don't invent
    scope. Intentional omissions are documented `—` placeholders, not silent gaps. If
-   `smoke.humanGates.ledger` has `deferred` items, name them in the handoff / next-sprint
+   `.metate/human-gates.json` has `deferred` items, name them in the handoff / next-sprint
    pointers so the next `metate-discover` resurfaces them (with the written reason).
 5. **Release proposal (when configured)** — only if `aftercare.release.enabled` is true
    (typical when the repo already has semver tags / GitHub Releases). Do **not** invent
@@ -90,7 +90,7 @@ path is written once in config instead of hand-bumped every sprint.
    > approve as proposed · change to patch/minor/major · skip release this sprint
    ```
 
-   After the human answers, write `aftercare.release.planFile` (default
+   After the human answers, write `.metate/release.json` (default
    `.metate/release.json`) with the **`Write` tool**:
 
    ```json
@@ -121,7 +121,7 @@ path is written once in config instead of hand-bumped every sprint.
 7. **Commit the deliverables** — commit them on the branch (e.g.
    `docs(aftercare): sprint N close-out`, following `ship.commitStyle` if set). Ship
    expects a clean working tree; it restructures commits anyway, so this commit is
-   cheap and never final. Do **not** commit `planFile` (gitignored sprint-local state).
+   cheap and never final. Do **not** commit `.metate/release.json` (gitignored sprint-local state).
 
 ## Output
 List the deliverables updated and the one-line change to each, plus the release decision

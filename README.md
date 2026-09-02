@@ -92,7 +92,7 @@ skills (generic, install once)        .metate/profile.yml (per-repo, versioned)
 ├─ metate-prep/                         ├─ reviewer.backend / implementer.backend
 ├─ metate-build/                        ├─ reviewFocus
 ├─ metate-review/                       ├─ discover / prep / smoke / aftercare / ship
-│   ├─ SKILL.md      (review loop)      └─ sessionFile / signalsFile / techDebtFile
+│   ├─ SKILL.md      (review loop)      └─ .metate/session.json · signals.json · techDebtFile
 │   ├─ REVIEWERS.md  (reviewer CLIs)
 │   ├─ IMPLEMENTERS.md (writer CLIs)
 │   └─ bootstrap.sh

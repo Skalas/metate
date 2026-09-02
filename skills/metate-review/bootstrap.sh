@@ -68,6 +68,33 @@ if [ ! -s "$PROFILE" ]; then   # missing or empty → fresh write
   echo "  ✓ wrote $PROFILE (gates are placeholders — the metate wizard skill detects them)"
 else
   echo "  ✓ $PROFILE already exists — left untouched (profile reconciliation → metate wizard, Step 2b)"
+  # ADR-0001 move 1: state paths are fixed, not config. Under --update, retire the seven
+  # path keys MECHANICALLY — a line is deleted only when its value is the default (which is
+  # every field profile as of 2026-09-01); a non-default value is reported and left alone.
+  # This is the one profile edit bootstrap makes: no judgment is involved.
+  if [ "$UPDATE" -eq 1 ]; then
+    retired=0; kept=""
+    while IFS='|' read -r key def; do
+      # match:  [#] key: <def>   with optional quotes and a trailing comment
+      pat="^[[:space:]]*#?[[:space:]]*${key}:[[:space:]]*[\"']?${def//\//\\/}[\"']?[[:space:]]*(#.*)?\$"
+      if grep -qE "$pat" "$PROFILE"; then
+        sed -i.bak -E "/${pat}/d" "$PROFILE" && rm -f "$PROFILE.bak" && retired=$((retired+1))
+      fi
+    done <<'KEYS'
+sessionFile|.metate/session.json
+issueLedger|.metate/issues.json
+signalsFile|.metate/signals.json
+planFile|.metate/plan.md
+planFile|.metate/release.json
+ledger|.metate/human-gates.json
+matrix|
+KEYS
+    for key in sessionFile issueLedger signalsFile planFile ledger matrix; do
+      grep -qE "^[[:space:]]*${key}:" "$PROFILE" && kept="$kept $key"
+    done
+    [ "$retired" -gt 0 ] && echo "  ✓ retired $retired fixed-path key(s) from profile (ADR-0001 move 1)"
+    [ -n "$kept" ] && echo "  ⚠ non-default path key(s) left in profile — state paths are fixed now; review:$kept"
+  fi
 fi
 
 # --- gitignore: per-sprint local state + vendored tooling -------------------

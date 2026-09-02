@@ -36,13 +36,13 @@ Read `.metate/profile.yml`. Use the `prep:` block:
 - `prep.baseBranch` — branch new work from here.
 - `prep.issues` — whether/how to file the sprint issues (`create`, `tracker`,
   `granularity`, `labels`, `milestone`).
-- `issueLedger` (top-level) — where to record the filed issue numbers for ship.
-- `smoke.humanGates` (optional) — when set, step 5 seeds its ledger from the plan's
-  H-matrix.
+- `smoke.humanGates` (optional) — when set, step 5 seeds `.metate/human-gates.json` from the
+  plan's H-matrix.
+- Filed issue numbers go to `.metate/issues.json` for ship.
 
 ## Steps
 1. **Read the handoff** — read every doc in `prep.readingOrder`, in order. If the **file at**
-   `discover.planFile` exists on disk (written by a prior `metate-discover` run), read it
+   `.metate/plan.md` exists on disk (written by a prior `metate-discover` run), read it
    first as the entry doc; otherwise, if `readingOrder` is empty, ask the user for the entry
    doc (e.g. a sprint README / plan). Summarize the active goal, the plan's **`kind`**
    (`sprint` default), the DoD (or **completion condition** when `kind` is not `sprint`), any
@@ -60,14 +60,14 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      the completion condition is an **ADR** (metate-discover → Candidate kinds): name the target
      path in the `C1` body, and add the ADR directory to `aftercare.deliverables` if it is not
      already there, so close-out writes it.
-   When `create: false`, file no issues and leave `issueLedger` untouched at prep time (note:
-   ship still clears it at close-out). **When `create` is true**, overwrite `issueLedger` with
+   When `create: false`, file no issues and leave `.metate/issues.json` untouched at prep time (note:
+   ship still clears it at close-out). **When `create` is true**, overwrite `.metate/issues.json` with
    this sprint's topic for both kinds — never leave a stale ledger from a prior sprint.
    - **Confirm the list with the user before filing** — issue creation is outward-facing.
      Show the proposed title (lead with the `Tn` id for sprint rows, or **`C1`** for the
      non-sprint tracking issue) and body (DoD + acceptance) for each.
    - File via the tracker (`prep.issues.tracker: github` → `gh issue create`), applying
-     `labels` and `milestone`. Record each result to `issueLedger`, e.g. sprint:
+     `labels` and `milestone`. Record each result to `.metate/issues.json`, e.g. sprint:
      `{ "sprint": "<topic>", "issues": [ { "id": "T1", … }, { "id": "T2", … } ] }`; non-`sprint`:
      `{ "sprint": "<topic>", "issues": [ { "id": "C1", … } ] }`.
    - **`deferred[]`** — an optional sibling of `issues[]` holding rows **filed but cut from
@@ -79,9 +79,9 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      ledger whose `sprint` differs, or last sprint's issues leak into this sprint's auto-close
      at ship. Stamp the current `sprint` topic.
 5. **Reset session file** — only when starting a *new* sprint: if the plan's sprint topic differs
-   from `sessionFile.sprint` (or, on a legacy file that predates that key, the prior ledger's
-   `sprint`), clear `sessionFile` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
-   (e.g. to refile an issue) — leave `sessionFile` untouched; deleting an in-flight Build session
+   from `.metate/session.json` → `sprint` (or, on a legacy file that predates that key, the prior ledger's
+   `sprint`), clear `.metate/session.json` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
+   (e.g. to refile an issue) — leave `.metate/session.json` untouched; deleting an in-flight Build session
    would make the next review STOP (see metate-review). No prior ledger → treat as a new sprint.
 6. **Cut the branch** — from `prep.baseBranch` **before** writing any tracked sprint
    files (human-gates ledger is tracked and must land on the working branch, not the base):
@@ -89,7 +89,7 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
    ```
    Name the branch from the sprint/topic. Confirm with the user before pushing anything.
-7. **Seed human gates (when configured)** — if `smoke.humanGates.ledger` is set, always
+7. **Seed human gates (when configured)** — if `.metate/human-gates.json` is set, always
    materialize **this sprint's batch** into that ledger with the **`Write` tool** — even when
    the plan has **no H-matrix** (write an explicit zero-gate batch for this `sprint` so
    required smoke does not fail closed on a missing sprint scope). Smoke walks open items

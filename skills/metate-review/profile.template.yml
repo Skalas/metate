@@ -26,10 +26,6 @@ implementer:
                            # in .claude/settings.local.json (personal, gitignored) so headless
                            # rounds don't prompt. Trade-off: removes the per-call approval gate on
                            # the nested implementer. cursor/codex gate writes via their own flags.
-
-sessionFile: ".metate/session.json"
-issueLedger: ".metate/issues.json"   # issues filed by prep, read by ship for auto-close
-signalsFile: ".metate/signals.json"  # tier-1 captures from smoke + review; read + dispositioned by discover
 isolation: none            # none | worktree
 
 # --- codebase memory (required structural context provider) ---------------
@@ -70,7 +66,6 @@ discover:
     gitHistory: true
     captures: true
     productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight steady, high explore)
-  planFile: ".metate/plan.md"
   candidates: 5
   captureBacklog: 5        # max `open` signals tolerated before discover must disposition them
                            # ahead of showing a slate. 0 = disposition every open capture.
@@ -96,12 +91,9 @@ prep:
 # Ledger entry shape: id, title, type (ux|live|graduation|other),
 # status (open|approved|deferred), reason, sprint, date.
 smoke:
-  matrix: ""               # optional: path to a T-row → command binding, e.g. ".metate/smoke-matrix.json".
-                           # Leave empty when one `command` proves the whole DoD.
   command: ""
   seedCommand: ""
   # humanGates:
-  #   ledger: .metate/human-gates.json
   #   required: true
 
 # --- aftercare (metate-aftercare) -----------------------------------------
@@ -122,7 +114,6 @@ aftercare:
   #   currentFrom: git-tag   # git-tag | file
   #   versionFile: ""        # when currentFrom: file — read-only path for current version
   #   githubRelease: true
-  #   planFile: .metate/release.json
 
 # --- ship (metate-ship) ---------------------------------------------------
 ship:

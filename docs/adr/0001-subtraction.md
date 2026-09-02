@@ -1,6 +1,6 @@
 # ADR-0001 — Subtraction: five named stages, fewer keys, checkable evidence
 
-- **Status:** Proposed (2026-09-01)
+- **Status:** Accepted (2026-09-01)
 - **Kind:** `decision`
 - **Deciders:** repo author. Drafted from a design conversation on 2026-09-01; an earlier draft of
   this ADR proposed a "slip system" and was withdrawn by the author as over-stated — see
@@ -191,8 +191,8 @@ which item of the blocking set it is; a 🛑 that names none is rewritten as adv
 - the three tolerated container layouts of the gates ledger
 
 **Acceptance for the whole sequence:** playbook total **≤ 1,100 lines** (from 1,403), caps in
-`tests/contracts/prose-budget.txt` lowered in the same diffs; template **≤ 44 keys** (from 52:
-seven path keys plus the `aftercare:` block header); five stage directories under `skills/`, named
+`tests/contracts/prose-budget.txt` lowered in the same diffs; template **≤ 46 keys** (from 52:
+five live path keys — two of the seven were only ever commented out — plus the `aftercare:` block header); five stage directories under `skills/`, named
 `scope start build verify ship`; the gates validator refuses an entry without `type`, `steps`,
 `expected`.
 

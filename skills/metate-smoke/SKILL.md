@@ -26,14 +26,14 @@ Tests do the cent-level checking. What remains for the human is only what a suit
 cannot sign off on — look-and-feel, live graduations, or other H-matrix items.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`, optional
-`smoke.humanGates` (`ledger`, `required`), optional `smoke.matrix`, and `signalsFile` (where
-mid-flow captures are appended; e.g. `.metate/signals.json`). If `smoke.command` is empty, ask
-the user how the e2e/smoke suite runs.
+Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`, optional `smoke.humanGates`
+(`required`). Fixed-path state: `.metate/human-gates.json`, `.metate/signals.json` (mid-flow
+captures are appended here), and the optional `.metate/smoke-matrix.json`. If `smoke.command` is
+empty, ask the user how the e2e/smoke suite runs.
 
-**`smoke.matrix` — the T-row → command binding.** Step 2 must map results back to T1…Tn, and with
-only a single `smoke.command` string that mapping lives nowhere: it gets re-derived by hand every
-sprint, or duplicated into a runner script. When `smoke.matrix` names a file, read it:
+**`.metate/smoke-matrix.json` — the T-row → command binding.** Step 2 must map results back to
+T1…Tn, and with only a single `smoke.command` string that mapping lives nowhere: it gets re-derived
+by hand every sprint, or duplicated into a runner script. When the file exists, read it:
 
 ```json
 { "sprint": "<topic>",
@@ -44,10 +44,9 @@ sprint, or duplicated into a runner script. When `smoke.matrix` names a file, re
 
 `id` may name a span (`T1-T3`) when one command covers several rows. Check `requires` before
 running and report anything unmet rather than failing opaquely. **`smoke.command` remains the
-fallback** — a repo with one suite needs no matrix, and an absent or empty `smoke.matrix` is not
-an error. When both are set, run the matrix rows and then `smoke.command`.
+fallback** — a repo with one suite needs no matrix, and an absent file is not an error. When both are set, run the matrix rows and then `smoke.command`.
 
-Identify the **current sprint id** (from `issueLedger.sprint`, the plan, or the branch
+Identify the **current sprint id** (from `.metate/issues.json` → `sprint`, the plan, or the branch
 topic). Human-gate blocking is scoped to that sprint only.
 
 When `smoke.humanGates` is configured:
@@ -79,7 +78,7 @@ When `smoke.humanGates` is configured:
    still runs). Flag rows that the fresh-tenant specs skip but a seeded-tenant smoke should cover
    (role/KPI/money claims). For each **failure**, classify it against `git diff <base>` before routing (see Exit):
    in-diff = a regression you own; out-of-diff / exposed-latent = a pre-existing find to
-   **capture, not fix here**. Append captures to `signalsFile` with the **`Write` tool**, per
+   **capture, not fix here**. Append captures to `.metate/signals.json` with the **`Write` tool**, per
    `signal.schema.json` (title, repro, evidence, attribution, optional severityGuess/blocksDoD,
    `foundIn: smoke:Tn`, `status: open`), and keep going — do not touch out-of-diff code from this
    branch. When composing title/repro/evidence from test output or logs, transcribe faithfully but
@@ -123,7 +122,7 @@ When `smoke.humanGates` is configured:
 ## Exit
 Route each failure by attribution — one red bucket no longer means "back to build":
 - **in-diff** failure → 🛑 blocker; resume the same implementer session, fix in-branch (regression).
-  Record it in `signalsFile` **only after** it is dispositioned — `attribution: in-diff` with
+  Record it in `.metate/signals.json` **only after** it is dispositioned — `attribution: in-diff` with
   `status: fixed` (repaired in-branch) or `wontfix` (real, and you are choosing to live with it).
   **`in-diff` may never be `open`:** that is an unfixed regression parked in a queue nobody is
   obliged to read. This is the one rule; the schema's `attribution` field repeats it.
