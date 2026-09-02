@@ -7,21 +7,21 @@
 > shipped work, one ceremony at a time — and is set up again for the next batch.
 
 A portable, codebase-agnostic **development pipeline** for agent harnesses (Claude Code,
-Codex, Cursor) — the *ceremonias de metate*. Six ceremonies, each a skill; build owns
+Codex, Cursor) — the *ceremonias de metate*. Five ceremonies, each a skill; build owns
 the implementer session (round 0 writes, rounds 1–3 review).
 
 ```
-metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
-   0                 1              2               3               4                5
+metate-scope → metate-start → metate-build → metate-verify → metate-ship
+   0               1              2               3              4
 ```
 
-It's a loop: `metate-aftercare` writes the next-sprint pointers that `metate-discover` reads
+It's a loop: `metate-ship` writes the next-sprint pointers that `metate-scope` reads
 to open the next cycle — with **you** as the stop-condition between iterations.
 
 ## Harness-first model
 
 **The orchestrator is whichever agent harness you open.** There is no standalone bash driver —
-you invoke each stage as a skill (`metate-build`, `metate-prep`, …) and the harness executes
+you invoke each stage as a skill (`metate-build`, `metate-start`, …) and the harness executes
 the playbook.
 
 Two **swappable roles** (independent config in `.metate/profile.yml`):
@@ -54,7 +54,7 @@ cd your-repo && metate-init
 #    placeholders until then). Defaults: build.reviewer.backend: claude, implementer.backend: cursor
 
 # 3. Run ceremonies in order inside Cursor (invoke each as a skill):
-#    metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
+#    metate-scope → metate-start → metate-build → metate-verify → metate-ship
 ```
 
 For **cross-harness** review (e.g. codex reviewers + cursor writer), set in the profile:
@@ -73,29 +73,28 @@ Then `metate-build` fans out per `REVIEWERS.md` and resumes the implementer per 
 
 Start with **`metate`** — the entry-point skill that orients you, fills
 `.metate/profile.yml` with autodetected defaults on first run, and routes you to the
-right stage. The six stage skills do the actual work:
+right stage. The five stage skills do the actual work:
 
 | # | Skill | What it does |
 |---|---|---|
-| 0 | `metate-discover` | the pre-plan: survey signals, **read the situation**, rank candidates within posture by kind (sprint · decision · spike · retire · process), **you pick**, write the plan doc prep consumes |
-| 1 | `metate-prep` | read handoff docs, triage tech debt, fix sprint mode, file the issue ledger (T-rows, or a `C1` tracking issue for a non-sprint kind), cut the branch |
+| 0 | `metate-scope` | the pre-plan: survey signals, **read the situation**, rank candidates within posture by kind (sprint · decision · spike · retire · process), **you pick**, write the plan doc start consumes |
+| 1 | `metate-start` | read handoff docs, triage tech debt, fix sprint mode, file the issue ledger (T-rows, or a `C1` tracking issue for a non-sprint kind), cut the branch |
 | 2 | `metate-build` | round 0: resumable implementer session, layers, fast gate; rounds 1–3: parallel reviewers → route fixes → resume the same session → re-gate |
-| 3 | `metate-smoke` | e2e/smoke bound to the DoD matrix (or the completion condition for a non-sprint kind); walk open human gates (when configured); capture pre-existing failures as signals |
-| 4 | `metate-aftercare` | update close-out deliverables; optional semver release proposal |
-| 5 | `metate-ship` | bisectable commits, full ship gate, PR with issue auto-close; optional tag/release |
+| 3 | `metate-verify` | e2e/smoke bound to the DoD matrix (or the completion condition for a non-sprint kind); walk open human gates (when configured); capture pre-existing failures as signals |
+| 4 | `metate-ship` | close-out docs, optional release proposal, bisectable commits, ship gate, PR, merge, tag |
 
 ## Architecture: skills vs profile
 
 ```
 skills (generic, install once)        .metate/profile.yml (per-repo, versioned)
-├─ metate-discover/                     ├─ fastGate / shipGate
-├─ metate-prep/                         ├─ build.reviewer.backend / implementer.backend
+├─ metate-scope/                        ├─ fastGate / shipGate
+├─ metate-start/                        ├─ build.reviewer.backend / implementer.backend
 ├─ metate-build/                        ├─ reviewFocus
-│   ├─ SKILL.md      (round 0 + review) ├─ discover / prep / smoke / aftercare / ship
+│   ├─ SKILL.md      (round 0 + review) ├─ scope / start / verify / ship
 │   ├─ REVIEWERS.md  (reviewer CLIs)    └─ .metate/session.json · signals.json · techDebtFile
 │   ├─ IMPLEMENTERS.md (writer CLIs)
 │   └─ bootstrap.sh
-├─ metate-smoke/ · metate-aftercare/ · metate-ship/
+├─ metate-verify/ · metate-ship/
 ```
 
 Nothing project-specific lives in the skills. Porting = `bootstrap.sh` + editing the profile.
@@ -144,7 +143,7 @@ Profile reconciliation is handled by the `metate` wizard skill (Step 2b).
 1. **`reviewFocus`** — your real invariants (the highest-value field).
 2. **`build.reviewer.backend`** + **`implementer.backend`** — see `REVIEWERS.md` / `IMPLEMENTERS.md`.
 3. **Gates** — `fastGate` / `shipGate`, detected by the wizard from the repo's real tooling.
-4. **`prep`**, **`smoke`**, **`aftercare`**, **`ship`** — project-specific paths and commands.
+4. **`start`**, **`verify`**, **`ship`** — project-specific commands and deliverables.
 
 Then run ceremonies in order inside your harness.
 

@@ -3,7 +3,7 @@ name: metate
 version: 1.0.0
 description: |
   Entry point, first-run setup wizard, and router for the `metate` development
-  pipeline (discover → prep → build → smoke → aftercare → ship). Use this to get
+  pipeline (scope → start → build → verify → ship). Use this to get
   oriented, to configure `.metate/profile.yml` with autodetected defaults on a
   fresh repo, or to find out which ceremony to run next. The actual work lives in
   the `metate-<stage>` skills; this one explains the flow and sets it up.
@@ -21,18 +21,18 @@ allowed-tools:
 
 # metate — pipeline entry point & setup
 
-The pipeline is six ceremonies, one skill each. **There is no single `metate` worker** —
+The pipeline is five ceremonies, one skill each. **There is no single `metate` worker** —
 this skill orients you, sets up the profile on first run, and routes you to the right
 stage.
 
 ```
-metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
-   0                  1              2               3                4                5
+metate-scope → metate-start → metate-build → metate-verify → metate-ship
+   0               1              2               3              4
 ```
 
-The macro-loop closes back on itself: `metate-aftercare` writes next-sprint pointers that
-`metate-discover` reads to open the next cycle. **You** are the stop-condition between
-iterations — discover proposes, you decide.
+The macro-loop closes back on itself: `metate-ship` writes next-sprint pointers that
+`metate-scope` reads to open the next cycle. **You** are the stop-condition between
+iterations — scope proposes, you decide.
 
 Two roles, both pluggable and **independent** (see `metate-build/REVIEWERS.md` and
 `IMPLEMENTERS.md`): **reviewers** (`build.reviewer.backend` — spawn as other-harness CLIs) report
@@ -84,7 +84,7 @@ for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found
 (matches the Claude Code plugin path). Set `codex` or `cursor` for cross-harness fan-out — see
 `metate-build/REVIEWERS.md`. Lives at `build.reviewer` in the profile.
 
-Invoke stage skills natively in your harness (`metate-build`, `metate-prep`, etc.).
+Invoke stage skills natively in your harness (`metate-build`, `metate-start`, etc.).
 
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash
@@ -95,48 +95,48 @@ guards, "don't duplicate X", design-system rules), draft 3–6 bullets, and **as
 to confirm or correct**. This is what makes the review catch real failure modes.
 **Reference, don't transcribe.** If an invariant is already written down in an ADR or an
 architecture doc, cite it (`ADR-0003 — <one-line gist>`) and make sure that doc is in
-`prep.readingOrder`; reviewers can be handed a bounded slice of it (REVIEWERS.md → Shared
+`start.readingOrder`; reviewers can be handed a bounded slice of it (REVIEWERS.md → Shared
 review prompt). Copying whole design records into this scalar is how it grows to 60+ lines
 and drifts out of sync with the source.
 
-**discover** — keep the template defaults unless the user objects: all six `sources` on
+**scope** — keep the template defaults unless the user objects: all six `sources` on
 (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`, `productIntent`),
 `mode: steady`, `candidates: 5`. Turn `codebaseMemory` off
 here only if `codebaseMemory.enabled` is false. `productIntent` reads README plus
-`prep.readingOrder` for stated goals — no separate path config. `.metate/plan.md` is what
-`prep` reads as its entry doc.
+`start.readingOrder` for stated goals — no separate path config. `.metate/plan.md` is what
+`start` reads as its entry doc.
 
-**prep** — detect docs + base branch:
+**start** — detect docs + base branch:
 ```bash
 ls README* docs/handoff/README* docs/*roadmap* 2>/dev/null            # readingOrder candidates
 ls docs/TECH-DEBT* docs/tech-debt* TODO* 2>/dev/null                   # techDebtFile
 git symbolic-ref --quiet refs/remotes/origin/HEAD | sed 's@.*/@@'      # base branch (fallback: main)
 ```
 
-**smoke** — detect the e2e suite + seed:
+**verify** — detect the e2e suite + seed:
 ```bash
 ls playwright.config.* cypress.config.* 2>/dev/null                    # → command
 grep -oE '"(e2e|test:e2e|db:seed|seed)"\s*:' package.json 2>/dev/null  # → command / seedCommand
 ```
 Map: Playwright/Cypress present → `command: "<pm> e2e"`; a `db:seed` script → that.
 If the product needs PO/UX or live graduations a suite cannot sign off on, propose optional
-`smoke.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
-smoke will then walk the human through open H items instead of a bare checklist. The ledger
+`verify.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
+verify will then walk the human through open H items instead of a bare checklist. The ledger
 is **tracked** project state (commit with the sprint).
 
-**aftercare** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
+**ship** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
 coverage docs, roadmap, this profile's sibling rules). Confirm with the user.
 If the repo already has semver tags (or GitHub Releases), propose optional
-`aftercare.release` (`enabled: true`, `scheme: semver`, `tagPrefix: "v"`,
+`ship.release` (`enabled: true`, `scheme: semver`, `tagPrefix: "v"`,
 `currentFrom: git-tag`, `githubRelease: true`) —
-aftercare will propose patch/minor/major from the sprint diff and stop for confirmation;
-ship tags only after merge + a second yes. Do **not** enable this on unversioned repos.
+ship proposes patch/minor/major from the sprint diff and tags only after merge + a
+second yes. Do **not** enable this on unversioned repos.
 ```bash
 git tag -l 'v*.*.*' --sort=-v:refname | head -5
 gh release list --limit 3 2>/dev/null
 ```
 
-**ship** — `prTarget` = the detected base branch; keep `commitStyle`/`issueCloseKeyword`
+`prTarget` = the detected base branch; keep `commitStyle`/`issueCloseKeyword`
 defaults unless the user uses a different convention.
 
 After writing, show the user the filled profile and confirm before they run the pipeline.
@@ -144,8 +144,8 @@ After writing, show the user the filled profile and confirm before they run the 
 ## Fixed paths — state is not config
 
 metate's state lives at fixed paths under `.metate/` — `plan.md`, `issues.json`, `session.json`,
-`signals.json`, `human-gates.json` (tracked), `release.json`, optional `smoke-matrix.json` — and is
-**not** configurable. Only `techDebtFile` and `prep.readingOrder` are config: they name *your*
+`signals.json`, `human-gates.json` (tracked), optional `smoke-matrix.json` — and is
+**not** configurable. Only `techDebtFile` and `start.readingOrder` are config: they name *your*
 documents. `metate-init --update` strips the retired path keys from old profiles (ADR-0001).
 
 ## Step 2b — reconcile an existing profile (after a metate update)
@@ -164,7 +164,7 @@ updated and the project already has a profile:
    every key in the profile that **no current playbook reads**, show them as a removal diff, and
    delete on the user's confirmation. Known dead as of now:
    - **`orchestrator:`** — read by nothing since the headless engine was deleted (`b713bea`).
-   - **`discover.signals`** — renamed to `discover.sources`; **migrate** it (rename the key,
+   - **`scope.signals`** — renamed to `scope.sources`; **migrate** it (rename the key,
      keep the values) rather than leaning on the one-line alias.
 
    The half of the old rule that stays: **never silently rewrite a value.** Removals and renames
@@ -174,18 +174,17 @@ updated and the project already has a profile:
    --update --user`) refreshes the skill files but **not** the per-project copies harnesses
    actually load — `.cursor/agents/metate-*.md`, `.cursor/rules/codebase-memory.mdc`. Those only
    refresh under `metate-init --update`, per project. Tell the user to run it, and put it in
-   `aftercare.postCommand` so it is not a thing to remember.
+   `ship.postCommand` so it is not a thing to remember.
 
 ## Step 3 — route to the ceremony
 
 | You are… | Run |
 |---|---|
-| don't know what to work on / a sprint just closed | `metate-discover` |
-| have a plan, no branch for the work yet | `metate-prep` |
+| don't know what to work on / a sprint just closed | `metate-scope` |
+| have a plan, no branch for the work yet | `metate-start` |
 | branch cut, ready to write and review | `metate-build` (round 0 writes; rounds 1–3 review) |
-| review green, need behavior proof | `metate-smoke` |
-| smoke green, closing the sprint | `metate-aftercare` |
-| docs done, ready to land | `metate-ship` |
+| review green, need behavior proof | `metate-verify` |
+| verify green, ready to land | `metate-ship` (docs, gate, PR, merge, tag) |
 
 ## First-round checklist
 1. `.metate/profile.yml` filled (esp. `reviewFocus`) ✅

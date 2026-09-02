@@ -35,7 +35,7 @@ reviewFocus: |
   - <invariant 3, e.g. state transitions go through the domain guard>
   - The implementer is the ONLY code writer; reviewers report findings and the orchestrator
     adjudicates findings and routes them to the implementer — the orchestrator may Write ONLY to
-    `.metate/signals.json` and `prep.techDebtFile` to persist capture survivors.
+    `.metate/signals.json` and `start.techDebtFile` to persist capture survivors.
 
 # --- build (metate-build): round 0 writes, rounds 1–3 review --------------
 # Reviewers are separate subprocesses — see metate-build/REVIEWERS.md.
@@ -52,8 +52,8 @@ build:
   review:
     autoFix: blockers
 
-# --- discover (metate-discover) -------------------------------------------
-discover:
+# --- scope (metate-scope) -------------------------------------------
+scope:
   mode: steady             # steady = mature product: harvest signals, read situation, rank within posture.
                            # explore = product not well-defined: lean on productIntent + architecture,
                            #           frame candidates as bets, rank by learning value + reversibility.
@@ -63,13 +63,13 @@ discover:
     issues: true
     gitHistory: true
     captures: true
-    productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight steady, high explore)
+    productIntent: true    # README + start.readingOrder — stated goals/roadmap (low weight steady, high explore)
   candidates: 5
   captureBacklog: 5        # max `open` signals tolerated before discover must disposition them
                            # ahead of showing a slate. 0 = disposition every open capture.
 
-# --- prep (metate-prep) ---------------------------------------------------
-prep:
+# --- start (metate-start) ---------------------------------------------------
+start:
   baseBranch: main
   readingOrder: []
   techDebtFile: ""
@@ -80,7 +80,7 @@ prep:
     labels: ["sprint"]
     milestone: ""
 
-# --- smoke (metate-smoke) -------------------------------------------------
+# --- verify (metate-verify) -------------------------------------------------
 # Optional human-validation gates (H1…Hn beside the T1…Tn DoD matrix). When set,
 # prep seeds the ledger from the plan; smoke walks the human through open items
 # (explain why / what to do / what approved means — never a bare H1…Hn list);
@@ -88,21 +88,17 @@ prep:
 # The ledger is tracked project state (commit with the sprint).
 # Ledger entry shape: id, title, type (ux|live|graduation|other),
 # status (open|approved|deferred), reason, sprint, date.
-smoke:
+verify:
   command: ""
   seedCommand: ""
   # humanGates:
   #   required: true
 
-# --- aftercare (metate-aftercare) -----------------------------------------
-# Optional release gate: when the repo already publishes semver tags / GitHub
-# Releases, aftercare proposes patch|minor|major from the sprint diff and stops
-# for confirmation; ship cuts the tag (+ optional gh release) only after merge
-# and a second confirmation. Leave enabled:false (or omit) when the project has
-# no versioning scheme — do not invent one.
-# Version-file bumps (package.json, etc.) belong to Build/implementer so Review
-# and Smoke still see them — aftercare only proposes the git tag.
-aftercare:
+# --- ship (metate-ship) ---------------------------------------------------
+# Close-out docs, optional release proposal, then gate / PR / merge / tag.
+# Leave release.enabled false (or omit) when the project has no versioning scheme.
+# Version-file bumps belong to the implementer during Build so verify still sees them.
+ship:
   deliverables: []
   postCommand: ""          # optional; run after deliverables sync (e.g. regenerate docs)
   # release:
@@ -112,9 +108,6 @@ aftercare:
   #   currentFrom: git-tag   # git-tag | file
   #   versionFile: ""        # when currentFrom: file — read-only path for current version
   #   githubRelease: true
-
-# --- ship (metate-ship) ---------------------------------------------------
-ship:
   prTarget: main
   commitStyle: "conventional, bisectable, one per layer"
   issueCloseKeyword: "Closes"

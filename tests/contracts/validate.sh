@@ -13,8 +13,8 @@ ok() { echo "  ✓ $*"; }
 # four playbooks to frontmatter + five magic tokens passed all of them green, so they reported
 # coverage they did not have. Only checks that survive a rewrite of the surrounding prose belong
 # here — grep is this repo's sole enforcement, and a false gate is worse than an absent one.
-prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^[0-9]\+\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
-prep_seed_line="$(grep -n '^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-prep/SKILL.md" | head -1 | cut -d: -f1 || true)"
+prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^[0-9]\+\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-start/SKILL.md" | head -1 | cut -d: -f1 || true)"
+prep_seed_line="$(grep -n '^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-start/SKILL.md" | head -1 | cut -d: -f1 || true)"
 [ -n "$prep_branch_line" ] && [ -n "$prep_seed_line" ] \
   && [ "$prep_branch_line" -lt "$prep_seed_line" ] \
   || die "prep must cut the branch before seeding human gates (branch@$prep_branch_line seed@$prep_seed_line)"
@@ -26,11 +26,11 @@ validate_signals() {
   local file="$1" expect="$2" # expect: ok | bad
   local err rc
   err="$(jq --argjson allowed \
-      "$(jq -c '.properties.signals.items.properties | keys' "$ROOT/skills/metate-smoke/signal.schema.json")" \
+      "$(jq -c '.properties.signals.items.properties | keys' "$ROOT/skills/metate-verify/signal.schema.json")" \
       --argjson required \
-      "$(jq -c '.properties.signals.items.required' "$ROOT/skills/metate-smoke/signal.schema.json")" \
+      "$(jq -c '.properties.signals.items.required' "$ROOT/skills/metate-verify/signal.schema.json")" \
       --argjson statuses \
-      "$(jq -c '.properties.signals.items.properties.status.enum' "$ROOT/skills/metate-smoke/signal.schema.json")" '
+      "$(jq -c '.properties.signals.items.properties.status.enum' "$ROOT/skills/metate-verify/signal.schema.json")" '
     if (.signals|type) != "array" then error("signals[] missing") else . end
     | if (keys - ["signals"]) != [] then error("stray top-level key: \((keys - ["signals"])|join(","))") else . end
     | .signals as $s
@@ -152,7 +152,8 @@ implementer:
 review:
   autoFix: blockers
 YML
-sed -n '/^import re, sys$/,/^print("nested")$/p' "$ROOT/skills/metate-build/bootstrap.sh" > "$nest_in.py"
+awk '/^import re, sys$/{p=1} p{print} /^print\("nested"\)$/{exit}' \
+  "$ROOT/skills/metate-build/bootstrap.sh" > "$nest_in.py"
 python3 "$nest_in.py" "$nest_in" >/dev/null
 # shellcheck disable=SC1091
 . "$ROOT/skills/metate-build/lib/yaml.sh"

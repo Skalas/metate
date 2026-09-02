@@ -94,8 +94,12 @@ copy_skills() {  # $1 = destination skills root
     rm -rf "${root:?}/$name"
     cp -R "$dir" "$root/$name"
   done
-  # ADR-0001 move 2a: review merged into build — drop the leftover skill dir.
-  rm -rf "${root:?}/metate-review"
+  # ADR-0001 move 2: retired stage names — drop leftover skill dirs.
+  rm -rf "${root:?}/metate-review" \
+         "${root:?}/metate-discover" \
+         "${root:?}/metate-prep" \
+         "${root:?}/metate-smoke" \
+         "${root:?}/metate-aftercare"
   [ -f "$root/metate-build/bootstrap.sh" ] && chmod +x "$root/metate-build/bootstrap.sh"
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
 }

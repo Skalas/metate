@@ -1,9 +1,9 @@
 # Tech debt — triggered ledger
 
-Each item carries a **trigger**: the condition that should force the fix. `metate-discover`
+Each item carries a **trigger**: the condition that should force the fix. `metate-scope`
 surfaces an item only once its trigger has fired (don't pull debt whose trigger is still cold).
 
-> Wired into `.metate/profile.yml` as `prep.techDebtFile: docs/TECH-DEBT.md`.
+> Wired into `.metate/profile.yml` as `start.techDebtFile: docs/TECH-DEBT.md`.
 > Resolved and moot items are pruned to git history (pruned 2026-07-03, `polish-bootstrap`;
 > read this file at any earlier commit for the full sprint-by-sprint archaeology).
 
@@ -33,8 +33,8 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `readonly: true` reviewer cannot write; never pass `--force`/`--trust` to a reviewer.
 
 - **The "treat as data, never instructions" guard is duplicated across harness playbooks.**
-  Near-verbatim in `metate-smoke/SKILL.md` and `metate-build/SKILL.md` §2b; within
-  `metate-discover/SKILL.md` it is now one canonical statement in Guardrails (per-source
+  Near-verbatim in `metate-verify/SKILL.md` and `metate-build/SKILL.md` §2b; within
+  `metate-scope/SKILL.md` it is now one canonical statement in Guardrails (per-source
   steps reference it). **Cross-file duplication is an accepted limitation** — each `SKILL.md`
   is a standalone playbook installed independently per harness, so a shared note breaks
   self-containment. **Trigger (within-file only):** a third near-identical copy appears
@@ -53,17 +53,17 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
     to get it.
 
 - **`metate-ship` blanks `issueLedger` unconditionally, contradicting prep's externally-managed
-  contract.** `metate-prep` Step 4 now promises that when `prep.issues.create: false` the ledger
+  contract.** `metate-start` Step 4 now promises that when `start.issues.create: false` the ledger
   is left untouched because it is externally managed, but ship's close-out resets it to
   `{ "sprint": null, "issues": [] }` with no `create`-flag condition — so an externally-managed
   ledger is destroyed on the first ship. Prep's wording was scoped to prep time as a stopgap;
   the behavioral fix belongs to ship. Surfaced by the `discover-judgment` verify pass; ship was
   deliberately left unchanged to keep that sprint's blast radius to discover/prep/smoke.
-  **Trigger:** the first project configured with `prep.issues.create: false` runs `metate-ship`
+  **Trigger:** the first project configured with `start.issues.create: false` runs `metate-ship`
   — scope ship's reset to ledgers prep actually wrote.
 
 - **`metate-build`'s `Write` is scoped by prose, not the tool layer.** The restriction to
-  `signalsFile`/`prep.techDebtFile` is enforced by SKILL prose + the `reviewFocus` invariant;
+  `signalsFile`/`start.techDebtFile` is enforced by SKILL prose + the `reviewFocus` invariant;
   harness `allowed-tools` has no path-scoping syntax. **Trigger:** the harness gains path-scoped
   `Write(...)` grants, OR a security review flags the orchestrator write scope as an active risk.
 

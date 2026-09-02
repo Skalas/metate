@@ -60,7 +60,7 @@
           },
           "foundIn": {
             "type": "string",
-            "description": "Free text anchoring the moment of capture. Conventional prefixes, not an enum: 'smoke:<Tn|Hn>', 'review:<round>:<lens>', 'live-test:<target>', 'user:<date> <topic>'. Prefer a prefix; never drop precision to satisfy one."
+            "description": "Free text anchoring the moment of capture. Conventional prefixes, not an enum: 'verify:<Tn|Hn>' (legacy: 'smoke:'), 'build:<round>:<lens>', 'live-test:<target>', 'user:<date> <topic>'. Prefer a prefix; never drop precision to satisfy one."
           },
           "status": {
             "type": "string",

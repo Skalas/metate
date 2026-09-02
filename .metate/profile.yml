@@ -29,7 +29,7 @@ reviewFocus: |
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
     ONLY code writer; reviewers report findings and the orchestrator adjudicates findings and
     routes them to the implementer — the orchestrator may Write ONLY to `.metate/signals.json` and
-    `prep.techDebtFile`.
+    `start.techDebtFile`.
 
 # --- build (metate-build): round 0 writes, rounds 1–3 review --------------
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
@@ -42,23 +42,23 @@ build:
   review:
     autoFix: blockers
 
-# --- discover (metate-discover) ------------------------------------------
-discover:
+# --- scope (metate-scope) ------------------------------------------
+scope:
   mode: steady             # steady = mature product: harvest signals, read situation, rank within posture.
                            # explore = product not well-defined: lean on productIntent + architecture,
                            #           frame candidates as bets, rank by learning value + reversibility.
-  sources:                 # which sources to sweep for candidate work (legacy alias: discover.signals)
+  sources:                 # which sources to sweep for candidate work (legacy alias: scope.signals)
     aftercare: true        # last sprint's deliverables (roadmap, next-sprint pointers) — the loop-closing input
     codebaseMemory: true   # graph: dead code, high fan-out, churn, coverage gaps (needs codebaseMemory.enabled)
     issues: true           # open gh issues + techDebtFile items whose trigger has fired
     gitHistory: true       # churn hotspots + TODO/FIXME/HACK scan (cheapest, noisiest)
     captures: true         # signalsFile — tier-1 captures from smoke + review awaiting triage (read side)
-    productIntent: true    # README + prep.readingOrder — stated goals/roadmap (low weight in steady, high in explore)
+    productIntent: true    # README + start.readingOrder — stated goals/roadmap (low weight in steady, high in explore)
   candidates: 5            # how many ranked candidates to propose
   captureBacklog: 5        # max `open` signals before Step 3 must disposition them first (0 = always)
 
-# --- prep (metate-prep) --------------------------------------------------
-prep:
+# --- start (metate-start) --------------------------------------------------
+start:
   baseBranch: main         # no dev branch on this repo
   readingOrder: ["README.md", "docs/ROADMAP.md", "docs/adr/README.md"]
   techDebtFile: "docs/TECH-DEBT.md"
@@ -69,13 +69,13 @@ prep:
     labels: ["sprint"]     # applied to every filed issue
     milestone: ""          # blank = none
 
-# --- smoke (metate-smoke) ------------------------------------------------
-smoke:
+# --- verify (metate-verify) ------------------------------------------------
+verify:
   command: "make verify"   # no e2e suite; the gate IS the smoke for a tooling repo
   seedCommand: ""
 
-# --- aftercare (metate-aftercare) ----------------------------------------
-aftercare:
+# --- ship (metate-ship) --------------------------------------------------
+ship:
   deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md", "docs/adr/README.md"]
   postCommand: "bash install.sh --update --user && metate-init --update"  # skills AND this project's
                                           # harness artifacts (.cursor/agents, rules) — --user alone
@@ -87,9 +87,6 @@ aftercare:
     currentFrom: git-tag
     githubRelease: true
     # versionFile unused — published version is the git tag; skill frontmatter bumps in Build
-
-# --- ship (metate-ship) --------------------------------------------------
-ship:
   prTarget: main
   commitStyle: "conventional, bisectable, one per concern"
   issueCloseKeyword: "Closes"
