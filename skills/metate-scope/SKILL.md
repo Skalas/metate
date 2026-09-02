@@ -186,7 +186,7 @@ kinds start treats the completion condition as the DoD stand-in and files **one*
 
 For candidates sourced from a **capture**, render provenance in the kind slot — e.g.
 `[sprint · signal]` or `[decision · signal]` — and name the originating capture (e.g.
-`smoke:T4`), so the human's choice can close the loop in Step 4: picked → `promoted`, explicitly
+`verify:T4`), so the human's choice can close the loop in Step 4: picked → `promoted`, explicitly
 rejected → `invalid`/`wontfix`, untouched → stays `open`.
 
 ## Step 3 — disposition the capture queue, then present the brief
@@ -231,16 +231,16 @@ ripe — exit cleanly), or **refine** (exactly **one** round before choosing: e.
 only an explicit **drop** closes a signal as not-real. Never auto-select. Example shape:
 
 ```
-▸ DISCOVER BRIEF  (3 candidates · last pick: seed DoD landed; blast-radius close)
+▸ SCOPE BRIEF  (3 candidates · last pick: seed DoD landed; blast-radius close)
 
-SITUATION: Aftercare says billing healthy; graph shows export at 0 callers; README still lists CSV export as core — biggest unknown is whether export stays.
+SITUATION: Last handoff says billing healthy; graph shows export at 0 callers; README still lists CSV export as core — biggest unknown is whether export stays.
 
 COVERAGE: swept aftercare, graph, captures, productIntent · empty: issues · skipped: gitHistory
 
 [HOLD]
 1. [sprint] Tenant-isolation audit · decay rising · effort med · corroboration 2
    why now: aftercare deferred · graph churn hotspot · blast: 6 callers · seed DoD: T1 scope-guard…
-2. [decision · signal] Keep CSV export? (smoke:T4) · decay hard-deadline · effort sm · corroboration 2
+2. [decision · signal] Keep CSV export? (verify:T4) · decay hard-deadline · effort sm · corroboration 2
    why now: capture + README vs graph · relates: #2 prerequisite for #3 · completion: written decision + owner
 [REDUCE]
 3. [sprint] Remove dead admin-export module · decay none · effort sm · corroboration 2

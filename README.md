@@ -143,7 +143,7 @@ Profile reconciliation is handled by the `metate` wizard skill (Step 2b).
 1. **`reviewFocus`** — your real invariants (the highest-value field).
 2. **`build.reviewer.backend`** + **`implementer.backend`** — see `REVIEWERS.md` / `IMPLEMENTERS.md`.
 3. **Gates** — `fastGate` / `shipGate`, detected by the wizard from the repo's real tooling.
-4. **`prep`**, **`smoke`**, **`aftercare`**, **`ship`** — project-specific paths and commands.
+4. **`start`**, **`verify`**, **`ship`** — project-specific commands and deliverables.
 
 Then run ceremonies in order inside your harness.
 
