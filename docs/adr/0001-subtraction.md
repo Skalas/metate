@@ -194,7 +194,7 @@ seven path keys plus the `aftercare:` block header); five stage directories unde
 
 ## What this adds
 
-- `dod.json` and a validator for it (jq + bash, shipped in `lib/`, run by prep on write, smoke and
+- `dod.json` and a validator for it (jq + bash, shipped in `lib/`, run by `start` on write, `verify` and
   ship on read)
 - the enforcement rule, stated once in `skills/metate/SKILL.md`
 - three required gate fields (`type`, `steps`, `expected`) and the four-type taxonomy
