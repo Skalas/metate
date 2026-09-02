@@ -49,8 +49,7 @@ build:
     # correctness: codex
     # security: codex
     # elegance: codex
-  review:
-    autoFix: blockers
+  autoFix: blockers        # blockers | blockers+warnings | all
 
 # --- scope (metate-scope) -------------------------------------------
 scope:

@@ -1,5 +1,5 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh
+SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh skills/metate/lib/dod.sh
 RENDER_SCRIPT := sources/render.sh
 BUDGET := tests/contracts/prose-budget.txt
 RENDERED := skills/metate-build/cursor-rule.mdc \
@@ -102,4 +102,8 @@ test: ## metadata + installer sanity
 		[ "$$val" = claude ] \
 		&& echo "  ✓ yaml.sh reads nested profile keys" \
 		|| { echo "  ✗ yaml.sh nested read on profile.template.yml failed"; exit 1; }
+	@val=$$(bash -c 'source skills/metate-build/lib/yaml.sh; yaml_nested_scalar skills/metate-build/profile.template.yml build autoFix'); \
+		[ "$$val" = blockers ] \
+		&& echo "  ✓ yaml.sh reads build.autoFix" \
+		|| { echo "  ✗ yaml.sh build.autoFix read failed"; exit 1; }
 	@bash tests/contracts/validate.sh

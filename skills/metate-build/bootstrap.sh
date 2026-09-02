@@ -240,6 +240,22 @@ PY
 )"; then
       [ -n "$rename_out" ] && echo "  ✓ renamed profile blocks ($rename_out) (ADR-0001 move 2b)"
     fi
+    if flat_out="$(python3 - "$PROFILE" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+new, n = re.subn(r"(?m)^  review:\n    autoFix:", "  autoFix:", text, count=1)
+if n:
+    open(path, "w").write(new)
+    print("flattened")
+PY
+)"; then
+      [ "$flat_out" = flattened ] && echo "  ✓ flattened build.review.autoFix → build.autoFix (ADR-0001 move 3)"
+    fi
+    dod_sh="$SCRIPT_DIR/../metate/lib/dod.sh"
+    if [ -f "$dod_sh" ]; then
+      bash "$dod_sh" migrate "$METATE_DIR" || true
+    fi
     fi
   fi
 fi

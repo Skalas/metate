@@ -143,10 +143,17 @@ After writing, show the user the filled profile and confirm before they run the 
 
 ## Fixed paths — state is not config
 
-metate's state lives at fixed paths under `.metate/` — `plan.md`, `issues.json`, `session.json`,
-`signals.json`, `human-gates.json` (tracked), optional `smoke-matrix.json` — and is
-**not** configurable. Only `techDebtFile` and `start.readingOrder` are config: they name *your*
-documents. `metate-init --update` strips the retired path keys from old profiles (ADR-0001).
+metate's state lives at fixed paths under `.metate/` — `plan.md`, `dod.json` (tracked),
+`session.json`, `signals.json`, `human-gates.json` (tracked) — and is **not** configurable.
+Only `techDebtFile` and `start.readingOrder` are config. `metate-init --update` retires old keys.
+
+## Enforcement
+
+A stage may refuse to advance only on a check a script can run. Prose advises; files block.
+The blocking set: the profile parses and has no template placeholder; `dod.json` validates
+and every row passes or is `cut`; every current-sprint human gate is dispositioned and
+carries `type`, `steps`, `expected`; `session.json` exists for review rounds ≥ 1; `shipGate`
+is green. A 🛑 names which of these it is.
 
 ## Step 2b — reconcile an existing profile (after a metate update)
 
