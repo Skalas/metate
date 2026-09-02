@@ -1,4 +1,4 @@
-# ADR-0001 — Subtraction: fewer stages, fewer keys, checkable evidence
+# ADR-0001 — Subtraction: five named stages, fewer keys, checkable evidence
 
 - **Status:** Proposed (2026-09-01)
 - **Kind:** `decision`
@@ -68,9 +68,24 @@ Two pairs fail that test:
 `discover`, `prep`, `smoke` stay distinct: a plan, a branch-with-issues-and-no-code, and evidence
 are three different products with three different confirmation moments.
 
-Result: **discover → prep → review → smoke → ship.** Two playbooks deleted, along with their
-frontmatter, `Step 0`, `Output`, and `Guardrails` boilerplate; `metate-init --update` removes the
-two installed skill directories from each repo. The `metate` router's table shrinks by two rows.
+**And rename the five that remain.** The current names describe mechanisms (`smoke`) or are vague
+(`discover`, `prep`); a stage name should say what you are doing *right now*, so the five read as
+a sentence:
+
+| today | becomes | the moment it names |
+|---|---|---|
+| `discover` | **`scope`** | a sprint just closed — set the scope of the next one |
+| `prep` | **`start`** | plan in hand — start the sprint: mode, issues, DoD, branch; no code |
+| `build` + `review` | **`build`** | build it right: round 0 writes, rounds 1–3 review, one session |
+| `smoke` | **`verify`** | prove every DoD row — commands run, gates walked |
+| `aftercare` + `ship` | **`ship`** | docs, gate, PR, merge, tag |
+
+`scope → start → build → verify → ship`. `plan` was rejected for stage 0 because `metate-plan`
+beside the global `/plan` command invites exactly the routing confusion the author's rules warn
+against. The rename rides in the same PRs as the merges, since those already rewrite the router and
+touch every playbook; `metate-init --update` removes the old installed skill directories, installs
+the new, and renames the profile blocks (`discover:` → `scope:`, `prep:` → `start:`,
+`smoke:` → `verify:`) as part of the retire pass. Result: five playbooks, five router rows.
 
 ### 3 · Make evidence re-runnable — one DoD file replaces two ledgers
 
@@ -92,11 +107,11 @@ Definition of Done. They become one file:
   ] }
 ```
 
-- **prep** writes it from the plan's T-rows, then fills `tracker` as issues are filed.
+- **start** writes it from the plan's T-rows, then fills `tracker` as issues are filed.
 - **Every row has exactly one of `command` or `gate`.** A `command` is evidence a script can
   produce; a `gate` points at a human-gates entry. A row with neither cannot be written — the
   validator refuses it. This is the whole of the "does the gate mean anything" fix.
-- **smoke** runs every `command` row and reports; **ship re-runs them** at gate time. Nothing is
+- **verify** runs every `command` row and reports; **ship re-runs them** at gate time. Nothing is
   *recorded* as verified — a verified row is one whose command exits 0 **on the commit being
   shipped**. Re-running is cheaper than trusting a stored claim, and cannot be faked by a wrong LLM.
 - **ship** refuses the PR while any row is neither passing nor `cut`-with-reason, and emits
@@ -105,19 +120,62 @@ Definition of Done. They become one file:
 
 Rows may span (`T1-T3`) when one command proves several, as Orbis already does.
 
+### 3b · Human gates must justify themselves, and carry their own instructions
+
+72 gates exist across the fleet: 46 `ux`, 13 `live`, 8 `graduation`, 5 `other`. Read closely, most
+`ux` gates are Playwright specs written in prose — *"OWNER walks Ajustes: toggle Wallet → upload
+logo → enable; blocked until logo present"* is a flow with an assertion; one Orbis gate literally
+offers *"(or accept automated T9 + loyalty e2e)"* as its own alternative. The genuine human residue
+is a different shape: *"approves estética paso Mesas"*, *"header no longer cramped"*, *"receives
+live WhatsApp on real phone"*. Under the rule below roughly two-thirds of those 72 would have been
+`command` rows, and the human would have been asked about 25 times instead of 72.
+
+The `type` field stops describing *who or where* and starts describing **why a script cannot do
+it** — and that becomes the admission test:
+
+| `type` | means | example |
+|---|---|---|
+| `judgment` | aesthetics, copy, readability | "Mesas step looks right at arm's length" |
+| `device` | real hardware, real phone | "QR scans on the macmini" |
+| `external` | a third-party live service | "Twilio WhatsApp arrives" |
+| `acceptance` | PO confirms this is the *right* behaviour, not that it behaves | "skip-redeem still OK" |
+
+**`start`'s rule:** a proposed gate phrased as *walk A → B → C, expect D* is not a gate — it is a
+`command` row in `dod.json`, and start says so. A gate that recurs sprint after sprint is a
+regression test in a human costume (Orbis: *"Wallet upload → preview → enable"* appears twice,
+near-verbatim). The validator refuses a gate without a `type`.
+
+**Instructions live in the entry, not in the LLM.** `verify`'s walkthrough today generates *why /
+what to do / what done looks like* at run time and stores nothing, so the clarity is reinvented
+every run and can never be checked. The entry carries it:
+
+```json
+{ "id": "H1", "type": "judgment", "sprint": "s71",
+  "title": "Mesas step and recipe table look right on the macmini",
+  "steps": ["open Ajustes → Mesas on the macmini", "add a table, open its recipe"],
+  "expected": "nothing cramped; readable at arm's length — if not, name the element",
+  "status": "open" }
+```
+
+`steps` and `expected` are required and non-empty. A vague gate now fails at `start`, when it is
+cheap, rather than at `verify`, when a human is waiting — the enforcement rule applied to gates.
+`reason` and `date` keep their current semantics; the three tolerated container layouts collapse
+to one.
+
 ### 4 · One enforcement rule
 
 > **A stage may refuse to advance only on a check a script can run. Prose advises; files block.**
 
 The blocking set, in full: the profile parses and carries no template placeholder; `dod.json`
-validates and every row passes or is cut; every current-sprint human gate is dispositioned;
+validates and every row passes or is cut; every current-sprint human gate is dispositioned and every gate carries `type`, `steps`, `expected`;
 `session.json` exists for review rounds ≥ 1; `shipGate` is green. Everything else in a playbook is
 advice, and advice is what gets cut when the line budget bites. Every 🛑 in a `SKILL.md` must name
 which item of the blocking set it is; a 🛑 that names none is rewritten as advice or deleted.
 
 ## What this deletes
 
-- 2 playbooks, 2 installed skill directories, 2 router rows
+- 2 playbooks, 2 installed skill directories, 2 router rows; three stage names that described
+  mechanisms instead of moments
 - 7 profile keys and their comments; `aftercare:` block reduced to `deliverables` + `release`
   under `ship:`
 - 2 ledgers (`issues.json`, `release.json`) and one never-adopted one (`smoke-matrix.json`)
@@ -125,16 +183,21 @@ which item of the blocking set it is; a 🛑 that names none is rewritten as adv
   the aftercare→ship release handoff prose on both sides; build's entire session-capture text
   (moves into review's round 0, shorter, because review already documents the resume)
 - every 🛑 STOP that cannot name a scriptable check
+- roughly two-thirds of the human gates the fleet currently files, which become `command` rows
+- the three tolerated container layouts of the gates ledger
 
 **Acceptance for the whole sequence:** playbook total **≤ 1,100 lines** (from 1,403), caps in
-`tests/contracts/prose-budget.txt` lowered in the same diffs; template **≤ 42 keys** (from 52);
-5 stage directories under `skills/`.
+`tests/contracts/prose-budget.txt` lowered in the same diffs; template **≤ 44 keys** (from 52:
+seven path keys plus the `aftercare:` block header); five stage directories under `skills/`, named
+`scope start build verify ship`; the gates validator refuses an entry without `type`, `steps`,
+`expected`.
 
 ## What this adds
 
 - `dod.json` and a validator for it (jq + bash, shipped in `lib/`, run by prep on write, smoke and
   ship on read)
 - the enforcement rule, stated once in `skills/metate/SKILL.md`
+- three required gate fields (`type`, `steps`, `expected`) and the four-type taxonomy
 - a migration in `metate-init --update`: `issues.json` → `dod.json` rows (`deferred[]` → `cut`),
   `smoke-matrix.json` rows merged by id, both source files removed after a round-trip check
 
@@ -144,8 +207,8 @@ which item of the blocking set it is; a 🛑 that names none is rewritten as adv
 time the gate has meant that. Two fewer stages to invoke, explain, and keep in sync. Ten fewer
 keys. The enforcement story is decided, and it is the one that scored 77%.
 
-**Bad, accepted.** Every T-row must now be bound to a command or a gate at prep time; that is work
-prep did not previously force, and it will surface rows that were never really testable. Ship
+**Bad, accepted.** Every T-row must now be bound to a command or a gate at `start` time, and every gate must say why a script can't do it and exactly what the human does; that is work
+`start` did not previously force, and it will surface rows that were never really testable. Ship
 re-runs the DoD commands, so ship takes longer. Merging stages loses the option of running build
 without review, or aftercare without ship — nobody in the field is recorded doing either.
 
@@ -172,9 +235,11 @@ without review, or aftercare without ship — nobody in the field is recorded do
 ## Sequencing
 
 1. **Keys** — one PR, ~zero risk, this week.
-2. **Collapse** — one PR per merge (`build`→`review` first; it's the smaller one). Each must land
-   net-negative on the budget.
-3. **DoD file + enforcement rule** — one PR, after the collapse so it is written into five stages,
-   not seven.
+2. **Collapse + rename** — one PR per merge (`build`→`review` first; it's the smaller one), each
+   carrying its renames. Each must land net-negative on the budget.
+3. **DoD file + gate admission + enforcement rule** — one PR, after the collapse so it is written
+   into five stages, not seven. Includes the gates-ledger migration: existing entries get
+   `type` mapped from the old enum where unambiguous (`live` → `device` or `external` by title),
+   and `steps`/`expected` backfilled from `title` for the human to sharpen at the next walkthrough.
 4. **Measure** — one real sprint on the result before touching anything else. Then the review-yield
    question.
