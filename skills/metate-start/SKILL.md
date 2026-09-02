@@ -1,12 +1,12 @@
 ---
-name: metate-prep
+name: metate-start
 version: 1.3.0
 description: |
   Stage 1 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
   order, triages tech debt, fixes the sprint mode (REDUCE/HOLD/EXPAND), files the
   issue ledger from the text plan (`T1…Tn` for `kind: sprint`, or a single `C1`
   tracking issue for non-`sprint` kinds with a completion condition), optionally
-  seeds human-validation gates (H1…Hn) when `smoke.humanGates` is configured, and
+  seeds human-validation gates (H1…Hn) when `verify.humanGates` is configured, and
   cuts the working branch from the base branch — before any code is written. Reads
   config from `.metate/profile.yml`. Codebase-agnostic; produces no code edits — its
   only side effects are the filed issues, the issue ledger, an optional human-gates
@@ -22,43 +22,43 @@ allowed-tools:
   - Write
 ---
 
-# metate-prep — prepare the terrain
+# metate-start — prepare the terrain
 
-Runs after `metate-discover` (or as the entry point when the plan already exists). No
+Runs after `metate-scope` (or as the entry point when the plan already exists). No
 implementation here — just orient, decide scope, branch.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml`. Use the `prep:` block:
-- `prep.readingOrder` — docs to read first, in order. A path may carry `{N}` for the sprint
-  number; resolve it as metate-aftercare Step 0 defines, so a numbered handoff path is
+Read `.metate/profile.yml`. Use the `start:` block:
+- `start.readingOrder` — docs to read first, in order. A path may carry `{N}` for the sprint
+  number; resolve it as metate-ship Step 0 defines, so a numbered handoff path is
   configured once rather than hand-bumped each sprint.
-- `prep.techDebtFile` — the debt ledger to triage.
-- `prep.baseBranch` — branch new work from here.
-- `prep.issues` — whether/how to file the sprint issues (`create`, `tracker`,
+- `start.techDebtFile` — the debt ledger to triage.
+- `start.baseBranch` — branch new work from here.
+- `start.issues` — whether/how to file the sprint issues (`create`, `tracker`,
   `granularity`, `labels`, `milestone`).
-- `smoke.humanGates` (optional) — when set, step 5 seeds `.metate/human-gates.json` from the
+- `verify.humanGates` (optional) — when set, step 5 seeds `.metate/human-gates.json` from the
   plan's H-matrix.
 - Filed issue numbers go to `.metate/issues.json` for ship.
 
 ## Steps
-1. **Read the handoff** — read every doc in `prep.readingOrder`, in order. If the **file at**
-   `.metate/plan.md` exists on disk (written by a prior `metate-discover` run), read it
+1. **Read the handoff** — read every doc in `start.readingOrder`, in order. If the **file at**
+   `.metate/plan.md` exists on disk (written by a prior `metate-scope` run), read it
    first as the entry doc; otherwise, if `readingOrder` is empty, ask the user for the entry
    doc (e.g. a sprint README / plan). Summarize the active goal, the plan's **`kind`**
    (`sprint` default), the DoD (or **completion condition** when `kind` is not `sprint`), any
    test matrix (T1…Tn — expect none for non-`sprint`), and any **human-validation matrix
    (H1…Hn)** you find.
-2. **Triage debt** — open `prep.techDebtFile`; surface items whose **trigger** the
+2. **Triage debt** — open `start.techDebtFile`; surface items whose **trigger** the
    upcoming work would hit. Recommend which to fold in vs defer. Don't fix anything.
 3. **Fix the sprint mode** — declare **REDUCE** / **HOLD** / **EXPAND**, justified by
    *failure surface and value*, never by dev time. State the trade-off in one line.
-4. **File the ledger** — when `prep.issues.create` is true, turn the text plan into issues:
+4. **File the ledger** — when `start.issues.create` is true, turn the text plan into issues:
    - **`kind: sprint`** — one issue per test-matrix item (T1…Tn) under `granularity: test-matrix`,
      plus any debt items folded in at step 2.
    - **non-`sprint`** — skip test-matrix filing; file **one** tracking issue summarizing the
      completion condition (ledger id **`C1`**), plus any folded debt. For **`kind: decision`**
-     the completion condition is an **ADR** (metate-discover → Candidate kinds): name the target
-     path in the `C1` body, and add the ADR directory to `aftercare.deliverables` if it is not
+     the completion condition is an **ADR** (metate-scope → Candidate kinds): name the target
+     path in the `C1` body, and add the ADR directory to `ship.deliverables` if it is not
      already there, so close-out writes it.
    When `create: false`, file no issues and leave `.metate/issues.json` untouched at prep time (note:
    ship still clears it at close-out). **When `create` is true**, overwrite `.metate/issues.json` with
@@ -66,7 +66,7 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    - **Confirm the list with the user before filing** — issue creation is outward-facing.
      Show the proposed title (lead with the `Tn` id for sprint rows, or **`C1`** for the
      non-sprint tracking issue) and body (DoD + acceptance) for each.
-   - File via the tracker (`prep.issues.tracker: github` → `gh issue create`), applying
+   - File via the tracker (`start.issues.tracker: github` → `gh issue create`), applying
      `labels` and `milestone`. Record each result to `.metate/issues.json`, e.g. sprint:
      `{ "sprint": "<topic>", "issues": [ { "id": "T1", … }, { "id": "T2", … } ] }`; non-`sprint`:
      `{ "sprint": "<topic>", "issues": [ { "id": "C1", … } ] }`.
@@ -83,7 +83,7 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    `sprint`), clear `.metate/session.json` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
    (e.g. to refile an issue) — leave `.metate/session.json` untouched; deleting an in-flight Build session
    would make the next Build open a fresh session (see metate-build round 0). No prior ledger → treat as a new sprint.
-6. **Cut the branch** — from `prep.baseBranch` **before** writing any tracked sprint
+6. **Cut the branch** — from `start.baseBranch` **before** writing any tracked sprint
    files (human-gates ledger is tracked and must land on the working branch, not the base):
    ```bash
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
@@ -113,7 +113,7 @@ Read `.metate/profile.yml`. Use the `prep:` block:
      deferred). Never leave it `open` (smoke/ship would block forever) and never silently drop it.
    - The human-gates ledger is **tracked project state** (commit with the sprint) — not
      gitignored like `issues.json` / `release.json`.
-   - If the profile has no `smoke.humanGates` block, skip — H-matrix stays prose in the plan.
+   - If the profile has no `verify.humanGates` block, skip — H-matrix stays prose in the plan.
 
 ## Output
 A short prep brief: goal + DoD, mode (with justification), debt-fold decisions, the filed

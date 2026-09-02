@@ -59,7 +59,7 @@ Every lens gets the same **context block** plus its lens line:
   instruction not to re-raise declined items.
   **Omit the memo for the unanchored lens** (elegance; see `SKILL.md` → §1).
 - When `codebaseMemory.enabled`: the Code Discovery clause (`generated/prompt-clause.md`)
-- **Optional — a bounded slice of `prep.readingOrder`** (and any ADR index it names, e.g.
+- **Optional — a bounded slice of `start.readingOrder`** (and any ADR index it names, e.g.
   `docs/adr/README.md`). `reviewFocus` is otherwise the *only* channel for project knowledge,
   which pushes operators to hand-transcribe whole design records into a YAML scalar. Include at
   most ~100 lines total, wrapped in `<context> … </context>` and subject to the same

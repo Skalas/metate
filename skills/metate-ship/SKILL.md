@@ -2,13 +2,12 @@
 name: metate-ship
 version: 1.2.0
 description: |
-  Stage 6 (Ship) of the `metate` pipeline. Restructures the branch into
-  bisectable commits, runs the full ship gate, opens the PR with issue
-  auto-close wiring — only after the gate is green — then, on approval, merges,
-  closes the milestone, optionally cuts an approved semver tag / GitHub Release,
-  and returns the repo to the base branch for the next cycle. Reads
-  `.metate/profile.yml`. Codebase-agnostic. Commits/pushes/PRs/merges/tags only
-  on explicit user confirmation.
+  Stage 4 (Ship) of the `metate` pipeline. Updates close-out deliverables,
+  optionally proposes a semver release, restructures the branch into bisectable
+  commits, runs the ship gate, opens the PR — only after the gate is green —
+  then, on approval, merges, tags, and returns the repo to the base branch.
+  Reads `.metate/profile.yml`. Commits/pushes/PRs/merges/tags only on explicit
+  user confirmation.
 license: MIT
 compatibility:
   - claude-code
@@ -23,31 +22,47 @@ allowed-tools:
 
 # metate-ship — land it
 
-Last ceremony. Only runs after Review + Smoke are green. **Push/PR/merge/tag only when the
-user explicitly says so.** Ship owns the full close-out: once the human approves, it
-merges, closes the milestone, optionally publishes the release aftercare proposed, and
-returns the repo to the base branch — the next cycle's `metate-discover` starts from a
-clean, current base.
+Last ceremony. Only runs after verify is green. **Push/PR/merge/tag only when the
+user explicitly says so.** Ship owns the full close-out: docs → optional release
+proposal → gate → PR → merge → tag → back to the base branch, so the next cycle's
+`metate-scope` starts from a clean, current base. There is no `release.json` handoff
+— the proposal is a step in this ceremony, not a file.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
-`ship.issueCloseKeyword`, optional `smoke.humanGates` (`required`), and optional
-`aftercare.release` (`enabled`, `tagPrefix`, `githubRelease`). Fixed-path state: `.metate/issues.json`
-(the issues prep filed), `.metate/session.json` (retired in step 7), `.metate/human-gates.json` —
-ship honors open required gates but does **not** write dispositions (smoke owns those) — and
-`.metate/release.json` when release is enabled. Identify the **current sprint id** the same way
-smoke does.
+Read `.metate/profile.yml` → `shipGate`, `ship.deliverables`, `ship.postCommand`,
+`ship.prTarget`, `ship.commitStyle`, `ship.issueCloseKeyword`, optional
+`verify.humanGates` (`required`), and optional `ship.release`. Fixed-path state:
+`.metate/issues.json`, `.metate/session.json` (retired after the PR is open),
+`.metate/human-gates.json` — ship honors open required gates but does **not** write
+dispositions (`metate-verify` owns those). Identify the current sprint id the same
+way verify does.
+
+**`{N}` in a deliverable path** — resolve once (first integer in the sprint topic;
+else highest matching file + 1; else ask) and state the value. Never write a literal `{N}`.
+
+## Before the gate — docs and release proposal
+1. **Diff** — `git diff <baseBranch>...HEAD`.
+2. **Update `ship.deliverables`** — handoff, coverage, roadmap, tech-debt *with a trigger*,
+   next-sprint pointers. Surface open `scope: engine` signals (do not change their status).
+   Name `deferred` human gates so the next `metate-scope` resurfaces them.
+3. **Release proposal** (when `ship.release.enabled`) — fetch tags, take the latest exact
+   semver, propose patch|minor|major from THIS diff, **stop for the human**. Remember
+   `current` / `proposed` / `bump` in this session; do not write a plan file. Skip on
+   unversioned repos. Version-file bumps belong to Build, not here.
+4. **`ship.postCommand`** if set, then commit the deliverables (`ship.commitStyle`).
+
+Then the steps below. After merge, tag from the in-session proposal (step 9) — a second yes.
 
 ## Steps
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
 2. **Ship gate** — run `shipGate`. Must be **fully green** before anything is pushed. This
-   mirrors CI; do not skip steps. If `smoke.humanGates.required` is true, also read the
+   mirrors CI; do not skip steps. If `verify.humanGates.required` is true, also read the
    human-gates ledger and apply **the same strict entry validation + fail-closed rules as
    smoke** (missing/malformed/invalid entry/no current-sprint batch → 🛑 STOP). Block only on
    **current-sprint** items still `status: open`, and on any **prior-sprint** item still
    `open` (those should have been deferred or folded in smoke). Explain each blocking gate
    the same way smoke does (why / what to do / what approved means) — do not paste a bare
-   H1…Hn list — then **route back to `metate-smoke`** for disposition.
+   H1…Hn list — then **route back to `metate-verify`** for disposition.
 3. **Bisectable commits** — restructure the branch into commits per `ship.commitStyle`
    (typically one per layer, each compiling alone, dependencies first; conventional +
    scoped). Don't bury a refactor inside a feature commit.
@@ -100,9 +115,9 @@ smoke does.
    ```bash
    git switch <ship.prTarget> && git pull --ff-only && git branch -d <sprint-branch>
    ```
-   This leaves the repo clean and current, ready for the next cycle's `metate-discover`.
+   This leaves the repo clean and current, ready for the next cycle's `metate-scope`.
    `-d` (not `-D`) is deliberate: it refuses if the branch didn't merge.
-9. **Release — on explicit human approval only** (when `aftercare.release.enabled` and the
+9. **Release — on explicit human approval only** (when `ship.release.enabled` and the
    plan file has `status: approved`). Re-read the plan after the pull in step 8.
 
    **Validate before any shell that interpolates plan fields:**
@@ -150,7 +165,7 @@ smoke does.
 - Never squash-merge — it destroys the bisectable history step 3 built.
 - If the gate is red, STOP and report — never push past a failing ship gate.
 - Never wire auto-close from a stale ledger — run the step 4 staleness guard first.
-- Open required human gates block ship — explain them, then hand off to `metate-smoke` for
+- Open required human gates block ship — explain them, then hand off to `metate-verify` for
   disposition. Do not write gate dispositions from ship. Ship may Write only to
   `.metate/release.json` (mergeCommit + clear).
 - Never cut a tag or GitHub Release without an aftercare-approved plan **and** a fresh

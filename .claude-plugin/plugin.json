@@ -1,7 +1,7 @@
 {
   "name": "metate",
   "version": "1.3.0",
-  "description": "Full development pipeline as Claude Code skills: discover -> prep -> build -> smoke -> aftercare -> ship. Build round 0 writes; rounds 1-3 review, resuming the same implementer session. Project specifics live in .metate/profile.yml; the skills are codebase-agnostic.",
+  "description": "Full development pipeline as Claude Code skills: scope -> start -> build -> verify -> ship. Build round 0 writes; rounds 1-3 review, resuming the same implementer session. Project specifics live in .metate/profile.yml; the skills are codebase-agnostic.",
   "author": "Miguel Angel Escalante Serrato",
   "license": "MIT",
   "keywords": ["pipeline", "code-review", "ceremony", "implementer", "cursor", "codex", "ways-of-working"]

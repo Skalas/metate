@@ -1,5 +1,5 @@
 ---
-name: metate-smoke
+name: metate-verify
 version: 1.3.0
 description: |
   Stage 4 (Smoke) of the `metate` pipeline. Runs the project's e2e/smoke suite
@@ -20,19 +20,19 @@ allowed-tools:
   - Write
 ---
 
-# metate-smoke — prove behavior on real data
+# metate-verify — prove behavior on real data
 
 Tests do the cent-level checking. What remains for the human is only what a suite
 cannot sign off on — look-and-feel, live graduations, or other H-matrix items.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml` → `smoke.command`, `smoke.seedCommand`, optional `smoke.humanGates`
+Read `.metate/profile.yml` → `verify.command`, `verify.seedCommand`, optional `verify.humanGates`
 (`required`). Fixed-path state: `.metate/human-gates.json`, `.metate/signals.json` (mid-flow
-captures are appended here), and the optional `.metate/smoke-matrix.json`. If `smoke.command` is
+captures are appended here), and the optional `.metate/smoke-matrix.json`. If `verify.command` is
 empty, ask the user how the e2e/smoke suite runs.
 
 **`.metate/smoke-matrix.json` — the T-row → command binding.** Step 2 must map results back to
-T1…Tn, and with only a single `smoke.command` string that mapping lives nowhere: it gets re-derived
+T1…Tn, and with only a single `verify.command` string that mapping lives nowhere: it gets re-derived
 by hand every sprint, or duplicated into a runner script. When the file exists, read it:
 
 ```json
@@ -43,13 +43,13 @@ by hand every sprint, or duplicated into a runner script. When the file exists, 
 ```
 
 `id` may name a span (`T1-T3`) when one command covers several rows. Check `requires` before
-running and report anything unmet rather than failing opaquely. **`smoke.command` remains the
-fallback** — a repo with one suite needs no matrix, and an absent file is not an error. When both are set, run the matrix rows and then `smoke.command`.
+running and report anything unmet rather than failing opaquely. **`verify.command` remains the
+fallback** — a repo with one suite needs no matrix, and an absent file is not an error. When both are set, run the matrix rows and then `verify.command`.
 
 Identify the **current sprint id** (from `.metate/issues.json` → `sprint`, the plan, or the branch
 topic). Human-gate blocking is scoped to that sprint only.
 
-When `smoke.humanGates` is configured:
+When `verify.humanGates` is configured:
 - The ledger path is **tracked project state** (commit it with the sprint — unlike
   `issues.json` / `release.json`). Expect JSON: a top-level array of gate objects, or an
   object with a `gates` / `items` array.
@@ -70,11 +70,11 @@ When `smoke.humanGates` is configured:
   `open` items are a separate escalation (see step 4).
 
 ## Steps
-1. **Seed idempotency** — run `smoke.seedCommand` twice; the second run must not error or
+1. **Seed idempotency** — run `verify.seedCommand` twice; the second run must not error or
    duplicate data. Report any drift.
-2. **Run the suite** — `smoke.command`. Map results back to the **DoD matrix (T1…Tn)** from
+2. **Run the suite** — `verify.command`. Map results back to the **DoD matrix (T1…Tn)** from
    Prep: each row either has a passing assertion or a documented gap; for non-`sprint` plans,
-   verify the plan's **completion condition** via the **`C1`** ledger item instead (`smoke.command`
+   verify the plan's **completion condition** via the **`C1`** ledger item instead (`verify.command`
    still runs). Flag rows that the fresh-tenant specs skip but a seeded-tenant smoke should cover
    (role/KPI/money claims). For each **failure**, classify it against `git diff <base>` before routing (see Exit):
    in-diff = a regression you own; out-of-diff / exposed-latent = a pre-existing find to
@@ -88,10 +88,10 @@ When `smoke.humanGates` is configured:
 4. **Human verification** — after the suite is green (or gaps documented), hand the person
    only what they still need to sign off on.
 
-   **No `smoke.humanGates` configured** — summarize what the suite proved; ask only for the
+   **No `verify.humanGates` configured** — summarize what the suite proved; ask only for the
    aesthetic / flow approval the suite can't make. Keep it short.
 
-   **`smoke.humanGates` configured** — first honor the fail-closed rules in Step 0.
+   **`verify.humanGates` configured** — first honor the fail-closed rules in Step 0.
 
    **Prior-sprint still-`open`:** escalate once before (or alongside) this sprint's gates.
    Options: fold into this sprint (rewrite `sprint`), or mark `deferred` with a written
@@ -131,5 +131,5 @@ Route each failure by attribution — one red bucket no longer means "back to bu
 - **out-of-diff / exposed-latent + doesn't block DoD** → captured as a signal (Step 2); smoke continues.
 - All T1…Tn covered (pass or documented gap), or for non-`sprint` plans the **completion
   condition** / **`C1`** verified (pass or documented gap), + seed idempotent, with any out-of-diff
-  finds parked as signals, and (when `smoke.humanGates.required`) every current-sprint H item
+  finds parked as signals, and (when `verify.humanGates.required`) every current-sprint H item
   dispositioned and no prior-sprint item left `open` → ✅ advance to Aftercare.

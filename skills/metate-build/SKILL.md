@@ -44,7 +44,7 @@ can subvert its own review; on a trusted repo treat such a diff as suspect, and 
 review on an untrusted branch.
 
 The orchestrator may **`Write` only to `.metate/session.json`, `.metate/signals.json`, and
-`prep.techDebtFile`** (session in round 0; captures in §2b).
+`start.techDebtFile`** (session in round 0; captures in §2b).
 
 ## Step 0 — load the project profile
 
@@ -56,8 +56,8 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `build.reviewer.backend` — default backend for all three lenses (`codex` · `cursor` · `claude`).
   Optional per-lens overrides: `build.reviewer.correctness`, `.security`, `.elegance`.
 - `implementer.backend` / `implementer.model` — which adapter + model to drive writes.
-- `prep.techDebtFile` — where deferred review wants are appended (e.g. `docs/TECH-DEBT.md`).
-- `prep.baseBranch` — branch the sprint cut from (default `main`).
+- `start.techDebtFile` — where deferred review wants are appended (e.g. `docs/TECH-DEBT.md`).
+- `start.baseBranch` — branch the sprint cut from (default `main`).
 - `reviewFocus` — the invariants the reviewers must scrutinize in THIS codebase.
 - `build.review.autoFix` — which buckets get routed to the implementer. One of:
   `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
@@ -196,8 +196,8 @@ Which buckets get auto-fixed is governed by `build.review.autoFix`:
 After bucketing, persist findings that won't be fixed this sprint. Append with **`Write` only**
 to the capture sinks — never a reviewer, never a `Bash` redirect.
 
-- **Out-of-diff bug** → `.metate/signals.json` per `metate-smoke/signal.schema.json`.
-- **Deferred want** (DESIGN or declined warning) → `prep.techDebtFile` in trigger-gated format.
+- **Out-of-diff bug** → `.metate/signals.json` per `metate-verify/signal.schema.json`.
+- **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
 
 ### 3. Patch via the implementer (resume same session)
@@ -269,11 +269,11 @@ Reporting is **unconditional** — every finding surfaces regardless of `autoFix
 Per round: findings by bucket (routed vs report-only vs captured per §2b), systemic findings with
 their site lists, implementer declines, gate result, any failed lenses, and — from round 2 on —
 that elegance ran unanchored. End with the verdict and uncaptured survivors. Hand off to
-`metate-smoke`.
+`metate-verify`.
 
 ## Guardrails
 
-- `Write` scoped to `.metate/session.json`, `.metate/signals.json`, and `prep.techDebtFile` only.
+- `Write` scoped to `.metate/session.json`, `.metate/signals.json`, and `start.techDebtFile` only.
 - Implementer write mode is auto-approving; use `isolation: worktree` when you want an isolated
   tree (see `IMPLEMENTERS.md`).
 - Route every in-branch fix through the implementer — reviewers do not edit code.

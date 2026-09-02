@@ -165,6 +165,77 @@ PY
 )"; then
       [ "$nest_out" = nested ] && echo "  ✓ nested reviewer:/review: under build: (ADR-0001 move 2a)"
     fi
+    # ADR-0001 move 2b: rename stage blocks; fold aftercare children under ship.
+    if rename_out="$(python3 - "$PROFILE" <<'PY'
+import re, sys
+path = sys.argv[1]
+lines = open(path).read().splitlines(keepends=True)
+
+def col0(line):
+    s = line.split("#", 1)[0].rstrip()
+    if not s or s[:1] in " \t":
+        return None
+    m = re.match(r"^([A-Za-z0-9_.-]+):", s)
+    return m.group(1) if m else None
+
+def block(key):
+    start = None
+    for i, ln in enumerate(lines):
+        if col0(ln) == key:
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        if col0(lines[j]) is not None:
+            end = j
+            break
+    return start, end
+
+notes = []
+renames = (("discover", "scope"), ("prep", "start"), ("smoke", "verify"))
+for old, new in renames:
+    for i, ln in enumerate(lines):
+        if col0(ln) == old:
+            lines[i] = ln.replace(old + ":", new + ":", 1)
+            notes.append(old + "→" + new)
+            break
+
+ac = block("aftercare")
+sh = block("ship")
+if ac and sh:
+    ac_s, ac_e = ac
+    children = lines[ac_s + 1:ac_e]
+    while children:
+        prev = children[-1]
+        stripped = prev.strip()
+        if not stripped:
+            children.pop()
+        elif prev[:1] not in " \t" and stripped.startswith("#"):
+            children.pop()
+        else:
+            break
+    if children and children[-1].strip():
+        children.append("\n")
+    sh_s, _ = sh
+    # delete aftercare first if it sits before ship (it does)
+    if ac_s < sh_s:
+        del lines[ac_s:ac_e]
+        sh_s -= (ac_e - ac_s)
+    else:
+        del lines[ac_s:ac_e]
+        sh = block("ship")
+        sh_s = sh[0]
+    lines[sh_s + 1:sh_s + 1] = children
+    notes.append("aftercare→ship")
+if notes:
+    open(path, "w").write("".join(lines))
+    print(" ".join(notes))
+PY
+)"; then
+      [ -n "$rename_out" ] && echo "  ✓ renamed profile blocks ($rename_out) (ADR-0001 move 2b)"
+    fi
   fi
 fi
 
@@ -392,6 +463,6 @@ cat <<EOF
   1. Run the \`metate\` wizard skill in your harness — it detects fastGate/shipGate and
      fills reviewFocus (your invariants), backends, and the stage config with you.
   2. Run the pipeline ceremonies as skills in your harness, in order:
-       metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
+       metate-scope → metate-start → metate-build → metate-verify → metate-ship → metate-ship
   3. metate-build round 0 writes .metate/session.json; rounds 1–3 resume it (see metate-build/IMPLEMENTERS.md).
 EOF
