@@ -67,7 +67,7 @@ discover:
 # --- prep (metate-prep) --------------------------------------------------
 prep:
   baseBranch: main         # no dev branch on this repo
-  readingOrder: ["README.md", "docs/ROADMAP.md"]
+  readingOrder: ["README.md", "docs/ROADMAP.md", "docs/adr/README.md"]
   techDebtFile: "docs/TECH-DEBT.md"
   issues:                  # file the ledger at sprint start from the text plan
     create: true           # false = skip issue filing entirely
@@ -83,7 +83,7 @@ smoke:
 
 # --- aftercare (metate-aftercare) ----------------------------------------
 aftercare:
-  deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md"]
+  deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md", "docs/adr/README.md"]
   postCommand: "bash install.sh --update --user && metate-init --update"  # skills AND this project's
                                           # harness artifacts (.cursor/agents, rules) — --user alone
                                           # never refreshes the per-project copies reviewers load
