@@ -1,6 +1,6 @@
 # ADR-0001 — Subtraction: five named stages, fewer keys, checkable evidence
 
-- **Status:** Accepted (2026-09-01)
+- **Status:** Accepted (2026-09-01); implemented 2026-09-02 (#110–#113). Move 4 is a real sprint, not a PR.
 - **Kind:** `decision`
 - **Deciders:** repo author. Drafted from a design conversation on 2026-09-01; an earlier draft of
   this ADR proposed a "slip system" and was withdrawn by the author as over-stated — see
@@ -249,3 +249,5 @@ without review, or aftercare without ship — nobody in the field is recorded do
    into five stages, not seven. No gates migration: prior-sprint entries are grandfathered.
 4. **Measure** — one real sprint on the result before touching anything else. Then the review-yield
    question.
+
+Moves 1–3 landed 2026-09-02: [#110](https://github.com/Skalas/metate/pull/110) keys, [#111](https://github.com/Skalas/metate/pull/111) build owns the session, [#112](https://github.com/Skalas/metate/pull/112) five named stages, [#113](https://github.com/Skalas/metate/pull/113) dod.json + gate admission + enforcement. The sequence is at step 4.

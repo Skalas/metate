@@ -74,10 +74,10 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Next
 
-The tool is at its target shape (7 stage playbooks + wizard, two adapter tables, per-repo
-profile, finding/signal schemas + lens prompts, the sources renderer). Default next move:
-**run the full ceremony on real projects** — touch this repo only when triggered debt fires
-(see TECH-DEBT.md). Candidates when a metate sprint IS warranted:
+ADR-0001 moves 1–3 landed 2026-09-02: five stages (`scope start build verify ship`), 1,023
+playbook lines, 46 keys, `dod.json`. Default next move: **one real sprint on this pipeline
+(measure)** — then the review-yield question. Touch this repo otherwise only when triggered
+debt fires (see TECH-DEBT.md). Candidates when a later metate sprint IS warranted:
 
 1. **Validation residuals** — #37 (disclosed graph-down fallback proof), #40 (branch-behind
    anchoring scenario).
@@ -96,12 +96,9 @@ profile, finding/signal schemas + lens prompts, the sources renderer). Default n
   are prose-only; the first live run is the real test.
 - **One signal promoted** — `validate.sh` silent-death under `set -euo pipefail` fixed; discover
   should not re-propose it.
-- **The `kind` axis is wired end to end but never exercised.** discover → prep (`C1` tracking
-  issue) → smoke (completion condition) → ship auto-close has been reviewed, not run. The first
+- **The `kind` axis is wired end to end but never exercised.** scope → start (`C1` tracking
+  issue) → verify (completion condition) → ship auto-close has been reviewed, not run. The first
   `decision` or `spike` pick is the real test of that chain.
-- **`metate-ship` still blanks `issueLedger` unconditionally**, contradicting prep's
-  externally-managed contract (TECH-DEBT, triggered on the first `prep.issues.create: false`
-  project).
 
 ## Later
 
