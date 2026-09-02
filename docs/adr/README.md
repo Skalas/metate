@@ -5,4 +5,4 @@ decision, numbered, never edited after acceptance — superseded instead.
 
 | # | title | status |
 |---|---|---|
-| [0001](0001-subtraction.md) | Subtraction: five named stages, fewer keys, checkable evidence | Proposed |
+| [0001](0001-subtraction.md) | Subtraction: five named stages, fewer keys, checkable evidence | Accepted |

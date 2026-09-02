@@ -26,7 +26,7 @@ stage to open a fresh (amnesiac) session.
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml`: `implementer.backend`, `implementer.model`, `implementer.autonomous`,
-`sessionFile`, `isolation`. Adapter commands (incl. the autonomous flag for the `claude` backend):
+`isolation`. The session handoff is written to `.metate/session.json`. Adapter commands (incl. the autonomous flag for the `claude` backend):
 read the `metate-review` skill's `IMPLEMENTERS.md`.
 
 ## Steps
@@ -37,7 +37,7 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
    invocations" for which call to background vs. capture in the foreground. Capture the
    session id:
    - cursor → `CID=$(cursor-agent create-chat)`, then drive build with `--resume "$CID"`.
-   - codex → run `codex exec --json …` and **capture the real session id** into `sessionFile`
+   - codex → run `codex exec --json …` and **capture the real session id** into `.metate/session.json`
      (`< /dev/null` so headless doesn't block on stdin). `--last` is **not** safe when the
      orchestrator is also codex: the review fan-out spawns intervening codex sessions, so the
      codex review pilot requires the explicit id (see IMPLEMENTERS.md → codex §).
@@ -54,11 +54,11 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
    line is a 🛑 **STOP**: report the first line verbatim and fix the invocation (nearly always a
    missing `< /dev/null`). Never write a blank or garbage `sessionId` — review would resume an
    amnesiac session and the sprint's rationale is gone.
-2. **Write the handoff** to `sessionFile`:
+2. **Write the handoff** to `.metate/session.json`:
    ```json
    { "implementer": "<backend>", "sessionId": "<id|--last>", "sprint": "<topic>", "model": "<model>" }
    ```
-   `sprint` is **required** — the branch topic, matching `issueLedger.sprint`. It is what lets
+   `sprint` is **required** — the branch topic, matching `.metate/issues.json` → `sprint`. It is what lets
    review tell a live session from a dead one (metate-review → Inputs); without it a two-month-old
    session file is indistinguishable from today's. `model` is **optional** — omit it rather than
    writing a placeholder.
@@ -73,10 +73,10 @@ read the `metate-review` skill's `IMPLEMENTERS.md`.
    handing off to review.
 
 ## Output
-Confirm `sessionFile` written (so review can resume), the layers built, and the fast-gate
+Confirm `.metate/session.json` written (so review can resume), the layers built, and the fast-gate
 result. Hand off to `metate-review`.
 
 ## Note
 If you build interactively in a GUI instead of the CLI, you must still write
-`sessionFile` yourself (or the review stage will stop). Prefer the CLI so the session id
+`.metate/session.json` yourself (or the review stage will stop). Prefer the CLI so the session id
 is captured deterministically.

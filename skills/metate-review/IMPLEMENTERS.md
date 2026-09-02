@@ -11,7 +11,7 @@ the rationale behind its own code instead of re-deriving it.
 
 ## Build handshake
 
-Build writes the session handoff (path = `sessionFile` in `.metate/profile.yml`, default
+Build writes the session handoff (path = `.metate/session.json` in `.metate/profile.yml`, default
 `.metate/session.json`) so the review skill knows how to resume:
 
 ```json
@@ -59,11 +59,11 @@ ceiling: it runs across turns and re-invokes the orchestrator when it exits, at 
 its output is retrievable.
 
 So capture the id **on completion**, not mid-run — nothing needs it earlier (build only writes
-`sessionFile` for the *later* review stage). When the work call is also the id source (claude's
+`.metate/session.json` for the *later* review stage). When the work call is also the id source (claude's
 `claude -p --output-format json` → `.session_id`), read it from the completed call's output;
 redirecting stdout to a file (see the `claude` section below) is the robust form — it isolates
 clean JSON for `jq` instead of fishing it out of the completion buffer's mixed stdout/stderr.
-That file is a **transient** capture buffer — distinct from the durable `sessionFile`; overwrite
+That file is a **transient** capture buffer — distinct from the durable `.metate/session.json`; overwrite
 or delete it freely. Backends that resume by most-recent (`codex … resume --last`) need no id
 capture — **except** when the orchestrator shares the backend (codex-only), where intervening
 review sessions make `--last` resolve to the wrong thread; there, capture the explicit id (codex §).
@@ -151,7 +151,7 @@ SESSION_ID="$(jq -r 'select(.session_id // .thread_id) | (.session_id // .thread
 codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixes>" < /dev/null
 ```
 
-- session: **record the explicit id** in `sessionFile` — `{ "implementer":"codex",
+- session: **record the explicit id** in `.metate/session.json` — `{ "implementer":"codex",
   "sessionId":"<id>" }`. ⚠️ `resume --last` is **only** safe in a single-vendor loop where the
   orchestrator is *not* codex. When the **orchestrator is also codex**, reviewer fan-out spawns
   newer codex sessions each round, so `--last` would resolve to a *reviewer* thread, not the build

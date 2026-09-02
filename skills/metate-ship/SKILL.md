@@ -31,12 +31,12 @@ clean, current base.
 
 ## Step 0 — load the profile
 Read `.metate/profile.yml` → `shipGate`, `ship.prTarget`, `ship.commitStyle`,
-`ship.issueCloseKeyword`, the top-level `issueLedger` (the issues prep filed),
-`sessionFile` (retired in step 7), optional `smoke.humanGates` (`ledger`, `required`) —
-ship honors open required human gates but does **not** write gate dispositions (smoke
-owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPrefix`,
-`githubRelease`). If release is enabled, also read the plan file (default
-`.metate/release.json`). Identify the **current sprint id** the same way smoke does.
+`ship.issueCloseKeyword`, optional `smoke.humanGates` (`required`), and optional
+`aftercare.release` (`enabled`, `tagPrefix`, `githubRelease`). Fixed-path state: `.metate/issues.json`
+(the issues prep filed), `.metate/session.json` (retired in step 7), `.metate/human-gates.json` —
+ship honors open required gates but does **not** write dispositions (smoke owns those) — and
+`.metate/release.json` when release is enabled. Identify the **current sprint id** the same way
+smoke does.
 
 ## Steps
 1. **Sync** — merge/rebase the latest `ship.prTarget` into the branch; resolve conflicts.
@@ -53,14 +53,14 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
    scoped). Don't bury a refactor inside a feature commit.
 4. **Open the PR** → `ship.prTarget`, with a commit table, verification evidence,
    out-of-scope notes, and one `<issueCloseKeyword> #N` line **per issue** in the body
-   (not ranges/lists). Read the numbers from **`issueLedger.issues[]` only** — one line per
+   (not ranges/lists). Read the numbers from **`.metate/issues.json` → `issues[]` only** — one line per
    entry in that array, so the merge auto-closes every issue prep filed; on merge to the
    default branch GitHub closes them automatically. **Never emit a close line for a
    `deferred[]` entry** — that work was cut and its issue must stay open; name the deferred
    ids in the out-of-scope notes instead, so the PR records the cut. If the ledger is absent
    (prep skipped filing), fall back to the issues referenced on the branch/PR.
    - **Staleness guard — run before emitting any `<issueCloseKeyword>` line.** The ledger
-     (the file at `issueLedger`, e.g. `.metate/issues.json`) is per-sprint local state; one
+     (the file at `.metate/issues.json`, e.g. `.metate/issues.json`) is per-sprint local state; one
      left from a *previous* sprint would auto-close unrelated issues. **Both** must hold for
      every entry: (1) the issue is still **OPEN** (`gh issue view <N> --json state,title`);
      (2) the ledger's `sprint` matches the work on the branch/diff. If either fails for any
@@ -70,7 +70,7 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
      that is **CLOSED** is the anomaly — someone closed work that was cut. Report it and ask;
      never emit a close line for it either way.
    - Confirm auto-close wiring after creation.
-   - If `aftercare.release.planFile` has `status: approved`, mention the planned tag in the
+   - If `.metate/release.json` has `status: approved`, mention the planned tag in the
      PR body (informational — the tag is cut only after merge + a second confirmation).
 5. **Merge — on explicit human approval only.** Ask. If approved, merge the PR with
    `gh pr merge <N> --merge` (or `--rebase`; **never `--squash`** — it flattens the
@@ -79,7 +79,7 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
    `gh pr view <N> --json mergeCommit -q .mergeCommit.oid` (or the merge commit from
    `gh pr merge`'s result). If release is in play, write that OID into the plan file's
    `mergeCommit` field with the **`Write` tool** (ship may Write **only** to
-   `aftercare.release.planFile` for this field and for clearing the plan in step 9).
+   `.metate/release.json` for this field and for clearing the plan in step 9).
    If the user defers, stop after step 7 and tell them to re-run ship's close-out
    (steps 5–9) once the PR merges — keep `release.json` if present so the tag can still
    land later.
@@ -89,13 +89,13 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
 7. **Retire sprint-local state** — once the PR is open and auto-close is confirmed, reset the
    sprint's working files (all gitignored, so nothing to commit), for the same staleness reason
    as step 4:
-   - the ledger file at `issueLedger` → `{ "sprint": null, "issues": [] }`;
-   - delete `sessionFile` and the transient `.metate/.session-start.json` if present;
-   - **keep** `aftercare.release.planFile` when `status: approved` — step 9 consumes it;
+   - the ledger file at `.metate/issues.json` → `{ "sprint": null, "issues": [] }`;
+   - delete `.metate/session.json` and the transient `.metate/.session-start.json` if present;
+   - **keep** `.metate/release.json` when `status: approved` — step 9 consumes it;
      clear it only when `status: skipped` or release is disabled.
    Do this even if the merge was deferred — the `<issueCloseKeyword>` lines live in the PR body,
    not the ledger. If a post-PR amendment then needs another review round, re-run Build to mint a
-   fresh `sessionFile` (the prior session is intentionally retired).
+   fresh `.metate/session.json` (the prior session is intentionally retired).
 8. **Return to base** — after the merge lands:
    ```bash
    git switch <ship.prTarget> && git pull --ff-only && git branch -d <sprint-branch>
@@ -152,7 +152,7 @@ owns those) — and optional `aftercare.release` (`enabled`, `planFile`, `tagPre
 - Never wire auto-close from a stale ledger — run the step 4 staleness guard first.
 - Open required human gates block ship — explain them, then hand off to `metate-smoke` for
   disposition. Do not write gate dispositions from ship. Ship may Write only to
-  `aftercare.release.planFile` (mergeCommit + clear).
+  `.metate/release.json` (mergeCommit + clear).
 - Never cut a tag or GitHub Release without an aftercare-approved plan **and** a fresh
   ship-time confirmation. Never force-push tags. Never tag `HEAD` after pull — tag the
   recorded `mergeCommit` only. Never pass unvalidated plan fields to the shell.

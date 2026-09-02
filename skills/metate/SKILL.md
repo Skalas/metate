@@ -101,9 +101,9 @@ and drifts out of sync with the source.
 
 **discover** — keep the template defaults unless the user objects: all six `sources` on
 (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`, `productIntent`),
-`mode: steady`, `planFile: .metate/plan.md`, `candidates: 5`. Turn `codebaseMemory` off
+`mode: steady`, `candidates: 5`. Turn `codebaseMemory` off
 here only if `codebaseMemory.enabled` is false. `productIntent` reads README plus
-`prep.readingOrder` for stated goals — no separate path config. The `planFile` is what
+`prep.readingOrder` for stated goals — no separate path config. `.metate/plan.md` is what
 `prep` reads as its entry doc.
 
 **prep** — detect docs + base branch:
@@ -128,7 +128,7 @@ is **tracked** project state (commit with the sprint).
 coverage docs, roadmap, this profile's sibling rules). Confirm with the user.
 If the repo already has semver tags (or GitHub Releases), propose optional
 `aftercare.release` (`enabled: true`, `scheme: semver`, `tagPrefix: "v"`,
-`currentFrom: git-tag`, `githubRelease: true`, `planFile: .metate/release.json`) —
+`currentFrom: git-tag`, `githubRelease: true`) —
 aftercare will propose patch/minor/major from the sprint diff and stop for confirmation;
 ship tags only after merge + a second yes. Do **not** enable this on unversioned repos.
 ```bash
@@ -140,6 +140,13 @@ gh release list --limit 3 2>/dev/null
 defaults unless the user uses a different convention.
 
 After writing, show the user the filled profile and confirm before they run the pipeline.
+
+## Fixed paths — state is not config
+
+metate's state lives at fixed paths under `.metate/` — `plan.md`, `issues.json`, `session.json`,
+`signals.json`, `human-gates.json` (tracked), `release.json`, optional `smoke-matrix.json` — and is
+**not** configurable. Only `techDebtFile` and `prep.readingOrder` are config: they name *your*
+documents. `metate-init --update` strips the retired path keys from old profiles (ADR-0001).
 
 ## Step 2b — reconcile an existing profile (after a metate update)
 
