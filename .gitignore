@@ -16,3 +16,5 @@
 .cursor/agents/metate-*.md
 # metate autonomous implementer permission (personal, per-developer)
 .claude/settings.local.json
+# metate DoD ledger (per-sprint; start overwrites)
+.metate/dod.json
