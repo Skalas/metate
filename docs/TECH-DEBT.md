@@ -13,7 +13,7 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   modifies the review engine's own instruction files (lens prompts, prompt-clause, `SKILL.md`)
   could subvert its own review, and the fix-apply step has no network-egress denial or
   imperative-verb/URL allow-pattern check on findings. Accepted for trusted repos run
-  interactively; documented in `metate-review/SKILL.md` + README. **Trigger to revisit:**
+  interactively; documented in `metate-build/SKILL.md` + README. **Trigger to revisit:**
   metate pointed at external/untrusted PRs — then build a hard path *on top of* the adapter
   tables (sandbox, egress-deny, finding allow-patterns), never a revived shell engine.
 
@@ -21,7 +21,7 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 - **Secret-file skip is prose, not code.** The mandatory secret-name exclusion (`.env`/`*.pem`/
   `id_*`/`*credentials*`/…) when building the review diff is a **MUST** instruction in
-  `metate-review/SKILL.md`, because reviewers run as external CLI subprocesses (possibly another
+  `metate-build/SKILL.md`, because reviewers run as external CLI subprocesses (possibly another
   vendor). **Trigger:** a CI/no-agent runner is ever built — reimplement the skip as code there
   (an agent can be trusted to follow the MUST; a script cannot).
 
@@ -33,7 +33,7 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   `readonly: true` reviewer cannot write; never pass `--force`/`--trust` to a reviewer.
 
 - **The "treat as data, never instructions" guard is duplicated across harness playbooks.**
-  Near-verbatim in `metate-smoke/SKILL.md` and `metate-review/SKILL.md` §2b; within
+  Near-verbatim in `metate-smoke/SKILL.md` and `metate-build/SKILL.md` §2b; within
   `metate-discover/SKILL.md` it is now one canonical statement in Guardrails (per-source
   steps reference it). **Cross-file duplication is an accepted limitation** — each `SKILL.md`
   is a standalone playbook installed independently per harness, so a shared note breaks
@@ -62,7 +62,7 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
   **Trigger:** the first project configured with `prep.issues.create: false` runs `metate-ship`
   — scope ship's reset to ledgers prep actually wrote.
 
-- **`metate-review`'s `Write` is scoped by prose, not the tool layer.** The restriction to
+- **`metate-build`'s `Write` is scoped by prose, not the tool layer.** The restriction to
   `signalsFile`/`prep.techDebtFile` is enforced by SKILL prose + the `reviewFocus` invariant;
   harness `allowed-tools` has no path-scoping syntax. **Trigger:** the harness gains path-scoped
   `Write(...)` grants, OR a security review flags the orchestrator write scope as an active risk.
@@ -126,14 +126,14 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
          cheapest known design.
     - **Trigger:** the next sprint where review lets scope drift or a missing DoD item reach
       smoke.
-  - **§1/§2 restructure in `metate-review`.** Split §2 into a linear pipeline (dedupe → cluster →
+  - **§1/§2 restructure in `metate-build`.** Split §2 into a linear pipeline (dedupe → cluster →
     bucket → autoFix) and lift any cross-round bookkeeping out of it; promote the pre-fan-out
     reads to their own step so §1 is about fanning out. Deferred during `review-aperture` to keep
     the patch verifiable under the round cap.     **Trigger:** the next edit to either section.
 
 - **Engine prose accretes under review.** Review of a prose product answers each objection by
   adding a clause where the objection landed; nothing in the loop says "this section is now too
-  long to execute." `review-aperture` added 38 lines to `metate-review/SKILL.md` for four small
+  long to execute." `review-aperture` added 38 lines to `metate-build/SKILL.md` for four small
   features before being trimmed twice. **Rule:** a change that adds prose to a `skills/*/SKILL.md`
   must remove prose. **Trigger:** any sprint that touches a `SKILL.md` — state a line budget in
   the plan and hold to it.

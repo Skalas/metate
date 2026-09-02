@@ -5,14 +5,6 @@
 fastGate: "make check"     # bash -n + shellcheck, each review round
 shipGate: "make verify"    # check + metadata/installer sanity, mirrors CI
 
-# --- reviewer (parallel lenses; spawned as other-harness CLIs) ------------
-# Default backend for all three lenses. Optional per-lens override (uncomment):
-reviewer:
-  backend: cursor          # codex | cursor | claude
-  # correctness: codex
-  # security: codex
-  # elegance: codex
-
 # --- implementer (the only writer) ---------------------------------------
 implementer:
   backend: cursor          # implementer/writer runs via cursor-agent
@@ -28,7 +20,6 @@ codebaseMemory:
   reindex: git
   indexCommand: ""
 
-# --- review (metate-review) ----------------------------------------------
 reviewFocus: |
   - install.sh works from BOTH a local checkout and `curl … | bash` (GitHub clone path);
     neither path regresses — local must not clone, piped must fetch the right ref.
@@ -37,12 +28,19 @@ reviewFocus: |
   - skills carry NO project-specific content — engines stay codebase-agnostic (all specifics in profile).
   - SKILL.md frontmatter is valid and allowed-tools honor the invariant that the implementer is the
     ONLY code writer; reviewers report findings and the orchestrator adjudicates findings and
-    routes them to the implementer — the orchestrator may Write ONLY to `signalsFile` and
+    routes them to the implementer — the orchestrator may Write ONLY to `.metate/signals.json` and
     `prep.techDebtFile`.
 
+# --- build (metate-build): round 0 writes, rounds 1–3 review --------------
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
-review:
-  autoFix: blockers
+build:
+  reviewer:
+    backend: cursor          # codex | cursor | claude
+    # correctness: codex
+    # security: codex
+    # elegance: codex
+  review:
+    autoFix: blockers
 
 # --- discover (metate-discover) ------------------------------------------
 discover:

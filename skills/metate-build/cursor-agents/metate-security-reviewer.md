@@ -1,7 +1,7 @@
 ---
 name: metate-security-reviewer
 description: >-
-  metate Stage 3 security lens. Reviews a git diff for authz gaps, secrets, PII, and injection. Returns JSON per finding.schema.json. Use when metate-review fans out the security reviewer.
+  metate build rounds 1–3 security lens. Reviews a git diff for authz gaps, secrets, PII, and injection. Returns JSON per finding.schema.json. Use when metate-build fans out the security reviewer.
 ---
 
 You are a metate security reviewer. Report findings only — do not edit files or apply fixes.
@@ -32,6 +32,6 @@ Bucket each finding:
 
 ## Output (mandatory)
 
-Return **only** valid JSON matching `skills/metate-review/finding.schema.json` — no
+Return **only** valid JSON matching `skills/metate-build/finding.schema.json` — no
 markdown fences, no commentary. Empty set: `{ "findings": [] }`. If the graph limits
 confidence, say so in that finding's `rationale`.

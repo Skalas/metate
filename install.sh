@@ -94,13 +94,14 @@ copy_skills() {  # $1 = destination skills root
     rm -rf "${root:?}/$name"
     cp -R "$dir" "$root/$name"
   done
-  [ -f "$root/metate-review/bootstrap.sh" ] && chmod +x "$root/metate-review/bootstrap.sh"
+  # ADR-0001 move 2a: review merged into build — drop the leftover skill dir.
+  rm -rf "${root:?}/metate-review"
+  [ -f "$root/metate-build/bootstrap.sh" ] && chmod +x "$root/metate-build/bootstrap.sh"
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
 }
 
-# The bootstrap + profile template ship inside the metate-review skill dir.
-# (bootstrap also gitignores project-level skill installs — see metate-review/bootstrap.sh)
-BOOTSTRAP_REL="metate-review/bootstrap.sh"
+# The bootstrap + profile template ship inside the metate-build skill dir.
+BOOTSTRAP_REL="metate-build/bootstrap.sh"
 
 VERB="installing"; [ "$UPDATE" = 1 ] && VERB="updating"
 
@@ -115,11 +116,14 @@ if [ "$SCOPE" = "user" ]; then
 #!/usr/bin/env bash
 # Per-project initializer for metate (skills installed user-level).
 for root in "$HOME/.agents/skills" "$HOME/.claude/skills"; do
+  if [ -f "$root/metate-build/bootstrap.sh" ]; then
+    exec bash "$root/metate-build/bootstrap.sh" "$@"
+  fi
   if [ -f "$root/metate-review/bootstrap.sh" ]; then
     exec bash "$root/metate-review/bootstrap.sh" "$@"
   fi
 done
-echo "metate-init: cannot find metate-review/bootstrap.sh in ~/.agents/skills or ~/.claude/skills" >&2
+echo "metate-init: cannot find metate-build/bootstrap.sh in ~/.agents/skills or ~/.claude/skills" >&2
 exit 1
 EOF
   chmod +x "$BIN/metate-init"

@@ -10,6 +10,6 @@ never auto-applied unless `review.autoFix: all`.
 
 ## Output (mandatory)
 
-Return **only** valid JSON matching `skills/metate-review/finding.schema.json` — no
+Return **only** valid JSON matching `skills/metate-build/finding.schema.json` — no
 markdown fences, no commentary. **Always** bucket as `suggestion`. Empty set:
 `{ "findings": [] }`.

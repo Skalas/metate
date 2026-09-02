@@ -94,6 +94,77 @@ KEYS
     done
     [ "$retired" -gt 0 ] && echo "  ✓ retired $retired fixed-path key(s) from profile (ADR-0001 move 1)"
     [ -n "$kept" ] && echo "  ⚠ non-default path key(s) left in profile — state paths are fixed now; review:$kept"
+    # ADR-0001 move 2a: nest top-level reviewer:/review: under build:. Values unchanged.
+    if nest_out="$(python3 - "$PROFILE" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+if re.search(r"^build:", text, re.M):
+    sys.exit(0)
+if not re.search(r"^reviewer:", text, re.M) and not re.search(r"^review:", text, re.M):
+    sys.exit(0)
+lines = text.splitlines(keepends=True)
+
+def col0_key(line):
+    s = line.split("#", 1)[0].rstrip()
+    if not s or s[:1] in " \t":
+        return None
+    m = re.match(r"^([A-Za-z0-9_.-]+):", s)
+    return m.group(1) if m else None
+
+def block_at(key):
+    start = None
+    for i, line in enumerate(lines):
+        if col0_key(line) == key:
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        if col0_key(lines[j]) is not None:
+            end = j
+            break
+    while end > start + 1:
+        prev = lines[end - 1]
+        stripped = prev.strip()
+        # Drop blanks and column-0 comments (the next section's header). Keep
+        # indented comments — they belong to this mapping.
+        if not stripped:
+            end -= 1
+        elif prev[:1] not in " \t" and stripped.startswith("#"):
+            end -= 1
+        else:
+            break
+    return start, end
+
+chunks = []
+for key in ("reviewer", "review"):
+    loc = block_at(key)
+    if loc:
+        chunks.append((key, loc[0], loc[1], lines[loc[0]:loc[1]]))
+if not chunks:
+    sys.exit(0)
+# Drop extracted ranges from the bottom so earlier indices stay valid.
+body = []
+for key, _s, _e, block in chunks:
+    body.extend(["  " + ln if ln.strip() else ln for ln in block])
+header = ["# --- build (metate-build): round 0 writes, rounds 1–3 review\n", "build:\n"]
+insert_at = chunks[0][1]
+# If a comment line immediately above the first block looks like the old reviewer header, replace it.
+ranges = sorted(((s, e) for _k, s, e, _b in chunks), reverse=True)
+out = list(lines)
+for s, e in ranges:
+    del out[s:e]
+# After deletions, insert_at still points at the first block's original start only if
+# nothing before it was deleted — reviewer is the first chunk, so that holds.
+out[insert_at:insert_at] = header + body
+open(path, "w").write("".join(out))
+print("nested")
+PY
+)"; then
+      [ "$nest_out" = nested ] && echo "  ✓ nested reviewer:/review: under build: (ADR-0001 move 2a)"
+    fi
   fi
 fi
 
@@ -171,9 +242,11 @@ else
     || echo "  • existing profile has codebaseMemory.enabled: false — left as-is; set it true to use the graph"
 fi
 
-# Report the reviewer backend. A fresh profile carries the template default (claude).
-REVIEWER_BACKEND="$(yaml_nested_scalar "$PROFILE" reviewer backend)"
-echo "  ✓ reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides optional; see metate-review/REVIEWERS.md)"
+# Report the reviewer backend. Nested under build: after ADR-0001 move 2a; fall back to
+# the pre-nest top-level key so a profile that has not been --update'd still prints.
+REVIEWER_BACKEND="$(yaml_deep_scalar "$PROFILE" build reviewer backend)"
+[ -z "$REVIEWER_BACKEND" ] && REVIEWER_BACKEND="$(yaml_nested_scalar "$PROFILE" reviewer backend)"
+echo "  ✓ build.reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides optional; see metate-build/REVIEWERS.md)"
 
 # Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
 if [ -d "$HOME/.cursor" ]; then
@@ -319,6 +392,6 @@ cat <<EOF
   1. Run the \`metate\` wizard skill in your harness — it detects fastGate/shipGate and
      fills reviewFocus (your invariants), backends, and the stage config with you.
   2. Run the pipeline ceremonies as skills in your harness, in order:
-       metate-discover → metate-prep → (build via implementer) → metate-review → metate-smoke → metate-aftercare → metate-ship
-  3. Build through the implementer CLI so it writes .metate/session.json (see metate-review/IMPLEMENTERS.md).
+       metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
+  3. metate-build round 0 writes .metate/session.json; rounds 1–3 resume it (see metate-build/IMPLEMENTERS.md).
 EOF
