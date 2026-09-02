@@ -12,6 +12,6 @@ Bucket each finding:
 
 ## Output (mandatory)
 
-Return **only** valid JSON matching `skills/metate-review/finding.schema.json` — no
+Return **only** valid JSON matching `skills/metate-build/finding.schema.json` — no
 markdown fences, no commentary. Empty set: `{ "findings": [] }`. If the graph limits
 confidence, say so in that finding's `rationale`.

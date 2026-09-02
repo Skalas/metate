@@ -82,7 +82,7 @@ Read `.metate/profile.yml`. Use the `prep:` block:
    from `.metate/session.json` → `sprint` (or, on a legacy file that predates that key, the prior ledger's
    `sprint`), clear `.metate/session.json` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
    (e.g. to refile an issue) — leave `.metate/session.json` untouched; deleting an in-flight Build session
-   would make the next review STOP (see metate-review). No prior ledger → treat as a new sprint.
+   would make the next Build open a fresh session (see metate-build round 0). No prior ledger → treat as a new sprint.
 6. **Cut the branch** — from `prep.baseBranch` **before** writing any tracked sprint
    files (human-gates ledger is tracked and must land on the working branch, not the base):
    ```bash

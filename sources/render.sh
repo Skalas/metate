@@ -6,13 +6,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RENDER_ROOT="${RENDER_OUT_ROOT:-$ROOT}"
 SRC="$ROOT/sources"
-OUT_REVIEW="$RENDER_ROOT/skills/metate-review"
+OUT_REVIEW="$RENDER_ROOT/skills/metate-build"
 OUT_AGENTS="$OUT_REVIEW/cursor-agents"
 OUT_GEN="$OUT_REVIEW/generated"
 MANIFEST="$SRC/backends.yml"
 
 # shellcheck disable=SC1091
-. "$ROOT/skills/metate-review/lib/yaml.sh"
+. "$ROOT/skills/metate-build/lib/yaml.sh"
 
 die() { echo "render: $*" >&2; exit 1; }
 
@@ -120,4 +120,4 @@ while IFS= read -r lens; do
   render_reviewer_agent "$lens"
 done < <(yaml_child_keys "$MANIFEST" reviewers)
 
-echo "render: wrote harness artifacts under skills/metate-review/"
+echo "render: wrote harness artifacts under skills/metate-build/"

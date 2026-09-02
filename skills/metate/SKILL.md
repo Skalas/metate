@@ -3,7 +3,7 @@ name: metate
 version: 1.0.0
 description: |
   Entry point, first-run setup wizard, and router for the `metate` development
-  pipeline (discover → prep → build → review → smoke → aftercare → ship). Use this to get
+  pipeline (discover → prep → build → smoke → aftercare → ship). Use this to get
   oriented, to configure `.metate/profile.yml` with autodetected defaults on a
   fresh repo, or to find out which ceremony to run next. The actual work lives in
   the `metate-<stage>` skills; this one explains the flow and sets it up.
@@ -21,21 +21,21 @@ allowed-tools:
 
 # metate — pipeline entry point & setup
 
-The pipeline is seven ceremonies, one skill each. **There is no single `metate` worker** —
+The pipeline is six ceremonies, one skill each. **There is no single `metate` worker** —
 this skill orients you, sets up the profile on first run, and routes you to the right
 stage.
 
 ```
-metate-discover → metate-prep → (build) → metate-review → metate-smoke → metate-aftercare → metate-ship
-   0                  1             2            3              4                5                6
+metate-discover → metate-prep → metate-build → metate-smoke → metate-aftercare → metate-ship
+   0                  1              2               3                4                5
 ```
 
 The macro-loop closes back on itself: `metate-aftercare` writes next-sprint pointers that
 `metate-discover` reads to open the next cycle. **You** are the stop-condition between
 iterations — discover proposes, you decide.
 
-Two roles, both pluggable and **independent** (see `metate-review/REVIEWERS.md` and
-`IMPLEMENTERS.md`): **reviewers** (`reviewer.backend` — spawn as other-harness CLIs) report
+Two roles, both pluggable and **independent** (see `metate-build/REVIEWERS.md` and
+`IMPLEMENTERS.md`): **reviewers** (`build.reviewer.backend` — spawn as other-harness CLIs) report
 findings; the **implementer** (`implementer.backend` — cursor / codex / claude / gemini) is the
 only writer. The harness session you opened is the orchestrator. Everything project-specific
 lives in `.metate/profile.yml`.
@@ -50,7 +50,7 @@ git branch --show-current
 
 - **No profile** → run first-run setup (Step 2). If `.metate/` doesn't exist at all,
   run the bootstrap first: `metate-init` if installed user-level, or
-  `bash .agents/skills/metate-review/bootstrap.sh` / `bash .claude/skills/metate-review/bootstrap.sh`
+  `bash .agents/skills/metate-build/bootstrap.sh` / `bash .claude/skills/metate-build/bootstrap.sh`
   for a project-vendored install.
 - **Profile has placeholders** (`<invariant …>`, empty `[]`/`""`) → finish setup (Step 2).
 - **Profile filled** → route (Step 3).
@@ -82,9 +82,9 @@ for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found
 
 **reviewer** — who runs the three review lenses (can differ per lens). Default `backend: claude`
 (matches the Claude Code plugin path). Set `codex` or `cursor` for cross-harness fan-out — see
-`metate-review/REVIEWERS.md`.
+`metate-build/REVIEWERS.md`. Lives at `build.reviewer` in the profile.
 
-Invoke stage skills natively in your harness (`metate-review`, `metate-prep`, etc.).
+Invoke stage skills natively in your harness (`metate-build`, `metate-prep`, etc.).
 
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash
@@ -154,7 +154,7 @@ Profile reconciliation is prose, not code — no script merges YAML. When metate
 updated and the project already has a profile:
 
 1. Read `.metate/profile.yml` and the shipped template (`profile.template.yml`, beside
-   `metate-review/bootstrap.sh` in the installed skill).
+   `metate-build/bootstrap.sh` in the installed skill).
 2. List keys present in the template but missing from the profile.
 3. For each missing key, propose a value fitted to THIS repo (detect it as in Step 2 —
    never paste the template placeholder verbatim when a real value is detectable).
@@ -182,8 +182,7 @@ updated and the project already has a profile:
 |---|---|
 | don't know what to work on / a sprint just closed | `metate-discover` |
 | have a plan, no branch for the work yet | `metate-prep` |
-| branch cut, ready to write code | `metate-build` (starts the resumable implementer session) |
-| code written, want it reviewed | `metate-review` |
+| branch cut, ready to write and review | `metate-build` (round 0 writes; rounds 1–3 review) |
 | review green, need behavior proof | `metate-smoke` |
 | smoke green, closing the sprint | `metate-aftercare` |
 | docs done, ready to land | `metate-ship` |
@@ -191,6 +190,4 @@ updated and the project already has a profile:
 ## First-round checklist
 1. `.metate/profile.yml` filled (esp. `reviewFocus`) ✅
 2. an implementer CLI installed and chosen ✅
-3. Build started through that CLI so `.metate/session.json` exists (else `metate-review`
-   stops) ✅
-4. run `metate-review`.
+3. run `metate-build` — round 0 writes `.metate/session.json`; rounds 1–3 resume it.

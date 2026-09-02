@@ -138,3 +138,31 @@ filtered="$(printf '%s\n' 'v1.4.0' 'v1.5.0-rc.1' 'v1.3.0' 'release-2' 'v2.0.0' \
   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
 [ "$filtered" = 'v2.0.0' ] || die "semver filter failed (got $filtered)"
 ok "exact semver tag filter excludes prereleases"
+
+# --- nest reviewer:/review: under build: (ADR-0001 move 2a) ---------------
+# The python lives in bootstrap.sh --update. Extract and run it on a tiny
+# profile so a regression that swallows indented comments or implementer: fails here.
+nest_in="$(mktemp)"
+cat > "$nest_in" <<'YML'
+reviewer:
+  backend: claude
+  # correctness: codex
+implementer:
+  backend: cursor
+review:
+  autoFix: blockers
+YML
+sed -n '/^import re, sys$/,/^print("nested")$/p' "$ROOT/skills/metate-build/bootstrap.sh" > "$nest_in.py"
+python3 "$nest_in.py" "$nest_in" >/dev/null
+# shellcheck disable=SC1091
+. "$ROOT/skills/metate-build/lib/yaml.sh"
+[ "$(yaml_deep_scalar "$nest_in" build reviewer backend)" = claude ] \
+  || die "nest: build.reviewer.backend lost"
+[ "$(yaml_deep_scalar "$nest_in" build review autoFix)" = blockers ] \
+  || die "nest: build.review.autoFix lost"
+[ "$(yaml_nested_scalar "$nest_in" implementer backend)" = cursor ] \
+  || die "nest: implementer.backend moved or lost"
+grep -qE '^[[:space:]]+# correctness: codex' "$nest_in" \
+  || die "nest: indented comment under reviewer was dropped"
+rm -f "$nest_in" "$nest_in.py"
+ok "profile nest reviewer/review under build (values + indented comments kept)"

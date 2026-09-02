@@ -11,8 +11,7 @@ the rationale behind its own code instead of re-deriving it.
 
 ## Build handshake
 
-Build writes the session handoff (path = `.metate/session.json` in `.metate/profile.yml`, default
-`.metate/session.json`) so the review skill knows how to resume:
+Round 0 writes the session handoff to `.metate/session.json` so rounds 1–3 know how to resume:
 
 ```json
 { "implementer": "cursor", "sessionId": "44ca13f5-...", "sprint": "<topic>", "model": "composer-2.5" }
@@ -70,13 +69,13 @@ review sessions make `--last` resolve to the wrong thread; there, capture the ex
 
 ## Code Discovery clause
 
-When `codebaseMemory.enabled` in the profile, `metate-build` and `metate-review` prepend
+When `codebaseMemory.enabled` in the profile, round 0 and review rounds prepend
 this block to the implementer prompt (build prompt and resume/fix prompt alike). Backends
 differ in how they otherwise learn the preference — see the per-backend table below — so the
 prompt is the **only** path that reaches the `claude` backend in `-p` mode.
 
 **Canonical source:** `sources/code-discovery/prompt-clause.md` → rendered to
-`skills/metate-review/generated/prompt-clause.md` (`make render`). Do not hand-edit the
+`skills/metate-build/generated/prompt-clause.md` (`make render`). Do not hand-edit the
 rendered copy; the verify drift gate enforces parity.
 
 **Intensity scales with graph value** (still gated only on `codebaseMemory.enabled`, no extra

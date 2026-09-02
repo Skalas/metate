@@ -1,16 +1,16 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-review/bootstrap.sh sources/render.sh tests/contracts/validate.sh
+SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh
 RENDER_SCRIPT := sources/render.sh
 BUDGET := tests/contracts/prose-budget.txt
-RENDERED := skills/metate-review/cursor-rule.mdc \
-	skills/metate-review/codex-rule.md \
-	skills/metate-review/cursor-agents/metate-correctness-reviewer.md \
-	skills/metate-review/cursor-agents/metate-security-reviewer.md \
-	skills/metate-review/cursor-agents/metate-elegance-reviewer.md \
-	skills/metate-review/generated/prompt-clause.md \
-	skills/metate-review/generated/lens-prompts/correctness.txt \
-	skills/metate-review/generated/lens-prompts/security.txt \
-	skills/metate-review/generated/lens-prompts/elegance.txt
+RENDERED := skills/metate-build/cursor-rule.mdc \
+	skills/metate-build/codex-rule.md \
+	skills/metate-build/cursor-agents/metate-correctness-reviewer.md \
+	skills/metate-build/cursor-agents/metate-security-reviewer.md \
+	skills/metate-build/cursor-agents/metate-elegance-reviewer.md \
+	skills/metate-build/generated/prompt-clause.md \
+	skills/metate-build/generated/lens-prompts/correctness.txt \
+	skills/metate-build/generated/lens-prompts/security.txt \
+	skills/metate-build/generated/lens-prompts/elegance.txt
 
 .PHONY: verify check lint test render render-check drift budget help
 .DEFAULT_GOAL := help
@@ -61,10 +61,10 @@ budget: ## fail when a SKILL.md grows past its recorded line cap
 drift: ## warn when the copies harnesses actually load are stale (never fails the build)
 	@stale=0; \
 	for pair in \
-	  ".cursor/agents/metate-correctness-reviewer.md:skills/metate-review/cursor-agents/metate-correctness-reviewer.md" \
-	  ".cursor/agents/metate-security-reviewer.md:skills/metate-review/cursor-agents/metate-security-reviewer.md" \
-	  ".cursor/agents/metate-elegance-reviewer.md:skills/metate-review/cursor-agents/metate-elegance-reviewer.md" \
-	  ".cursor/rules/codebase-memory.mdc:skills/metate-review/cursor-rule.mdc" \
+	  ".cursor/agents/metate-correctness-reviewer.md:skills/metate-build/cursor-agents/metate-correctness-reviewer.md" \
+	  ".cursor/agents/metate-security-reviewer.md:skills/metate-build/cursor-agents/metate-security-reviewer.md" \
+	  ".cursor/agents/metate-elegance-reviewer.md:skills/metate-build/cursor-agents/metate-elegance-reviewer.md" \
+	  ".cursor/rules/codebase-memory.mdc:skills/metate-build/cursor-rule.mdc" \
 	; do \
 	  dst=$${pair%%:*}; src=$${pair#*:}; \
 	  [ -f "$$dst" ] || continue; \
@@ -85,7 +85,7 @@ drift: ## warn when the copies harnesses actually load are stale (never fails th
 lint: ## bash -n on every script + shellcheck when available
 	@for f in $(SCRIPTS); do bash -n "$$f" && echo "  ✓ syntax $$f"; done
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck $(SCRIPTS) skills/metate-review/lib/yaml.sh \
+		shellcheck $(SCRIPTS) skills/metate-build/lib/yaml.sh \
 			&& echo "  ✓ shellcheck"; \
 	else echo "  – shellcheck not installed, skipped"; fi
 
@@ -98,7 +98,7 @@ test: ## metadata + installer sanity
 	@out=$$(bash install.sh --help); echo "$$out" | grep -q 'install.sh' \
 		&& ! echo "$$out" | grep -q 'fetching metate' \
 		&& echo "  ✓ local --help works and does not clone"
-	@val=$$(bash -c 'source skills/metate-review/lib/yaml.sh; yaml_nested_scalar skills/metate-review/profile.template.yml reviewer backend'); \
+	@val=$$(bash -c 'source skills/metate-build/lib/yaml.sh; yaml_deep_scalar skills/metate-build/profile.template.yml build reviewer backend'); \
 		[ "$$val" = claude ] \
 		&& echo "  ✓ yaml.sh reads nested profile keys" \
 		|| { echo "  ✗ yaml.sh nested read on profile.template.yml failed"; exit 1; }
