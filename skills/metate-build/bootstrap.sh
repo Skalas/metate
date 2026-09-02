@@ -290,13 +290,9 @@ if ! { [ -f "$GI" ] && grep -qxF '.metate/.session-start.json' "$GI"; }; then
   { echo "# metate transient session-id capture buffer"; echo ".metate/.session-start.json"; } >> "$GI"
   echo "  ✓ added .metate/.session-start.json to .gitignore"
 fi
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/issues\.json' "$GI"; }; then
-  { echo "# metate issue ledger"; echo ".metate/issues.json"; } >> "$GI"
-  echo "  ✓ added .metate/issues.json to .gitignore"
-fi
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/release\.json' "$GI"; }; then
-  { echo "# metate release plan (aftercare → ship)"; echo ".metate/release.json"; } >> "$GI"
-  echo "  ✓ added .metate/release.json to .gitignore"
+if ! { [ -f "$GI" ] && grep -qE '^\.metate/dod\.json' "$GI"; }; then
+  { echo "# metate DoD ledger (per-sprint; start overwrites)"; echo ".metate/dod.json"; } >> "$GI"
+  echo "  ✓ added .metate/dod.json to .gitignore"
 fi
 # Project-level skill installs are vendored tooling whose source of truth is the
 # metate repo — don't track them, or every skill update is noise in this project.

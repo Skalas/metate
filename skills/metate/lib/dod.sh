@@ -123,8 +123,10 @@ migrate() {
     rm -f "$issues" "$matrix"
     echo "dod.sh: migrated → $out (sources removed)"
   else
+    local unbound
+    unbound="$(jq -r '[.rows[]|select(.status!="cut" and (has("command")|not) and (has("gate")|not))]|length' "$tmp")"
     rm -f "$tmp"
-    echo "dod.sh: migrate round-trip invalid (rows need command or gate) — left sources" >&2
+    echo "dod.sh: not migrated — $unbound row(s) have neither command nor gate. Write .metate/dod.json binding each T-row to a command or a human gate (metate-start step 7), then delete issues.json / smoke-matrix.json." >&2
     return 0
   fi
 }

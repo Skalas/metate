@@ -72,7 +72,7 @@ REDUCE/HOLD/EXPAND *sprint* mode (that's how start executes a chosen sprint; thi
 **Grade the last pick first** *(read-only calibration)*: from `ship.deliverables` and durable
 evidence reachable via `gh` or git — closed issues from the last sprint, its milestone, the merged
 PR — did the chosen work land its seed DoD, was the blast-radius estimate close, did it spawn new
-debt or signals? Do **not** rely on `.metate/issues.json` (ship resets it every cycle). One line at the
+debt or signals? Do **not** rely on `.metate/dod.json` (start overwrites it every sprint). One line at the
 head of the brief — if the outcome cannot be determined, say so and continue.
 
 Sweep every enabled source. Fan out heavier reads through **parallel reviewer-style agents**

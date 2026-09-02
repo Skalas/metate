@@ -84,7 +84,7 @@ silently**; they are review's most valuable by-product and scope's only `capture
 
 Read `.metate/session.json`. Three cases:
 
-- **Present and `sprint` matches this sprint** (branch topic / `.metate/issues.json` → `sprint`)
+- **Present and `sprint` matches this sprint** (branch topic / `.metate/dod.json` → `sprint`)
   → skip to rounds 1–3. Resume by **explicit** `sessionId` — never `--last` when the
   orchestrator shares a backend with reviewers. Empty or unsafe `"--last"` → 🛑 STOP.
 - **Present but `sprint` mismatches** → 🛑 STOP. Report both values; do not resume a prior

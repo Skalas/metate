@@ -153,7 +153,8 @@ A stage may refuse to advance only on a check a script can run. Prose advises; f
 The blocking set: the profile parses and has no template placeholder; `dod.json` validates
 and every row passes or is `cut`; every current-sprint human gate is dispositioned and
 carries `type`, `steps`, `expected`; `session.json` exists for review rounds ≥ 1; `shipGate`
-is green. A 🛑 names which of these it is.
+is green. A 🛑 names which of these it is. The checks are `lib/dod.sh` in `<metate-skill>`, the
+directory this file is installed in.
 
 ## Step 2b — reconcile an existing profile (after a metate update)
 
@@ -177,11 +178,10 @@ updated and the project already has a profile:
    The half of the old rule that stays: **never silently rewrite a value.** Removals and renames
    are proposed as a diff and applied only on confirmation — the retire pass may not touch a key
    a playbook still reads, and may never change a value the user chose.
-6. **Harness artifacts are separate from skills.** Updating metate at user level (`install.sh
-   --update --user`) refreshes the skill files but **not** the per-project copies harnesses
-   actually load — `.cursor/agents/metate-*.md`, `.cursor/rules/codebase-memory.mdc`. Those only
-   refresh under `metate-init --update`, per project. Tell the user to run it, and put it in
-   `ship.postCommand` so it is not a thing to remember.
+6. **Harness artifacts are separate from skills.** `install.sh --update --user` refreshes the
+   skill files but **not** the per-project copies harnesses load (`.cursor/agents/metate-*.md`,
+   `.cursor/rules/codebase-memory.mdc`); only `metate-init --update` does, per project. Tell the
+   user to run it, and put it in `ship.postCommand` so it is not a thing to remember.
 
 ## Step 3 — route to the ceremony
 
