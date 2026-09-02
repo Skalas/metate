@@ -78,7 +78,7 @@ filled in sends three reviewers to enforce invariants belonging to some other pr
 
 State files are fixed paths, not config: the implement session is `.metate/session.json`; out-of-diff
 captures are appended to `.metate/signals.json` (create it if absent — **never drop a capture
-silently**; they are review's most valuable by-product and discover's only `captures` source).
+silently**; they are review's most valuable by-product and scope's only `captures` source).
 
 ## Round 0 — write (when this sprint has no session yet)
 

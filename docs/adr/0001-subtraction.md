@@ -204,6 +204,10 @@ five live path keys — two of the seven were only ever commented out — plus t
 - three required gate fields (`type`, `steps`, `expected`) and the four-type taxonomy
 - a migration in `metate-init --update`: `issues.json` → `dod.json` rows (`deferred[]` → `cut`),
   `smoke-matrix.json` rows merged by id, both source files removed after a round-trip check
+- **Exception — python3 in bootstrap `--update`.** Nesting `reviewer:`/`review:` under `build:`
+  and renaming/folding stage blocks is YAML-structure work. jq+bash cannot do it without a
+  parser; awk would be the heavy parsing this ADR rejects. The path-key retire stays bash.
+  A missing `python3` ⚠-warns and skips the nest/rename — it does not rewrite values.
 
 ## Consequences
 

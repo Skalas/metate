@@ -32,7 +32,7 @@ metate-scope → metate-start → metate-build → metate-verify → metate-ship
 
 The macro-loop closes back on itself: `metate-ship` writes next-sprint pointers that
 `metate-scope` reads to open the next cycle. **You** are the stop-condition between
-iterations — discover proposes, you decide.
+iterations — scope proposes, you decide.
 
 Two roles, both pluggable and **independent** (see `metate-build/REVIEWERS.md` and
 `IMPLEMENTERS.md`): **reviewers** (`build.reviewer.backend` — spawn as other-harness CLIs) report
@@ -121,7 +121,7 @@ grep -oE '"(e2e|test:e2e|db:seed|seed)"\s*:' package.json 2>/dev/null  # → com
 Map: Playwright/Cypress present → `command: "<pm> e2e"`; a `db:seed` script → that.
 If the product needs PO/UX or live graduations a suite cannot sign off on, propose optional
 `verify.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
-smoke will then walk the human through open H items instead of a bare checklist. The ledger
+verify will then walk the human through open H items instead of a bare checklist. The ledger
 is **tracked** project state (commit with the sprint).
 
 **ship** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
@@ -144,7 +144,7 @@ After writing, show the user the filled profile and confirm before they run the 
 ## Fixed paths — state is not config
 
 metate's state lives at fixed paths under `.metate/` — `plan.md`, `issues.json`, `session.json`,
-`signals.json`, `human-gates.json` (tracked), `release.json`, optional `smoke-matrix.json` — and is
+`signals.json`, `human-gates.json` (tracked), optional `smoke-matrix.json` — and is
 **not** configurable. Only `techDebtFile` and `start.readingOrder` are config: they name *your*
 documents. `metate-init --update` strips the retired path keys from old profiles (ADR-0001).
 

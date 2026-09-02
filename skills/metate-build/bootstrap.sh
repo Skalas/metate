@@ -94,6 +94,10 @@ KEYS
     done
     [ "$retired" -gt 0 ] && echo "  ✓ retired $retired fixed-path key(s) from profile (ADR-0001 move 1)"
     [ -n "$kept" ] && echo "  ⚠ non-default path key(s) left in profile — state paths are fixed now; review:$kept"
+    # ADR-0001 move 2: YAML block nest/rename is python3 (see ADR exception). Missing binary must be loud.
+    if ! command -v python3 >/dev/null 2>&1; then
+      echo "  ⚠ python3 not found — skipped ADR-0001 profile migration (nest/rename). Install python3 and re-run: metate-init --update" >&2
+    else
     # ADR-0001 move 2a: nest top-level reviewer:/review: under build:. Values unchanged.
     if nest_out="$(python3 - "$PROFILE" <<'PY'
 import re, sys
@@ -235,6 +239,7 @@ if notes:
 PY
 )"; then
       [ -n "$rename_out" ] && echo "  ✓ renamed profile blocks ($rename_out) (ADR-0001 move 2b)"
+    fi
     fi
   fi
 fi

@@ -1,7 +1,7 @@
 # Roadmap
 
-The loop-closing doc: `metate-aftercare` writes the next-sprint pointers here;
-`metate-discover` reads it (an `aftercare` signal) to open the next cycle. Write entries as
+The loop-closing doc: `metate-ship` writes the next-sprint pointers here;
+`metate-scope` reads it (an `aftercare` source) to open the next cycle. Write entries as
 decisions, not vague notes. Triggered detail lives in [TECH-DEBT.md](./TECH-DEBT.md).
 Done entries are compressed to their decisions — the full sprint archaeology lives in git
 history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).

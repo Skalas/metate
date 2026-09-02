@@ -2,7 +2,7 @@
 name: metate-start
 version: 1.3.0
 description: |
-  Stage 1 (Prep) of the `metate` pipeline. Reads the project's handoff docs in
+  Stage 1 (Start) of the `metate` pipeline. Reads the project's handoff docs in
   order, triages tech debt, fixes the sprint mode (REDUCE/HOLD/EXPAND), files the
   issue ledger from the text plan (`T1…Tn` for `kind: sprint`, or a single `C1`
   tracking issue for non-`sprint` kinds with a completion condition), optionally
@@ -60,7 +60,7 @@ Read `.metate/profile.yml`. Use the `start:` block:
      the completion condition is an **ADR** (metate-scope → Candidate kinds): name the target
      path in the `C1` body, and add the ADR directory to `ship.deliverables` if it is not
      already there, so close-out writes it.
-   When `create: false`, file no issues and leave `.metate/issues.json` untouched at prep time (note:
+   When `create: false`, file no issues and leave `.metate/issues.json` untouched at start time (note:
    ship still clears it at close-out). **When `create` is true**, overwrite `.metate/issues.json` with
    this sprint's topic for both kinds — never leave a stale ledger from a prior sprint.
    - **Confirm the list with the user before filing** — issue creation is outward-facing.
@@ -71,8 +71,8 @@ Read `.metate/profile.yml`. Use the `start:` block:
      `{ "sprint": "<topic>", "issues": [ { "id": "T1", … }, { "id": "T2", … } ] }`; non-`sprint`:
      `{ "sprint": "<topic>", "issues": [ { "id": "C1", … } ] }`.
    - **`deferred[]`** — an optional sibling of `issues[]` holding rows **filed but cut from
-     scope** mid-sprint, retained so aftercare and discover can re-plan them:
-     `{ id, number, title, reason }`. Prep seeds it empty or omits it; whoever cuts a row moves
+     scope** mid-sprint, retained so ship and scope can re-plan them:
+     `{ id, number, title, reason }`. Start seeds it empty or omits it; whoever cuts a row moves
      it there. Its issues stay **open** in the tracker — ship never auto-closes them
      (metate-ship step 4).
    - **Clean the ledger.** Writing the ledger **overwrites** any prior one — never append to a
@@ -80,7 +80,7 @@ Read `.metate/profile.yml`. Use the `start:` block:
      at ship. Stamp the current `sprint` topic.
 5. **Reset session file** — only when starting a *new* sprint: if the plan's sprint topic differs
    from `.metate/session.json` → `sprint` (or, on a legacy file that predates that key, the prior ledger's
-   `sprint`), clear `.metate/session.json` so the next Build opens a fresh implementer session. Re-running prep **within the same sprint**
+   `sprint`), clear `.metate/session.json` so the next Build opens a fresh implementer session. Re-running start **within the same sprint**
    (e.g. to refile an issue) — leave `.metate/session.json` untouched; deleting an in-flight Build session
    would make the next Build open a fresh session (see metate-build round 0). No prior ledger → treat as a new sprint.
 6. **Cut the branch** — from `start.baseBranch` **before** writing any tracked sprint
@@ -92,10 +92,10 @@ Read `.metate/profile.yml`. Use the `start:` block:
 7. **Seed human gates (when configured)** — if `.metate/human-gates.json` is set, always
    materialize **this sprint's batch** into that ledger with the **`Write` tool** — even when
    the plan has **no H-matrix** (write an explicit zero-gate batch for this `sprint` so
-   required smoke does not fail closed on a missing sprint scope). Smoke walks open items
-   later; prep only seeds.
+   required verify does not fail closed on a missing sprint scope). Verify walks open items
+   later; start only seeds.
 
-   **Entry shape (required fields — match smoke's schema):** for each H row write
+   **Entry shape (required fields — match verify's schema):** for each H row write
    `{ id, title, type, status, reason, sprint, date }` — `id` from the plan (`H1`…),
    `title` an actionable description a person can follow (not a cryptic label),
    `type` one of `ux`|`live`|`graduation`|`other` (infer from the plan; default `other`),
@@ -109,13 +109,13 @@ Read `.metate/profile.yml`. Use the `start:` block:
    - **New sprint** — append this sprint's items (or record the empty batch); keep historical
      `approved`/`deferred` entries. If any **prior-sprint** item is still `open`, 🛑 stop and
      ask before writing — only two dispositions are allowed: **fold** it into this sprint
-     (rewrite `sprint`), or mark it **`deferred`** with a written reason (discover resurfaces
-     deferred). Never leave it `open` (smoke/ship would block forever) and never silently drop it.
+     (rewrite `sprint`), or mark it **`deferred`** with a written reason (scope resurfaces
+     deferred). Never leave it `open` (verify/ship would block forever) and never silently drop it.
    - The human-gates ledger is **tracked project state** (commit with the sprint) — not
-     gitignored like `issues.json` / `release.json`.
+     gitignored like `issues.json`.
    - If the profile has no `verify.humanGates` block, skip — H-matrix stays prose in the plan.
 
 ## Output
-A short prep brief: goal + DoD, mode (with justification), debt-fold decisions, the filed
+A short start brief: goal + DoD, mode (with justification), debt-fold decisions, the filed
 issues (id → #number), any seeded H items (or explicit zero-gate), and the branch name.
 Hand off to Build.
