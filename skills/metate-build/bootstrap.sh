@@ -240,6 +240,22 @@ PY
 )"; then
       [ -n "$rename_out" ] && echo "  ✓ renamed profile blocks ($rename_out) (ADR-0001 move 2b)"
     fi
+    if flat_out="$(python3 - "$PROFILE" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+new, n = re.subn(r"(?m)^  review:\n    autoFix:", "  autoFix:", text, count=1)
+if n:
+    open(path, "w").write(new)
+    print("flattened")
+PY
+)"; then
+      [ "$flat_out" = flattened ] && echo "  ✓ flattened build.review.autoFix → build.autoFix (ADR-0001 move 3)"
+    fi
+    dod_sh="$SCRIPT_DIR/../metate/lib/dod.sh"
+    if [ -f "$dod_sh" ]; then
+      bash "$dod_sh" migrate "$METATE_DIR" || true
+    fi
     fi
   fi
 fi
@@ -274,13 +290,9 @@ if ! { [ -f "$GI" ] && grep -qxF '.metate/.session-start.json' "$GI"; }; then
   { echo "# metate transient session-id capture buffer"; echo ".metate/.session-start.json"; } >> "$GI"
   echo "  ✓ added .metate/.session-start.json to .gitignore"
 fi
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/issues\.json' "$GI"; }; then
-  { echo "# metate issue ledger"; echo ".metate/issues.json"; } >> "$GI"
-  echo "  ✓ added .metate/issues.json to .gitignore"
-fi
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/release\.json' "$GI"; }; then
-  { echo "# metate release plan (aftercare → ship)"; echo ".metate/release.json"; } >> "$GI"
-  echo "  ✓ added .metate/release.json to .gitignore"
+if ! { [ -f "$GI" ] && grep -qE '^\.metate/dod\.json' "$GI"; }; then
+  { echo "# metate DoD ledger (per-sprint; start overwrites)"; echo ".metate/dod.json"; } >> "$GI"
+  echo "  ✓ added .metate/dod.json to .gitignore"
 fi
 # Project-level skill installs are vendored tooling whose source of truth is the
 # metate repo — don't track them, or every skill update is noise in this project.

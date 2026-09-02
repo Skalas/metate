@@ -59,7 +59,7 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 - `start.techDebtFile` — where deferred review wants are appended (e.g. `docs/TECH-DEBT.md`).
 - `start.baseBranch` — branch the sprint cut from (default `main`).
 - `reviewFocus` — the invariants the reviewers must scrutinize in THIS codebase.
-- `build.review.autoFix` — which buckets get routed to the implementer. One of:
+- `build.autoFix` — which buckets get routed to the implementer. One of:
   `blockers` (default) · `blockers+warnings` · `all`. Absent ⇒ `blockers`.
   Reporting is unconditional regardless of this setting (see Output).
 - `codebaseMemory` — when `enabled: true`, reviewers and the implementer prefer the
@@ -84,7 +84,7 @@ silently**; they are review's most valuable by-product and scope's only `capture
 
 Read `.metate/session.json`. Three cases:
 
-- **Present and `sprint` matches this sprint** (branch topic / `.metate/issues.json` → `sprint`)
+- **Present and `sprint` matches this sprint** (branch topic / `.metate/dod.json` → `sprint`)
   → skip to rounds 1–3. Resume by **explicit** `sessionId` — never `--last` when the
   orchestrator shares a backend with reviewers. Empty or unsafe `"--last"` → 🛑 STOP.
 - **Present but `sprint` mismatches** → 🛑 STOP. Report both values; do not resume a prior
@@ -183,7 +183,7 @@ Bucket each finding (and each systemic rollup):
 - **warning** — real but non-blocking.
 - **suggestion / DESIGN** — elegance; never the sole reason to loop.
 
-Which buckets get auto-fixed is governed by `build.review.autoFix`:
+Which buckets get auto-fixed is governed by `build.autoFix`:
 
 | `autoFix`           | routed to implementer | reported only       |
 |---------------------|----------------------|---------------------|
@@ -202,7 +202,7 @@ to the capture sinks — never a reviewer, never a `Bash` redirect.
 
 ### 3. Patch via the implementer (resume same session)
 
-Let **fixable** = findings in buckets selected by `build.review.autoFix`.
+Let **fixable** = findings in buckets selected by `build.autoFix`.
 
 If any fixable findings exist, resume the implementer per `IMPLEMENTERS.md` using the **explicit
 `sessionId`** from `.metate/session.json`. The prompt:

@@ -1,0 +1,15 @@
+{
+  "gates": [
+    {
+      "id": "H1",
+      "title": "Mesas step looks right at arm's length",
+      "type": "judgment",
+      "status": "open",
+      "reason": "",
+      "sprint": "s71",
+      "date": "",
+      "steps": ["open Ajustes → Mesas on the macmini", "add a table"],
+      "expected": "nothing cramped; readable at arm's length"
+    }
+  ]
+}

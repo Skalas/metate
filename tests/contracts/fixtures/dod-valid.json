@@ -1,0 +1,12 @@
+{
+  "sprint": "review-aperture",
+  "rows": [
+    { "id": "T2", "title": "One unanchored lens per round",
+      "tracker": "#99", "command": "make verify" },
+    { "id": "T4", "title": "Give round 1 the sprint's intent",
+      "tracker": "#101", "status": "cut",
+      "reason": "needs a durable carrier; re-planned" },
+    { "id": "T7", "title": "Wallet flow renders on iOS",
+      "tracker": "#104", "gate": "H1" }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "sprint": "review-aperture",
+  "rows": [
+    { "id": "T1", "title": "both", "command": "make verify", "gate": "H1" }
+  ]
+}

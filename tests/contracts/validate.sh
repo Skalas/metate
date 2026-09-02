@@ -14,7 +14,7 @@ ok() { echo "  ✓ $*"; }
 # coverage they did not have. Only checks that survive a rewrite of the surrounding prose belong
 # here — grep is this repo's sole enforcement, and a false gate is worse than an absent one.
 prep_branch_line="$(grep -n '^\*\*Cut the branch\*\*\|^[0-9]\+\. \*\*Cut the branch\*\*' "$ROOT/skills/metate-start/SKILL.md" | head -1 | cut -d: -f1 || true)"
-prep_seed_line="$(grep -n '^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-start/SKILL.md" | head -1 | cut -d: -f1 || true)"
+prep_seed_line="$(grep -n '^\*\*Write DoD and seed gates\*\*\|^[0-9]\+\. \*\*Write DoD and seed gates\|^\*\*Seed human gates\*\*\|^[0-9]\+\. \*\*Seed human gates' "$ROOT/skills/metate-start/SKILL.md" | head -1 | cut -d: -f1 || true)"
 [ -n "$prep_branch_line" ] && [ -n "$prep_seed_line" ] \
   && [ "$prep_branch_line" -lt "$prep_seed_line" ] \
   || die "prep must cut the branch before seeding human gates (branch@$prep_branch_line seed@$prep_seed_line)"
@@ -105,6 +105,27 @@ validate_gates "$FIX/human-gates-empty.json" ok
 validate_gates "$FIX/human-gates-bad-status.json" bad
 validate_gates "$FIX/human-gates-deferred-no-reason.json" bad
 ok "human-gates fixtures (valid / empty / bad-status / deferred-no-reason)"
+
+DOD="$ROOT/skills/metate/lib/dod.sh"
+bash "$DOD" dod "$FIX/dod-valid.json" >/dev/null \
+  || die "dod-valid.json should pass"
+bash "$DOD" dod "$FIX/dod-neither.json" >/dev/null 2>&1 \
+  && die "dod-neither.json should fail" || true
+bash "$DOD" dod "$FIX/dod-both.json" >/dev/null 2>&1 \
+  && die "dod-both.json should fail" || true
+ok "dod.json (exactly one of command or gate; cut exempt)"
+
+bash "$DOD" gates "$FIX/human-gates-valid.json" >/dev/null \
+  || die "legacy gates should pass without --sprint"
+bash "$DOD" gates "$FIX/human-gates-valid.json" s71 >/dev/null \
+  || die "legacy gates should grandfather when sprint differs"
+bash "$DOD" gates "$FIX/human-gates-valid.json" s60 >/dev/null 2>&1 \
+  && die "legacy ux type should fail as current-sprint" || true
+bash "$DOD" gates "$FIX/human-gates-current.json" s71 >/dev/null \
+  || die "current-sprint judgment+steps+expected should pass"
+bash "$DOD" gates "$FIX/human-gates-current-no-steps.json" s71 >/dev/null 2>&1 \
+  && die "current-sprint missing steps should fail" || true
+ok "gate admission (new types + steps/expected; prior sprints grandfathered)"
 
 # --- release plan: recompute proposed from current + bump ------------------
 recompute_ok="$(jq -r '

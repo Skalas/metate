@@ -6,7 +6,7 @@ Report:
 - Over-abstraction or needless complexity
 
 **Always bucket as `suggestion`** — elegance findings are informational only and are
-never auto-applied unless `review.autoFix: all`.
+never auto-applied unless `build.autoFix: all`.
 
 ## Output (mandatory)
 
