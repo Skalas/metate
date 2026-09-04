@@ -13,10 +13,10 @@ implementer:
                            # claude-subagent: in-process fallback for harnesses that deny the
                            # nested `claude -p`; resumes via SendMessage (see IMPLEMENTERS.md)
   model: ""                # e.g. composer-2.5 (blank = adapter default)
-  autonomous: false        # claude/grok. true → bootstrap whitelists `Bash(claude -p:*)` /
-                           # `Bash(grok:*)` in .claude/settings.local.json (personal, gitignored).
-                           # Trade-off: removes the per-call approval gate on the nested
-                           # implementer. cursor/codex/grok also gate writes via `--force`/`-s`/`--yolo`.
+  autonomous: false        # claude/grok. true → whitelist `Bash(claude -p:*)` / `Bash(grok -p:*)`
+                           # and pass `--dangerously-skip-permissions` / `--yolo` on the nested CLI.
+                           # Trade-off: removes the per-call approval gate on the nested implementer.
+                           # cursor/codex always gate writes via `--force`/`-s` (not this flag).
 isolation: none            # none | worktree
 
 # --- codebase memory (required structural context provider) ---------------

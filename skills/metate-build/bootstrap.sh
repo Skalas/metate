@@ -436,7 +436,7 @@ case "$IMPL_BACKEND" in
   claude) RULE='Bash(claude -p:*)' ;;
   cursor) RULE='Bash(cursor-agent:*)' ;;
   codex)  RULE='Bash(codex:*)' ;;
-  grok)   RULE='Bash(grok:*)' ;;
+  grok)   RULE='Bash(grok -p:*)' ;;
 esac
 if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -z "$RULE" ]; then
   echo "  • autonomous: unrecognized implementer.backend '${IMPL_BACKEND:-<blank>}' — no permission grant written"

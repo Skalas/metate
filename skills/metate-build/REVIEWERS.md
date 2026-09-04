@@ -150,17 +150,19 @@ tool-priority from ambient config.
 
 One lens per parallel `grok -p`. Preserve **`< /dev/null`**. `--json-schema` takes **inline
 JSON**, not a file path; the typed object is `.structuredOutput` on the JSON envelope.
+`-p/--single` consumes the next argv as the prompt — put the prompt immediately after `-p`.
 
 ```bash
 SCHEMA="$(cat skills/metate-build/finding.schema.json)"
 ROOT="$(git rev-parse --show-toplevel)"
 
 # correctness — repeat in parallel for security + elegance with lens-specific tail
-grok -p --cwd "$ROOT" \
-  --json-schema "$SCHEMA" \
-  "$REVIEW_CONTEXT
+grok -p "$REVIEW_CONTEXT
 
 $(cat skills/metate-build/generated/lens-prompts/correctness.txt)" \
+  --cwd "$ROOT" \
+  --json-schema "$SCHEMA" \
+  --output-format json \
   < /dev/null > /tmp/correctness.raw.json &
 # … security + elegance likewise …
 wait

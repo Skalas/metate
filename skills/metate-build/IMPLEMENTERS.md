@@ -225,8 +225,10 @@ subagent** instead: it is already resumable, already has context, and needs no C
 ```bash
 # start: pass to the Bash tool with run_in_background: true (foreground hits SIGTERM/exit 143)
 # — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .sessionId
-grok -p --output-format json "<build prompt>" < /dev/null > .metate/.session-start.json
-grok -p --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null   # resume round — also a work call, background it
+# `-p/--single` consumes the NEXT argv as the prompt. Flags go after the prompt
+# (or before `-p`). `grok -p --output-format json "prompt"` exits 2: missing --single value.
+grok -p "<build prompt>" --output-format json < /dev/null > .metate/.session-start.json
+grok -p "<blocker fixes>" --resume "<SESSION_ID>" < /dev/null   # resume round — also a work call, background it
 ```
 
 - session: **record the explicit id** in `.metate/session.json` — `{ "implementer":"grok",
@@ -237,26 +239,25 @@ grok -p --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null   # resume round �
 - write: `--yolo` (alias `--always-approve`) when `implementer.autonomous: true`. Omit it
   when `autonomous: false` — the implementer then surfaces a normal permission prompt per write.
 - fast model: omit `-m` for default (`grok-4.6`); `-m grok-4.5` for the smaller one.
-- parseable output: `--output-format json` → `.sessionId`. `--json-schema '<inline JSON>'`
-  constrains the final response (reviewers); the object is `.structuredOutput` (camelCase).
-  `--json-schema` takes **inline JSON**, not a file path.
+- parseable output: `--output-format json` → `.sessionId`.
 
 **Autonomy (`implementer.autonomous: true`).** Two independent gates, same shape as claude:
 
-1. **Outer** — the orchestrator spawning `grok -p` needs the `Bash(grok:*)` allow-rule.
+1. **Outer** — the orchestrator spawning `grok -p` needs the `Bash(grok -p:*)` allow-rule.
    `bootstrap.sh` writes it to `.claude/settings.local.json` when `autonomous: true`.
 2. **Inner** — the nested `grok -p` writing files + running the gate needs `--yolo`:
 
    ```bash
-   grok -p --yolo --output-format json "<build prompt>" < /dev/null > .metate/.session-start.json
-   grok -p --yolo --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null
+   grok -p "<build prompt>" --yolo --output-format json < /dev/null > .metate/.session-start.json
+   grok -p "<blocker fixes>" --yolo --resume "<SESSION_ID>" < /dev/null
    ```
 
 Grok loads `AGENTS.md`, so the Codex codebase-memory block reaches it when bootstrap injected
 that file. Still prepend the Code Discovery clause — it is the only backend-agnostic path.
 
-When the nested `grok -p` is denied, fall back to an in-process `spawn_subagent` and resume
-that child with `resume_from` (same idea as `claude-subagent`; not a separate profile backend).
+If the nested `grok -p` is denied, do **not** write `{ "implementer": "grok" }` and then
+CLI-`--resume` — a subagent id is not a grok CLI session. Spawn an in-process child and
+resume it with `resume_from` (same idea as `claude-subagent`; not a separate profile backend).
 
 ## gemini  ⛔ probe before use
 
@@ -285,7 +286,7 @@ Show the diff before merging back.
 | cursor  | ✅ `--force`            | ✅ `create-chat`+`--resume` (tested)       | ✅ `composer-2.5`         | fully verified |
 | codex   | ✅ `-s workspace-write` | ✅ explicit-id resume (tested)             | ✅ default (`gpt-5.5`)¹   | `-c sandbox_mode` on resume; `--last` unsafe when orchestrator shares codex |
 | claude  | ✅ default perms        | ✅ `--resume <session_id>`                 | ✅ sonnet                 | single-vendor option |
-| grok    | ✅ `--yolo`             | ✅ `--resume` (tested)                     | ✅ default (`grok-4.6`)   | `--json-schema` is inline JSON → `.structuredOutput`; `-c` unsafe when orchestrator shares grok |
+| grok    | ✅ `--yolo`             | ✅ `--resume` (tested)                     | ✅ default (`grok-4.6`)   | `-p` takes the next argv as the prompt; `-c` unsafe when orchestrator shares grok |
 | gemini  | ⛔ unverified            | ⛔ unverified                         | —                        | probe before use |
 | claude-subagent | ✅ in-process    | ✅ `SendMessage` to the agent ref          | inherited                | fallback when the nested `claude -p` is denied; not a CLI |
 
