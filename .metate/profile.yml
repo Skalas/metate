@@ -35,7 +35,7 @@ reviewFocus: |
 # Auto-fix scope: blockers | blockers+warnings | all (reporting is always unconditional).
 build:
   reviewer:
-    backend: cursor          # codex | cursor | claude
+    backend: cursor          # codex | cursor | claude | grok
     # correctness: codex
     # security: codex
     # elegance: codex

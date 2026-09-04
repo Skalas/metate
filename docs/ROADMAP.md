@@ -8,6 +8,10 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`grok-backend` (2026-09-04, PR #116)** — Grok is a verified implementer and reviewer
+  adapter: `grok -p "<prompt>"` (prompt is the next argv), `--resume` + `.sessionId`,
+  `--json-schema` inline → `.structuredOutput`, `--yolo` when autonomous. When Grok is the
+  orchestrator, reviewers use in-process `spawn_subagent`. Gemini stays ⛔ unverified.
 - **`review-aperture` (2026-08-28)** — Review widens aperture without added fan-out: one
   unanchored lens per round from round 2 on (elegance) — reviewers read the whole diff cold
   instead of working a checklist; neutral carry-forward wording (independent judgment, not "verify

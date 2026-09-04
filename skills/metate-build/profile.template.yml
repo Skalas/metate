@@ -9,14 +9,14 @@ shipGate: "echo 'shipGate not set — run the metate wizard skill' && false"   #
 
 # --- implementer (the only writer) ---------------------------------------
 implementer:
-  backend: cursor          # cursor | codex | claude | gemini | claude-subagent
+  backend: cursor          # cursor | codex | claude | grok | gemini | claude-subagent
                            # claude-subagent: in-process fallback for harnesses that deny the
                            # nested `claude -p`; resumes via SendMessage (see IMPLEMENTERS.md)
   model: ""                # e.g. composer-2.5 (blank = adapter default)
-  autonomous: false        # claude backend only. true → bootstrap whitelists `Bash(claude -p:*)`
-                           # in .claude/settings.local.json (personal, gitignored) so headless
-                           # rounds don't prompt. Trade-off: removes the per-call approval gate on
-                           # the nested implementer. cursor/codex gate writes via their own flags.
+  autonomous: false        # claude/grok. true → whitelist `Bash(claude -p:*)` / `Bash(grok -p:*)`
+                           # and pass `--dangerously-skip-permissions` / `--yolo` on the nested CLI.
+                           # Trade-off: removes the per-call approval gate on the nested implementer.
+                           # cursor/codex always gate writes via `--force`/`-s` (not this flag).
 isolation: none            # none | worktree
 
 # --- codebase memory (required structural context provider) ---------------
@@ -45,7 +45,7 @@ reviewFocus: |
 #   all                — blockers + warnings + DESIGN fixed (most churn)
 build:
   reviewer:
-    backend: claude          # codex | cursor | claude
+    backend: claude          # codex | cursor | claude | grok
     # correctness: codex
     # security: codex
     # elegance: codex

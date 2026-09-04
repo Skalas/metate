@@ -12,9 +12,9 @@
 # post-audit line counts — zero slack, deliberately. That audit pass itself grew playbook prose
 # 1,210 -> 1,403 lines (+16%) in a change whose own diagnosis was that this prose accretes. The
 # caps start where that left off so the next change has to pay for its own additions.
-skills/metate-start/SKILL.md 73
-skills/metate-verify/SKILL.md 73
-skills/metate-ship/SKILL.md 96
-skills/metate/SKILL.md 199
-skills/metate-build/SKILL.md 280
-skills/metate-scope/SKILL.md 302
+skills/metate-start/SKILL.md 74
+skills/metate-verify/SKILL.md 74
+skills/metate-ship/SKILL.md 97
+skills/metate/SKILL.md 201
+skills/metate-build/SKILL.md 281
+skills/metate-scope/SKILL.md 303

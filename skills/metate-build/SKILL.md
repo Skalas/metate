@@ -13,6 +13,7 @@ compatibility:
   - claude-code
   - codex
   - cursor
+  - grok
 allowed-tools:
   - Read
   - Bash
@@ -53,7 +54,7 @@ the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
 
 - `fastGate` — command run after each patch round (quick loop).
 - `shipGate` — full pre-PR gate (mirrors CI); informational here, enforced at Ship.
-- `build.reviewer.backend` — default backend for all three lenses (`codex` · `cursor` · `claude`).
+- `build.reviewer.backend` — default backend for all three lenses (`codex` · `cursor` · `claude` · `grok`).
   Optional per-lens overrides: `build.reviewer.correctness`, `.security`, `.elegance`.
 - `implementer.backend` / `implementer.model` — which adapter + model to drive writes.
 - `start.techDebtFile` — where deferred review wants are appended (e.g. `docs/TECH-DEBT.md`).
@@ -92,7 +93,7 @@ Read `.metate/session.json`. Three cases:
   only when a sprint fully lands, so abandoned handles sit for months and look live.
 - **Missing** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
   invocation; validate the id from the JSON envelope with `jq` before writing — UUID for
-  cursor/codex/claude, non-empty ref for claude-subagent). Write
+  cursor/codex/claude/grok, non-empty ref for claude-subagent). Write
   `{ "implementer", "sessionId", "sprint", "model"? }` to `.metate/session.json`. `sprint` is
   **required**. Build in layers (domain → application → infrastructure → presentation). Run
   `fastGate`. Then continue to rounds 1–3.
