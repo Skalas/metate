@@ -7,7 +7,7 @@
 > shipped work, one ceremony at a time — and is set up again for the next batch.
 
 A portable, codebase-agnostic **development pipeline** for agent harnesses (Claude Code,
-Codex, Cursor) — the *ceremonias de metate*. Five ceremonies, each a skill; build owns
+Codex, Cursor, Grok) — the *ceremonias de metate*. Five ceremonies, each a skill; build owns
 the implementer session (round 0 writes, rounds 1–3 review).
 
 ```
@@ -102,7 +102,7 @@ Nothing project-specific lives in the skills. Porting = `bootstrap.sh` + editing
 ## Prerequisites
 
 - **git** — required.
-- An **implementer CLI** — `cursor-agent` · `codex` · `claude` · `gemini`.
+- An **implementer CLI** — `cursor-agent` · `codex` · `claude` · `grok` · `gemini`.
 - **[codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)** — **required**.
   Install once:
 
@@ -125,7 +125,8 @@ cd your-repo && metate-init
 ./install.sh --user    # or --project /path/to/repo
 ```
 
-Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex surfaces).
+Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex + Grok surfaces;
+Grok scans `.agents/skills`).
 
 ## Updating
 

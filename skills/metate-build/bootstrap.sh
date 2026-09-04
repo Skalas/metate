@@ -46,7 +46,8 @@ echo "▸ bootstrapping metate in: $PROJECT_ROOT"
 cbm_present() {
   command -v codebase-memory-mcp >/dev/null 2>&1 && return 0
   [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && return 0
-  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml"; do
+  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml" \
+             "$HOME/.grok/config.toml"; do
     [ -f "$cfg" ] && grep -qi 'codebase-memory-mcp' "$cfg" && return 0
   done
   return 1
@@ -395,13 +396,14 @@ fi
 # Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
 # managed, marker-delimited block: append once, leave untouched if present.
 # AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
-if command -v codex >/dev/null 2>&1; then
+if command -v codex >/dev/null 2>&1 || command -v grok >/dev/null 2>&1; then
   AGENTS="$PROJECT_ROOT/AGENTS.md"
   # Defer to any existing block — ours OR the codebase-memory-mcp installer's
   # (global ~/.codex/AGENTS.md uses the `codebase-memory-mcp:` marker), so a
   # project that already carries either doesn't get duplicate guidance.
+  # Grok also loads AGENTS.md, so the same inject covers both backends.
   if [ -f "$AGENTS" ] && grep -qE 'metate:codebase-memory|codebase-memory-mcp:' "$AGENTS"; then
-    echo "  ✓ Codex AGENTS.md guidance already present — left untouched"
+    echo "  ✓ Codex/Grok AGENTS.md guidance already present — left untouched"
   elif [ -f "$CODEX_RULE" ]; then
     # Separate from existing content with a blank line — but only if the file is
     # already non-empty (the >> below would otherwise create it first).
@@ -409,7 +411,7 @@ if command -v codex >/dev/null 2>&1; then
     { echo "<!-- metate:codebase-memory start -->"
       cat "$CODEX_RULE"
       echo "<!-- metate:codebase-memory end -->"; } >> "$AGENTS"
-    echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex)"
+    echo "  ✓ added codebase-memory guidance to AGENTS.md (Codex/Grok)"
   else
     echo "  • AGENTS.md guidance skipped — codex-rule.md not found at $CODEX_RULE" >&2
   fi
@@ -434,6 +436,7 @@ case "$IMPL_BACKEND" in
   claude) RULE='Bash(claude -p:*)' ;;
   cursor) RULE='Bash(cursor-agent:*)' ;;
   codex)  RULE='Bash(codex:*)' ;;
+  grok)   RULE='Bash(grok:*)' ;;
 esac
 if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -z "$RULE" ]; then
   echo "  • autonomous: unrecognized implementer.backend '${IMPL_BACKEND:-<blank>}' — no permission grant written"

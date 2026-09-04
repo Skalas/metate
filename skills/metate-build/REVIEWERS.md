@@ -146,6 +146,49 @@ Agent(subagent_type="refactorer",       prompt="<REVIEW_CONTEXT + elegance lens>
 Restate the Code Discovery clause in each prompt — sub-agents do not inherit MCP
 tool-priority from ambient config.
 
+## grok  ✅ verified (typed JSON + session envelope probed)
+
+One lens per parallel `grok -p`. Preserve **`< /dev/null`**. `--json-schema` takes **inline
+JSON**, not a file path; the typed object is `.structuredOutput` on the JSON envelope.
+
+```bash
+SCHEMA="$(cat skills/metate-build/finding.schema.json)"
+ROOT="$(git rev-parse --show-toplevel)"
+
+# correctness — repeat in parallel for security + elegance with lens-specific tail
+grok -p --cwd "$ROOT" \
+  --json-schema "$SCHEMA" \
+  "$REVIEW_CONTEXT
+
+$(cat skills/metate-build/generated/lens-prompts/correctness.txt)" \
+  < /dev/null > /tmp/correctness.raw.json &
+# … security + elegance likewise …
+wait
+
+jq -e '.structuredOutput' /tmp/correctness.raw.json > /tmp/correctness.json
+jq -e '.structuredOutput' /tmp/security.raw.json    > /tmp/security.json
+jq -e '.structuredOutput' /tmp/elegance.raw.json    > /tmp/elegance.json
+
+jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
+  /tmp/correctness.json /tmp/security.json /tmp/elegance.json
+```
+
+- **Output:** `.structuredOutput` matching `finding.schema.json`; validate with `jq -e '.findings'`.
+- **Model:** omit `-m` for default (`grok-4.6`).
+- Do **not** pass `--yolo` to reviewer invocations (that is an implementer flag).
+
+When the **orchestrator is grok**, prefer in-process `spawn_subagent` (three parallel children
+in one message) over nested `grok -p`:
+
+```text
+spawn_subagent(subagent_type="code-reviewer",     prompt="<REVIEW_CONTEXT + correctness lens>")
+spawn_subagent(subagent_type="security-auditor",  prompt="<REVIEW_CONTEXT + security lens>")
+spawn_subagent(subagent_type="refactorer",        prompt="<REVIEW_CONTEXT + elegance lens>")
+```
+
+Require JSON-only output per `finding.schema.json`. Restate the Code Discovery clause in each
+prompt — sub-agents do not inherit MCP tool-priority from ambient config.
+
 ## gemini  ⛔ probe before use
 
 Structured JSON fan-out in headless mode is **unverified**. Confirm a three-lens parallel
@@ -160,6 +203,7 @@ invocation round-trips before selecting `gemini` as `build.reviewer.backend`.
 | codex   | ✅ `exec` + `wait` | ✅ `--output-schema` + `-o` | `< /dev/null` required headless |
 | cursor  | ✅ Task (one message) | ✅ prompt + `jq` validate | project agents in `cursor-agents/` |
 | claude  | ✅ Agent (one message) | ✅ prompt + `jq` validate | today's default orchestrator path |
+| grok    | ✅ `grok -p` + `wait` (or `spawn_subagent` when orchestrator is grok) | ✅ `--json-schema` → `.structuredOutput` | inline schema, not a file path; no `--yolo` on reviewers |
 | gemini  | ⛔ unverified | ⛔ unverified | probe before use |
 
 > Adapters are CLI-only and codebase-agnostic. Adding a backend = adding a row here + one

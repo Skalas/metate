@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "metate review finding set",
-  "description": "Structured findings a metate reviewer returns. Used as `codex exec --output-schema` (and the cursor/gemini equivalent) so each reviewer's final response is typed JSON the orchestrator can merge in shell.",
+  "description": "Structured findings a metate reviewer returns. Used as `codex exec --output-schema` and `grok -p --json-schema` (and the cursor/gemini equivalent) so each reviewer's final response is typed JSON the orchestrator can merge in shell.",
   "type": "object",
   "additionalProperties": false,
   "required": ["findings"],

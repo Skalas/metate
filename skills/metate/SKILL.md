@@ -12,6 +12,7 @@ compatibility:
   - claude-code
   - codex
   - cursor
+  - grok
 allowed-tools:
   - Read
   - Write
@@ -36,7 +37,7 @@ iterations — scope proposes, you decide.
 
 Two roles, both pluggable and **independent** (see `metate-build/REVIEWERS.md` and
 `IMPLEMENTERS.md`): **reviewers** (`build.reviewer.backend` — spawn as other-harness CLIs) report
-findings; the **implementer** (`implementer.backend` — cursor / codex / claude / gemini) is the
+findings; the **implementer** (`implementer.backend` — cursor / codex / claude / grok / gemini) is the
 only writer. The harness session you opened is the orchestrator. Everything project-specific
 lives in `.metate/profile.yml`.
 
@@ -74,14 +75,15 @@ ls .github/workflows/*.yml 2>/dev/null                             # what CI act
 
 **implementer** — pick from what's installed; default to the first found:
 ```bash
-for c in cursor-agent codex claude; do command -v "$c" >/dev/null && echo "found: $c"; done
+for c in cursor-agent codex claude grok; do command -v "$c" >/dev/null && echo "found: $c"; done
 ```
 - cursor → `backend: cursor`, `model: auto`
 - codex  → `backend: codex`,  `model: ""` (omit; `*-codex-fast` need an API-key account)
 - claude → `backend: claude`, `model: ""`
+- grok   → `backend: grok`,   `model: ""`
 
 **reviewer** — who runs the three review lenses (can differ per lens). Default `backend: claude`
-(matches the Claude Code plugin path). Set `codex` or `cursor` for cross-harness fan-out — see
+(matches the Claude Code plugin path). Set `codex`, `cursor`, or `grok` for cross-harness fan-out — see
 `metate-build/REVIEWERS.md`. Lives at `build.reviewer` in the profile.
 
 Invoke stage skills natively in your harness (`metate-build`, `metate-start`, etc.).

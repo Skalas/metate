@@ -16,6 +16,7 @@ compatibility:
   - claude-code
   - codex
   - cursor
+  - grok
 allowed-tools:
   - Read
   - Bash

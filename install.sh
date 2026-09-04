@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Installer for the `metate` pipeline skills.
 #
-#   ./install.sh --user              install the skills globally for Claude + Codex
-#                                    (~/.claude/skills and ~/.agents/skills), then
-#                                    leave a per-project initializer (`metate-init`)
-#   ./install.sh --project [PATH]    install the skills into a project's Claude + Codex
+#   ./install.sh --user              install the skills globally for Claude + Codex + Grok
+#                                    (~/.claude/skills and ~/.agents/skills; Grok scans
+#                                    ~/.agents/skills), then leave a per-project initializer
+#                                    (`metate-init`)
+#   ./install.sh --project [PATH]    install the skills into a project's Claude + Codex + Grok
 #                                    skill roots (.claude/skills and .agents/skills)
 #                                    AND run the bootstrap for that project right away
 #   ./install.sh --update [--user|--project [PATH]]
@@ -60,7 +61,8 @@ done
 cbm_present() {
   command -v codebase-memory-mcp >/dev/null 2>&1 && return 0
   [ -x "$HOME/.local/bin/codebase-memory-mcp" ] && return 0
-  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml"; do
+  for cfg in "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.codex/config.toml" \
+             "$HOME/.grok/config.toml"; do
     [ -f "$cfg" ] && grep -qi 'codebase-memory-mcp' "$cfg" && return 0
   done
   return 1
@@ -138,7 +140,7 @@ EOF
     echo "Skills updated. In each project, refresh harness artifacts with:  metate-init --update"
     echo "(profile reconciliation → metate wizard skill, Step 2b)"
   else
-    echo "Skills are global for Claude and Codex. In ANY project run:  metate-init"
+    echo "Skills are global for Claude, Codex, and Grok. In ANY project run:  metate-init"
   fi
   echo "(ensure $BIN is on your PATH; otherwise: bash ~/.agents/skills/$BOOTSTRAP_REL)"
 else
