@@ -180,10 +180,10 @@ Bootstrap does the mechanical renames; this is the judgment half, for a profile 
    The half of the old rule that stays: **never silently rewrite a value.** Removals and renames
    are proposed as a diff and applied only on confirmation — the retire pass may not touch a key
    a playbook still reads, and may never change a value the user chose.
-6. **Harness artifacts are separate from skills.** `install.sh --update --user` refreshes the
-   skill files but **not** the per-project copies harnesses load (`.cursor/agents/metate-*.md`,
-   `.cursor/rules/codebase-memory.mdc`); only `metate-init --update` does, per project. Tell the
-   user to run it, and put it in `ship.postCommand` so it is not a thing to remember.
+6. **Harness artifacts install once, globally.** `install.sh --update --user` refreshes the
+   skills *and* the Cursor reviewer agents (`~/.cursor/agents`), which every repo reads. The only
+   per-project artifact left is `.cursor/rules/codebase-memory.mdc` — Cursor has no user-level
+   rules file — and it self-refreshes on any `metate-init`. Keep that in `ship.postCommand`.
 
 ## Step 3 — route to the ceremony
 

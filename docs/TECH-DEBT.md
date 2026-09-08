@@ -19,6 +19,13 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ## Open (triggered)
 
+- **The Cursor-agent shadow retirement in `bootstrap.sh` is a one-time migration.** When reviewer
+  agents moved to `~/.cursor/agents` (2026-09-08), bootstrap gained a pass that deletes untracked
+  `.cursor/agents/metate-*.md` left by the old per-project design — they take precedence over the
+  user-level copies and would silently shadow them. Pure migration code: worth ~20 lines only while
+  repos bootstrapped before that date still exist. **Trigger:** the next release after every repo
+  you run metate on has been re-bootstrapped — delete the pass and its comment block.
+
 - **Secret-file skip is prose, not code.** The mandatory secret-name exclusion (`.env`/`*.pem`/
   `id_*`/`*credentials*`/…) when building the review diff is a **MUST** instruction in
   `metate-build/SKILL.md`, because reviewers run as external CLI subprocesses (possibly another

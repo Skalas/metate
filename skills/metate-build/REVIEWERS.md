@@ -203,7 +203,7 @@ invocation round-trips before selecting `gemini` as `build.reviewer.backend`.
 | backend | parallel fan-out | typed JSON | notes |
 |---------|------------------|------------|-------|
 | codex   | ✅ `exec` + `wait` | ✅ `--output-schema` + `-o` | `< /dev/null` required headless |
-| cursor  | ✅ Task (one message) | ✅ prompt + `jq` validate | project agents in `cursor-agents/` |
+| cursor  | ✅ Task (one message) | ✅ prompt + `jq` validate | agents in `~/.cursor/agents` (installed globally) |
 | claude  | ✅ Agent (one message) | ✅ prompt + `jq` validate | today's default orchestrator path |
 | grok    | ✅ `grok -p` + `wait` (or `spawn_subagent` when orchestrator is grok) | ✅ `--json-schema` → `.structuredOutput` | inline schema, not a file path; no `--yolo` on reviewers |
 | gemini  | ⛔ unverified | ⛔ unverified | probe before use |

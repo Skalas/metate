@@ -29,11 +29,21 @@ TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 # Do not hand-edit; the verify drift gate enforces parity with sources/.
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
-CURSOR_AGENTS_SRC="$SCRIPT_DIR/cursor-agents"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 METATE_DIR="$PROJECT_ROOT/.metate"
 PROFILE="$METATE_DIR/profile.yml"
+
+# Are the skills vendored INTO this project (`install.sh --project`) or installed
+# user-level? The bootstrap runs from the skill dir, so its own path answers it.
+# A vendored copy is a deliberate version pin — it stays tracked; a user-level
+# install leaves nothing in the project to track. Match the two vendoring roots
+# exactly, not "anywhere under the project": running this straight out of a metate
+# source checkout is NOT a vendored install.
+PROJECT_SCOPED=0
+case "$SCRIPT_DIR/" in
+  "$PROJECT_ROOT"/.claude/skills/* | "$PROJECT_ROOT"/.agents/skills/*) PROJECT_SCOPED=1 ;;
+esac
 
 echo "▸ bootstrapping metate in: $PROJECT_ROOT"
 
@@ -295,16 +305,20 @@ if ! { [ -f "$GI" ] && grep -qE '^\.metate/dod\.json' "$GI"; }; then
   { echo "# metate DoD ledger (per-sprint; start overwrites)"; echo ".metate/dod.json"; } >> "$GI"
   echo "  ✓ added .metate/dod.json to .gitignore"
 fi
-# Project-level skill installs are vendored tooling whose source of truth is the
-# metate repo — don't track them, or every skill update is noise in this project.
-# (.metate/profile.yml stays tracked: it's this project's config.) Skipped for
-# user-level installs, where the skills live in ~/.claude/skills and ~/.agents/skills,
-# not the project.
-if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
-  gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
-fi
-if compgen -G "$PROJECT_ROOT/.agents/skills/metate-*" >/dev/null 2>&1; then
-  gi_ignore_untrack '.agents/skills/metate-*' 'metate Codex skills are installed tooling (source of truth: metate repo)'
+# A vendored (`--project`) install is a version pin: it stays TRACKED, or it is not
+# a pin at all — a gitignored copy is invisible to teammates and reproducible by no
+# one, while still drifting from the user-level skills. Only leftovers from a
+# user-level install get ignored and untracked here.
+# (.metate/profile.yml is always tracked: it's this project's config.)
+if [ "$PROJECT_SCOPED" -eq 1 ]; then
+  echo "  ✓ skills are vendored in this project (--project) — left tracked as a version pin"
+else
+  if compgen -G "$PROJECT_ROOT/.claude/skills/metate-*" >/dev/null 2>&1; then
+    gi_ignore_untrack '.claude/skills/metate-*' 'metate skills are installed tooling (source of truth: metate repo)'
+  fi
+  if compgen -G "$PROJECT_ROOT/.agents/skills/metate-*" >/dev/null 2>&1; then
+    gi_ignore_untrack '.agents/skills/metate-*' 'metate Codex skills are installed tooling (source of truth: metate repo)'
+  fi
 fi
 
 # --- codebase-memory-mcp: configure (presence guaranteed by the guard above) -
@@ -337,18 +351,19 @@ REVIEWER_BACKEND="$(yaml_deep_scalar "$PROFILE" build reviewer backend)"
 [ -z "$REVIEWER_BACKEND" ] && REVIEWER_BACKEND="$(yaml_nested_scalar "$PROFILE" reviewer backend)"
 echo "  ✓ build.reviewer.backend: ${REVIEWER_BACKEND:-claude} (per-lens overrides optional; see metate-build/REVIEWERS.md)"
 
-# Drop the Cursor rule (idempotent; only if Cursor is installed, never clobber).
+# Drop the Cursor rule (idempotent; only if Cursor is installed). Cursor has no
+# user-level rules FILE — user rules live in its settings UI — so this one artifact
+# is genuinely per-project. It is vendored and gitignored, so it always tracks the
+# source: no `--update` flag to remember, no way to sit stale.
 if [ -d "$HOME/.cursor" ]; then
   RULE_DIR="$PROJECT_ROOT/.cursor/rules"
   RULE_DEST="$RULE_DIR/codebase-memory.mdc"
-  if [ -f "$RULE_DEST" ] && [ "$UPDATE" -eq 0 ]; then
-    echo "  ✓ Cursor rule already present — left untouched"
-  elif [ -f "$RULE_DEST" ] && [ -f "$CURSOR_RULE" ]; then
+  if [ -f "$RULE_DEST" ] && [ -f "$CURSOR_RULE" ]; then
     if cmp -s "$CURSOR_RULE" "$RULE_DEST"; then
       echo "  ✓ Cursor rule already current"
     else
       cp "$CURSOR_RULE" "$RULE_DEST"
-      echo "  ✓ refreshed Cursor rule: .cursor/rules/codebase-memory.mdc (--update)"
+      echo "  ✓ refreshed Cursor rule: .cursor/rules/codebase-memory.mdc"
     fi
   elif [ -f "$CURSOR_RULE" ]; then
     mkdir -p "$RULE_DIR"
@@ -364,45 +379,45 @@ if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
   gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
 fi
 
-# Drop metate reviewer subagents for Cursor IDE fanOut (idempotent; refresh on --update).
-if [ -d "$HOME/.cursor" ] && [ -d "$CURSOR_AGENTS_SRC" ]; then
-  AGENTS_DIR="$PROJECT_ROOT/.cursor/agents"
-  mkdir -p "$AGENTS_DIR"
-  installed=0
-  refreshed=0
-  for src in "$CURSOR_AGENTS_SRC"/metate-*.md; do
-    [ -f "$src" ] || continue
-    dest="$AGENTS_DIR/$(basename "$src")"
-    if [ -f "$dest" ] && [ "$UPDATE" -eq 0 ]; then
-      continue
-    fi
-    if [ -f "$dest" ]; then
-      refreshed=$((refreshed + 1))
+# Reviewer subagents live at USER level now (~/.cursor/agents), installed once by
+# install.sh and read by Cursor in every project. Project copies take PRECEDENCE, so a
+# leftover vendored copy would shadow — and quietly staledate — the user-level one.
+# Retire it, but only when git isn't tracking it, so nothing committed is ever lost.
+if [ "$PROJECT_SCOPED" -eq 0 ] && compgen -G "$PROJECT_ROOT/.cursor/agents/metate-*.md" >/dev/null 2>&1; then
+  retired_agents=0
+  for f in "$PROJECT_ROOT"/.cursor/agents/metate-*.md; do
+    [ -f "$f" ] || continue
+    rel="${f#"$PROJECT_ROOT"/}"
+    if [ -n "$(git -C "$PROJECT_ROOT" ls-files "$rel" 2>/dev/null)" ]; then
+      echo "  • $rel is tracked — left in place; it shadows ~/.cursor/agents (git rm it when ready)"
     else
-      installed=$((installed + 1))
+      rm -f "$f"
+      retired_agents=$((retired_agents + 1))
     fi
-    cp "$src" "$dest"
   done
-  if [ "$installed" -gt 0 ]; then
-    echo "  ✓ installed $installed metate reviewer agent(s): .cursor/agents/metate-*.md"
-  elif [ "$refreshed" -gt 0 ]; then
-    echo "  ✓ refreshed $refreshed metate reviewer agent(s) (--update)"
-  else
-    echo "  ✓ metate reviewer agents already present — left untouched"
+  if [ "$retired_agents" -gt 0 ]; then
+    echo "  ✓ retired $retired_agents shadowing project reviewer agent(s) — ~/.cursor/agents serves every repo"
   fi
-  gi_ignore_untrack '.cursor/agents/metate-*.md' 'metate reviewer agents are installed tooling (source: metate repo)'
+fi
+if [ "$PROJECT_SCOPED" -eq 0 ] && [ -d "$HOME/.cursor" ] \
+   && ! compgen -G "$HOME/.cursor/agents/metate-*.md" >/dev/null 2>&1; then
+  echo "  • reviewer agents not installed for Cursor yet — run once: bash install.sh --update --user"
 fi
 
-# Codex has no per-rule dir — it reads AGENTS.md. Inject the same guidance as a
-# managed, marker-delimited block: append once, leave untouched if present.
-# AGENTS.md is shared project content (like CLAUDE.md), so it stays TRACKED.
+# Codex has no per-rule dir — it reads AGENTS.md, project AND global. Codex/Grok load
+# ~/.codex/AGENTS.md in every repo, so the per-project block is only for machines whose
+# global file doesn't carry the guidance. Injected as a managed, marker-delimited block:
+# appended once, never rewritten. AGENTS.md is shared project content (like CLAUDE.md),
+# so when it IS written it stays TRACKED.
 if command -v codex >/dev/null 2>&1 || command -v grok >/dev/null 2>&1; then
   AGENTS="$PROJECT_ROOT/AGENTS.md"
-  # Defer to any existing block — ours OR the codebase-memory-mcp installer's
-  # (global ~/.codex/AGENTS.md uses the `codebase-memory-mcp:` marker), so a
-  # project that already carries either doesn't get duplicate guidance.
-  # Grok also loads AGENTS.md, so the same inject covers both backends.
-  if [ -f "$AGENTS" ] && grep -qE 'metate:codebase-memory|codebase-memory-mcp:' "$AGENTS"; then
+  GLOBAL_AGENTS="$HOME/.codex/AGENTS.md"
+  MARKER='metate:codebase-memory|codebase-memory-mcp:'
+  # Defer to any existing block — global first (it covers every repo at no per-project
+  # cost), then this project's own, ours OR the codebase-memory-mcp installer's.
+  if [ -f "$GLOBAL_AGENTS" ] && grep -qE "$MARKER" "$GLOBAL_AGENTS"; then
+    echo "  ✓ Codex/Grok guidance already global (~/.codex/AGENTS.md) — no project block needed"
+  elif [ -f "$AGENTS" ] && grep -qE "$MARKER" "$AGENTS"; then
     echo "  ✓ Codex/Grok AGENTS.md guidance already present — left untouched"
   elif [ -f "$CODEX_RULE" ]; then
     # Separate from existing content with a blank line — but only if the file is
