@@ -3,7 +3,8 @@
 #
 #   ./install.sh --user              install the skills globally for Claude + Codex + Grok
 #                                    (~/.claude/skills and ~/.agents/skills; Grok scans
-#                                    ~/.agents/skills), then leave a per-project initializer
+#                                    ~/.agents/skills) and the Cursor reviewer agents in
+#                                    ~/.cursor/agents, then leave a per-project initializer
 #                                    (`metate-init`)
 #   ./install.sh --project [PATH]    install the skills into a project's Claude + Codex + Grok
 #                                    skill roots (.claude/skills and .agents/skills)
@@ -106,6 +107,22 @@ copy_skills() {  # $1 = destination skills root
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
 }
 
+# Cursor reviewer subagents. Cursor reads BOTH ~/.cursor/agents (every project) and
+# .cursor/agents (this project, higher precedence), so a user-level install covers
+# every repo and leaves no per-project copy to keep in sync.
+copy_cursor_agents() {  # $1 = destination agents dir
+  local dest="$1" src="$SRC/metate-build/cursor-agents" n=0
+  [ -d "$src" ] || return 0
+  mkdir -p "$dest"
+  for f in "$src"/metate-*.md; do
+    [ -f "$f" ] || continue
+    cp "$f" "$dest/$(basename "$f")"
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] && echo "  ✓ $n reviewer agent(s) → $dest/metate-*.md"
+  return 0
+}
+
 # The bootstrap + profile template ship inside the metate-build skill dir.
 BOOTSTRAP_REL="metate-build/bootstrap.sh"
 
@@ -115,6 +132,9 @@ if [ "$SCOPE" = "user" ]; then
   echo "▸ $VERB metate skills at USER level"
   copy_skills "$HOME/.claude/skills"
   copy_skills "$HOME/.agents/skills"
+  if [ -d "$HOME/.cursor" ]; then
+    copy_cursor_agents "$HOME/.cursor/agents"
+  fi
 
   # Leave a per-project initializer on PATH that runs the global bootstrap.
   BIN="$HOME/.local/bin"; mkdir -p "$BIN"
@@ -137,16 +157,20 @@ EOF
 
   echo ""
   if [ "$UPDATE" = 1 ]; then
-    echo "Skills updated. In each project, refresh harness artifacts with:  metate-init --update"
+    echo "Skills + Cursor reviewer agents updated globally. Per project, only the Cursor rule"
+    echo "is local; it self-refreshes on any:  metate-init"
     echo "(profile reconciliation → metate wizard skill, Step 2b)"
   else
-    echo "Skills are global for Claude, Codex, and Grok. In ANY project run:  metate-init"
+    echo "Skills are global for Claude, Codex, Grok, and Cursor. In ANY project run:  metate-init"
   fi
   echo "(ensure $BIN is on your PATH; otherwise: bash ~/.agents/skills/$BOOTSTRAP_REL)"
 else
   echo "▸ $VERB metate skills into PROJECT: $PROJECT"
   copy_skills "$PROJECT/.claude/skills"
   copy_skills "$PROJECT/.agents/skills"
+  if [ -d "$HOME/.cursor" ]; then
+    copy_cursor_agents "$PROJECT/.cursor/agents"
+  fi
   echo "▸ running bootstrap for this project"
   # Both skill roots are copied from the same $SRC above; invoke bootstrap from whichever
   # exists (mirrors metate-init's resilience) rather than hardcoding one surface.
