@@ -61,9 +61,6 @@ budget: ## fail when a SKILL.md grows past its recorded line cap
 drift: ## warn when the copies harnesses actually load are stale (never fails the build)
 	@stale=0; \
 	for pair in \
-	  "$$HOME/.cursor/agents/metate-correctness-reviewer.md:skills/metate-build/cursor-agents/metate-correctness-reviewer.md" \
-	  "$$HOME/.cursor/agents/metate-security-reviewer.md:skills/metate-build/cursor-agents/metate-security-reviewer.md" \
-	  "$$HOME/.cursor/agents/metate-elegance-reviewer.md:skills/metate-build/cursor-agents/metate-elegance-reviewer.md" \
 	  ".cursor/agents/metate-correctness-reviewer.md:skills/metate-build/cursor-agents/metate-correctness-reviewer.md" \
 	  ".cursor/agents/metate-security-reviewer.md:skills/metate-build/cursor-agents/metate-security-reviewer.md" \
 	  ".cursor/agents/metate-elegance-reviewer.md:skills/metate-build/cursor-agents/metate-elegance-reviewer.md" \

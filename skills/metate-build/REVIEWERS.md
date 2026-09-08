@@ -110,6 +110,13 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
 Launch **three Task tool calls in one message** (parallel). Fold lens rules from
 `cursor-agents/metate-*-reviewer.md` (or built-in `subagent_type` values below).
 
+**Where the agents must live — verified 2026-09-08 on `cursor-agent` v2026.09.02.** A custom
+`subagent_type` resolves ONLY from the **project** `.cursor/agents/`. Neither `~/.cursor/agents`
+nor `~/.claude/agents` is in the registry — an invalid-name probe enumerates the accepted values
+and both user-level copies are absent from it, while the project copy appears. So this is one of
+the two artifacts that is irreducibly per-project; `bootstrap.sh` installs it and keeps it
+refreshed from source on every `metate-init`.
+
 ```text
 Task(
   subagent_type="metate-correctness-reviewer",   # or code-reviewer
@@ -203,7 +210,7 @@ invocation round-trips before selecting `gemini` as `build.reviewer.backend`.
 | backend | parallel fan-out | typed JSON | notes |
 |---------|------------------|------------|-------|
 | codex   | ✅ `exec` + `wait` | ✅ `--output-schema` + `-o` | `< /dev/null` required headless |
-| cursor  | ✅ Task (one message) | ✅ prompt + `jq` validate | agents in `~/.cursor/agents` (installed globally) |
+| cursor  | ✅ Task (one message) | ✅ prompt + `jq` validate | agents in `.cursor/agents` — **project only** |
 | claude  | ✅ Agent (one message) | ✅ prompt + `jq` validate | today's default orchestrator path |
 | grok    | ✅ `grok -p` + `wait` (or `spawn_subagent` when orchestrator is grok) | ✅ `--json-schema` → `.structuredOutput` | inline schema, not a file path; no `--yolo` on reviewers |
 | gemini  | ⛔ unverified | ⛔ unverified | probe before use |

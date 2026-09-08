@@ -76,9 +76,9 @@ verify:
 # --- ship (metate-ship) --------------------------------------------------
 ship:
   deliverables: ["README.md", "docs/ROADMAP.md", "docs/TECH-DEBT.md", "docs/adr/README.md"]
-  postCommand: "bash install.sh --update --user && metate-init"  # --user covers skills AND the
-                                          # global Cursor reviewer agents; metate-init refreshes the
-                                          # one per-project artifact left (.cursor/rules)
+  postCommand: "bash install.sh --update --user && metate-init"  # --user covers the skills;
+                                          # metate-init refreshes the two per-project Cursor
+                                          # artifacts (.cursor/agents, .cursor/rules) from source
   release:
     enabled: true
     scheme: semver
