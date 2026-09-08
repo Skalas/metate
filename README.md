@@ -125,8 +125,10 @@ cd your-repo && metate-init
 ./install.sh --user    # or --project /path/to/repo
 ```
 
-Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex + Grok surfaces;
-Grok scans `.agents/skills`). With `--user` they are global. `--project` vendors them into the
+Skills install to **both** `.claude/skills` and `.agents/skills`. That is not duplication:
+Claude Code reads only the first, Codex only the second, and Grok and Cursor read either — so
+two copies is the minimum that covers four harnesses (probed 2026-09-08; matrix in
+`install.sh`). With `--user` they are global. `--project` vendors them into the
 repo instead, tracked, as a deliberate version pin.
 
 Two Cursor artifacts are **irreducibly per-project** — Cursor reads neither from a user-level

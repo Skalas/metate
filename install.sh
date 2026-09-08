@@ -87,6 +87,18 @@ if [ -z "$SRC" ]; then
   SRC="$TMP/metate/skills"
 fi
 
+# Why TWO user-level skill roots — probed 2026-09-08 (Cursor v2026.09.02, Codex
+# v0.153.4, Grok 4.6, Claude Code). A uniquely-named skill placed in one root at a
+# time shows up as:
+#
+#   root                  claude  codex  grok  cursor
+#   ~/.claude/skills        ✅      ❌     ✅     ✅
+#   ~/.agents/skills        ❌      ✅     ✅     ✅
+#
+# Codex reads ONLY ~/.agents/skills; Claude Code reads ONLY ~/.claude/skills. They
+# do not overlap, so both copies are load-bearing and neither can be dropped — it
+# looks like duplication and is not. (Skills are portable prose, so harnesses read
+# each other's freely. SUBAGENTS are not: see REVIEWERS.md.)
 copy_skills() {  # $1 = destination skills root
   local root="$1"
   mkdir -p "$root"
