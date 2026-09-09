@@ -87,6 +87,18 @@ if [ -z "$SRC" ]; then
   SRC="$TMP/metate/skills"
 fi
 
+# Why TWO user-level skill roots — probed 2026-09-08 (Cursor v2026.09.02, Codex
+# v0.153.4, Grok 4.6, Claude Code). A uniquely-named skill placed in one root at a
+# time shows up as:
+#
+#   root                  claude  codex  grok  cursor
+#   ~/.claude/skills        ✅      ❌     ✅     ✅
+#   ~/.agents/skills        ❌      ✅     ✅     ✅
+#
+# Codex reads ONLY ~/.agents/skills; Claude Code reads ONLY ~/.claude/skills. They
+# do not overlap, so both copies are load-bearing and neither can be dropped — it
+# looks like duplication and is not. (Skills are portable prose, so harnesses read
+# each other's freely. SUBAGENTS are not: see REVIEWERS.md.)
 copy_skills() {  # $1 = destination skills root
   local root="$1"
   mkdir -p "$root"
@@ -107,22 +119,6 @@ copy_skills() {  # $1 = destination skills root
   echo "  ✓ skills → $root/{$(cd "$SRC" && printf '%s,' */ | sed 's:/,:,:g;s:,$::')}"
 }
 
-# Cursor reviewer subagents. Cursor reads BOTH ~/.cursor/agents (every project) and
-# .cursor/agents (this project, higher precedence), so a user-level install covers
-# every repo and leaves no per-project copy to keep in sync.
-copy_cursor_agents() {  # $1 = destination agents dir
-  local dest="$1" src="$SRC/metate-build/cursor-agents" n=0
-  [ -d "$src" ] || return 0
-  mkdir -p "$dest"
-  for f in "$src"/metate-*.md; do
-    [ -f "$f" ] || continue
-    cp "$f" "$dest/$(basename "$f")"
-    n=$((n + 1))
-  done
-  [ "$n" -gt 0 ] && echo "  ✓ $n reviewer agent(s) → $dest/metate-*.md"
-  return 0
-}
-
 # The bootstrap + profile template ship inside the metate-build skill dir.
 BOOTSTRAP_REL="metate-build/bootstrap.sh"
 
@@ -132,9 +128,6 @@ if [ "$SCOPE" = "user" ]; then
   echo "▸ $VERB metate skills at USER level"
   copy_skills "$HOME/.claude/skills"
   copy_skills "$HOME/.agents/skills"
-  if [ -d "$HOME/.cursor" ]; then
-    copy_cursor_agents "$HOME/.cursor/agents"
-  fi
 
   # Leave a per-project initializer on PATH that runs the global bootstrap.
   BIN="$HOME/.local/bin"; mkdir -p "$BIN"
@@ -168,9 +161,6 @@ else
   echo "▸ $VERB metate skills into PROJECT: $PROJECT"
   copy_skills "$PROJECT/.claude/skills"
   copy_skills "$PROJECT/.agents/skills"
-  if [ -d "$HOME/.cursor" ]; then
-    copy_cursor_agents "$PROJECT/.cursor/agents"
-  fi
   echo "▸ running bootstrap for this project"
   # Both skill roots are copied from the same $SRC above; invoke bootstrap from whichever
   # exists (mirrors metate-init's resilience) rather than hardcoding one surface.

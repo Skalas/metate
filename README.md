@@ -125,17 +125,22 @@ cd your-repo && metate-init
 ./install.sh --user    # or --project /path/to/repo
 ```
 
-Skills install to `.claude/skills` and `.agents/skills` (Claude + Codex + Grok surfaces;
-Grok scans `.agents/skills`); the Cursor reviewer agents install to `.cursor/agents`. With
-`--user` all of them are global, so a repo carries only `.metate/profile.yml` — its own
-config — plus the one artifact Cursor can only read per project (`.cursor/rules/`).
-`--project` vendors the skills into the repo instead, tracked, as a deliberate version pin.
+Skills install to **both** `.claude/skills` and `.agents/skills`. That is not duplication:
+Claude Code reads only the first, Codex only the second, and Grok and Cursor read either — so
+two copies is the minimum that covers four harnesses (probed 2026-09-08; matrix in
+`install.sh`). With `--user` they are global. `--project` vendors them into the
+repo instead, tracked, as a deliberate version pin.
+
+Two Cursor artifacts are **irreducibly per-project** — Cursor reads neither from a user-level
+location (`.cursor/rules/codebase-memory.mdc`, and `.cursor/agents/metate-*.md`, whose custom
+`subagent_type` names resolve only from the project directory). `metate-init` installs both and
+**always refreshes them from source**, so they cannot sit stale and there is no flag to remember.
 
 ## Updating
 
 ```bash
-./install.sh --update --user   # skills + Cursor reviewer agents, for every repo
-metate-init                    # per repo: refreshes .cursor/rules (self-refreshing, no flag)
+./install.sh --update --user   # skills, for every repo
+metate-init                    # per repo: refreshes the two Cursor artifacts (no flag needed)
 ```
 
 Profile reconciliation is handled by the `metate` wizard skill (Step 2b).

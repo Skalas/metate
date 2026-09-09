@@ -19,12 +19,12 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ## Open (triggered)
 
-- **The Cursor-agent shadow retirement in `bootstrap.sh` is a one-time migration.** When reviewer
-  agents moved to `~/.cursor/agents` (2026-09-08), bootstrap gained a pass that deletes untracked
-  `.cursor/agents/metate-*.md` left by the old per-project design — they take precedence over the
-  user-level copies and would silently shadow them. Pure migration code: worth ~20 lines only while
-  repos bootstrapped before that date still exist. **Trigger:** the next release after every repo
-  you run metate on has been re-bootstrapped — delete the pass and its comment block.
+- **Cursor's user-level subagent dirs are documented but not implemented (CLI v2026.09.02 and
+  v2026.09.08).** The manual lists `~/.cursor/agents/` and `~/.claude/agents/` as valid for the CLI;
+  controlled probes on 2026-09-08, before and after an upgrade, show neither is read, so `.cursor/agents/metate-*.md` must stay per-project (it is
+  installed and self-refreshed by `metate-init`). **Trigger:** a `cursor-agent` upgrade — re-run the
+  invalid-`subagent_type` probe in `metate-build/REVIEWERS.md`; if a user-level dir resolves, install
+  the reviewer agents once globally and drop the per-project copy.
 
 - **Secret-file skip is prose, not code.** The mandatory secret-name exclusion (`.env`/`*.pem`/
   `id_*`/`*credentials*`/…) when building the review diff is a **MUST** instruction in

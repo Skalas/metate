@@ -28,6 +28,7 @@ TEMPLATE="$SCRIPT_DIR/profile.template.yml"
 # cursor-rule.mdc and codex-rule.md are rendered from sources/ — run `make render`.
 # Do not hand-edit; the verify drift gate enforces parity with sources/.
 CURSOR_RULE="$SCRIPT_DIR/cursor-rule.mdc"
+CURSOR_AGENTS_SRC="$SCRIPT_DIR/cursor-agents"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -379,29 +380,37 @@ if [ -f "$PROJECT_ROOT/.cursor/rules/codebase-memory.mdc" ]; then
   gi_ignore_untrack '.cursor/rules/codebase-memory.mdc' 'codebase-memory Cursor rule is installed tooling (source: metate repo)'
 fi
 
-# Reviewer subagents live at USER level now (~/.cursor/agents), installed once by
-# install.sh and read by Cursor in every project. Project copies take PRECEDENCE, so a
-# leftover vendored copy would shadow — and quietly staledate — the user-level one.
-# Retire it, but only when git isn't tracking it, so nothing committed is ever lost.
-if [ "$PROJECT_SCOPED" -eq 0 ] && compgen -G "$PROJECT_ROOT/.cursor/agents/metate-*.md" >/dev/null 2>&1; then
-  retired_agents=0
-  for f in "$PROJECT_ROOT"/.cursor/agents/metate-*.md; do
-    [ -f "$f" ] || continue
-    rel="${f#"$PROJECT_ROOT"/}"
-    if [ -n "$(git -C "$PROJECT_ROOT" ls-files "$rel" 2>/dev/null)" ]; then
-      echo "  • $rel is tracked — left in place; it shadows ~/.cursor/agents (git rm it when ready)"
+# Reviewer subagents for Cursor's Task fan-out. VERIFIED 2026-09-08: cursor-agent
+# resolves custom subagent_type names from the PROJECT .cursor/agents ONLY —
+# ~/.cursor/agents and ~/.claude/agents are not in its registry — so this artifact
+# is irreducibly per-project. Like the rule above, it always refreshes from source:
+# no `--update` flag to remember, no way for a stale copy to keep serving reviewers.
+if [ -d "$HOME/.cursor" ] && [ -d "$CURSOR_AGENTS_SRC" ]; then
+  AGENTS_DIR="$PROJECT_ROOT/.cursor/agents"
+  mkdir -p "$AGENTS_DIR"
+  installed=0
+  refreshed=0
+  for src in "$CURSOR_AGENTS_SRC"/metate-*.md; do
+    [ -f "$src" ] || continue
+    dest="$AGENTS_DIR/$(basename "$src")"
+    if [ -f "$dest" ]; then
+      cmp -s "$src" "$dest" && continue
+      refreshed=$((refreshed + 1))
     else
-      rm -f "$f"
-      retired_agents=$((retired_agents + 1))
+      installed=$((installed + 1))
     fi
+    cp "$src" "$dest"
   done
-  if [ "$retired_agents" -gt 0 ]; then
-    echo "  ✓ retired $retired_agents shadowing project reviewer agent(s) — ~/.cursor/agents serves every repo"
+  if [ "$installed" -gt 0 ]; then
+    echo "  ✓ installed $installed metate reviewer agent(s): .cursor/agents/metate-*.md"
+  elif [ "$refreshed" -gt 0 ]; then
+    echo "  ✓ refreshed $refreshed metate reviewer agent(s) from source"
+  else
+    echo "  ✓ metate reviewer agents already current"
   fi
-fi
-if [ "$PROJECT_SCOPED" -eq 0 ] && [ -d "$HOME/.cursor" ] \
-   && ! compgen -G "$HOME/.cursor/agents/metate-*.md" >/dev/null 2>&1; then
-  echo "  • reviewer agents not installed for Cursor yet — run once: bash install.sh --update --user"
+  if [ "$PROJECT_SCOPED" -eq 0 ]; then
+    gi_ignore_untrack '.cursor/agents/metate-*.md' 'metate reviewer agents are installed tooling (source: metate repo)'
+  fi
 fi
 
 # Codex has no per-rule dir — it reads AGENTS.md, project AND global. Codex/Grok load
