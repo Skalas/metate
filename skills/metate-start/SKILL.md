@@ -28,7 +28,7 @@ implementation here — just orient, decide scope, branch.
 Read `.metate/profile.yml`. Use the `start:` block: `readingOrder` (paths may carry `{N}` —
 resolve as metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`,
 `granularity`, `labels`, `milestone`), optional `verify.humanGates`. DoD goes to
-`.metate/dod.json` (tracked). Gates go to `.metate/human-gates.json` (tracked).
+`.metate/dod.json`, gates to `.metate/human-gates.json` — all `.metate/` state is local, never committed.
 
 ## Steps
 1. **Read the handoff** — every doc in `start.readingOrder`, in order. If `.metate/plan.md`
@@ -46,7 +46,7 @@ resolve as metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`
 5. **Reset session file** — new sprint only: if the plan's topic differs from
    `.metate/session.json` → `sprint` (or the prior DoD's `sprint` on a legacy file), clear
    `.metate/session.json`. Same-sprint re-run: leave it. No prior DoD → new sprint.
-6. **Cut the branch** — from `start.baseBranch` **before** writing tracked sprint files:
+6. **Cut the branch** — from `start.baseBranch` **before** writing sprint state:
    ```bash
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
    ```
