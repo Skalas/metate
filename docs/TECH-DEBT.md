@@ -19,6 +19,13 @@ surfaces an item only once its trigger has fired (don't pull debt whose trigger 
 
 ## Open (triggered)
 
+- **Cursor's user-level subagent dirs are documented but not implemented (CLI v2026.09.02).** The
+  manual lists `~/.cursor/agents/` and `~/.claude/agents/` as valid for the CLI; a controlled probe
+  on 2026-09-08 shows neither is read, so `.cursor/agents/metate-*.md` must stay per-project (it is
+  installed and self-refreshed by `metate-init`). **Trigger:** a `cursor-agent` upgrade — re-run the
+  invalid-`subagent_type` probe in `metate-build/REVIEWERS.md`; if a user-level dir resolves, install
+  the reviewer agents once globally and drop the per-project copy.
+
 - **Secret-file skip is prose, not code.** The mandatory secret-name exclusion (`.env`/`*.pem`/
   `id_*`/`*credentials*`/…) when building the review diff is a **MUST** instruction in
   `metate-build/SKILL.md`, because reviewers run as external CLI subprocesses (possibly another

@@ -110,12 +110,21 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
 Launch **three Task tool calls in one message** (parallel). Fold lens rules from
 `cursor-agents/metate-*-reviewer.md` (or built-in `subagent_type` values below).
 
-**Where the agents must live — verified 2026-09-08 on `cursor-agent` v2026.09.02.** A custom
-`subagent_type` resolves ONLY from the **project** `.cursor/agents/`. Neither `~/.cursor/agents`
-nor `~/.claude/agents` is in the registry — an invalid-name probe enumerates the accepted values
-and both user-level copies are absent from it, while the project copy appears. So this is one of
-the two artifacts that is irreducibly per-project; `bootstrap.sh` installs it and keeps it
-refreshed from source on every `metate-init`.
+**Where the agents must live — probed 2026-09-08 on `cursor-agent` v2026.09.02.** A custom
+`subagent_type` resolves ONLY from the **project** `.cursor/agents/`. This CONTRADICTS Cursor's
+manual, which lists `~/.cursor/agents/` and `~/.claude/agents/` as user-level locations usable in
+"the editor, CLI, and Cloud Agents" — on this CLI build they are not read at all.
+
+Probe method (repeat it after any Cursor upgrade): put byte-identical agent files, using the
+documented minimal `name`/`description` frontmatter, in the project dir and in each user-level
+dir; then call `Task` with a deliberately invalid `subagent_type`. The error enumerates the whole
+registry in one shot. Result: the project copy appears, both user-level copies do not, and the
+user's own 12 `~/.claude/agents` entries are absent too. Plugin-supplied agents DO resolve, so
+the CLI registry is built-ins + project dirs + plugins.
+
+Consequence: this artifact is irreducibly per-project. `bootstrap.sh` installs it and refreshes it
+from source on every `metate-init`. If a later Cursor build honors the documented user-level dirs,
+a single global install becomes possible — see the trigger in `docs/TECH-DEBT.md`.
 
 ```text
 Task(
