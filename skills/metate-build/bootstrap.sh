@@ -291,26 +291,16 @@ gi_ignore_untrack() {
   fi
 }
 
-# Per-sprint local state: these files are runtime-only and never committed, so
-# they need the .gitignore entry but no untrack pass — hence hand-rolled rather
-# than routed through gi_ignore_untrack (whose untrack step would be a no-op).
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/session\.json' "$GI"; }; then
-  { echo ""; echo "# metate session handoff"; echo ".metate/session.json"; } >> "$GI"
-  echo "  ✓ added .metate/session.json to .gitignore"
-fi
-if ! { [ -f "$GI" ] && grep -qxF '.metate/.session-start.json' "$GI"; }; then
-  { echo "# metate transient session-id capture buffer"; echo ".metate/.session-start.json"; } >> "$GI"
-  echo "  ✓ added .metate/.session-start.json to .gitignore"
-fi
-if ! { [ -f "$GI" ] && grep -qE '^\.metate/dod\.json' "$GI"; }; then
-  { echo "# metate DoD ledger (per-sprint; start overwrites)"; echo ".metate/dod.json"; } >> "$GI"
-  echo "  ✓ added .metate/dod.json to .gitignore"
-fi
+# ALL metate state and config is local — never committed. A teammate who does not run
+# metate would inherit a sprint ledger, gates and a profile describing work they are not
+# doing: stale state read as current is worse than no state, and adapting from scratch
+# beats adapting from a false picture of where the repo stands. One rule covers the
+# directory, and the untrack pass migrates repos that committed these files earlier.
+gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
 # A vendored (`--project`) install is a version pin: it stays TRACKED, or it is not
 # a pin at all — a gitignored copy is invisible to teammates and reproducible by no
 # one, while still drifting from the user-level skills. Only leftovers from a
 # user-level install get ignored and untracked here.
-# (.metate/profile.yml is always tracked: it's this project's config.)
 if [ "$PROJECT_SCOPED" -eq 1 ]; then
   echo "  ✓ skills are vendored in this project (--project) — left tracked as a version pin"
 else

@@ -124,7 +124,7 @@ Map: Playwright/Cypress present → `command: "<pm> e2e"`; a `db:seed` script �
 If the product needs PO/UX or live graduations a suite cannot sign off on, propose optional
 `verify.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
 verify will then walk the human through open H items instead of a bare checklist. The ledger
-is **tracked** project state (commit with the sprint).
+is **local** state — like everything under `.metate/`, it is never committed.
 
 **ship** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
 coverage docs, roadmap, this profile's sibling rules). Confirm with the user.
@@ -145,8 +145,8 @@ After writing, show the user the filled profile and confirm before they run the 
 
 ## Fixed paths — state is not config
 
-metate's state lives at fixed paths under `.metate/` — `plan.md`, `dod.json` (tracked),
-`session.json`, `signals.json`, `human-gates.json` (tracked) — and is **not** configurable.
+metate's state lives at fixed paths under `.metate/` — `plan.md`, `dod.json`, `session.json`,
+`signals.json`, `human-gates.json` — **not** configurable, and **never committed**.
 Only `techDebtFile` and `start.readingOrder` are config. `metate-init --update` retires old keys.
 
 ## Enforcement
