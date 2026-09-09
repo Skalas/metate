@@ -1,14 +1,51 @@
 {
   "sprint": "round-ledger",
-  "rows": [ { "id": "T1", "title": "rounds[] validates", "command": "make verify" } ],
+  "rows": [
+    {
+      "id": "T1",
+      "title": "rounds[] validates",
+      "command": "make verify"
+    }
+  ],
   "rounds": [
-    { "n": 1, "gate": "pass", "failedLenses": [],
+    {
+      "n": 1,
+      "gate": "pass",
+      "failedLenses": [],
       "findings": [
-        { "id": "R1-1", "file": "skills/metate/lib/dod.sh", "line": 20, "bucket": "blocker",
-          "summary": "stray key rejected", "disposition": "fixed" },
-        { "id": "R1-2", "file": "README.md", "line": 3, "bucket": "suggestion",
-          "summary": "wording", "disposition": "declined",
-          "rationale": "house style; intentional" }
-      ] }
+        {
+          "id": "R1-1",
+          "file": "skills/metate/lib/dod.sh",
+          "line": 20,
+          "bucket": "blocker",
+          "summary": "stray key rejected",
+          "disposition": "fixed"
+        },
+        {
+          "id": "R1-2",
+          "file": "README.md",
+          "line": 3,
+          "bucket": "suggestion",
+          "summary": "wording",
+          "disposition": "declined",
+          "rationale": "house style; intentional"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "gate": "pending",
+      "failedLenses": [],
+      "findings": [
+        {
+          "id": "R2-1",
+          "file": "a.md",
+          "line": 1,
+          "bucket": "warning",
+          "summary": "open until the gate runs",
+          "disposition": "open"
+        }
+      ]
+    }
   ]
 }

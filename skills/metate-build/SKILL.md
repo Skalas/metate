@@ -92,16 +92,18 @@ Read `.metate/session.json`. Four cases:
 - **Present but `sprint` mismatches** → 🛑 STOP. Report both values; do not resume a prior
   sprint's session and do not overwrite it (existence is not freshness — abandoned handles sit
   for months and look live).
-- **Missing, and `dod.json` has no `rounds[]`** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
+- **Missing, and the branch has no commits past `base`** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
   invocation; validate the id from the JSON envelope with `jq` before writing — UUID for
   cursor/codex/claude/grok, non-empty ref for claude-subagent). Write
   `{ "implementer", "sessionId", "sprint", "model"? }` to `.metate/session.json`. `sprint` is
   **required**. Build in layers (domain → application → infrastructure → presentation). Run
   `fastGate`. Then continue to rounds 1–3.
 
-- **Missing, but `rounds[]` is present** → the sprint is underway and the session is gone. **Take
-  it over cold**: read `rounds[]` for open and declined findings, diff the branch against `base`,
-  and continue at the next round. Do not restart round 0. A vendor session is an optimization.
+- **Missing, but the branch has commits past `base`** → the sprint is underway and the handle is
+  gone (a lost session, a GUI build, another agent). **Take it over cold**: never restart round 0
+  — re-running it would re-implement committed work. Read `rounds[]` for prior findings and their
+  dispositions (absent ⇒ round 0 landed but no round has been reviewed yet; start at round 1),
+  then continue. A vendor session is an optimization, not a prerequisite.
 
 A **missing `sprint` key** (a file written before that rule) is not proof of staleness — report
 it, ask whether the session is this sprint's, and rewrite the file with `sprint` set either way.
@@ -201,7 +203,10 @@ Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
 
 - **The round** → `.metate/dod.json` `rounds[]`: `{n, gate, failedLenses, findings[]}`, each
   finding carrying `disposition` (`fixed` · `declined` · `deferred` · `open`) and, when
-  `declined`, a **`rationale`**. Validate with `metate/lib/dod.sh dod`.
+  `declined`, a **`rationale`**. Open the entry here with `gate: "pending"`; §4 closes it with
+  `pass`/`red`. **Re-read `dod.json` and preserve `sprint` and `rows[]`** — `Write` replaces the
+  whole file and ship reads those rows. Then
+  `bash <metate-skill>/lib/dod.sh dod .metate/dod.json`.
 - **Out-of-diff bug** → `.metate/signals.json` per `metate-verify/signal.schema.json`.
 - **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
@@ -211,7 +216,9 @@ Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
 Let **fixable** = findings in buckets selected by `build.autoFix`.
 
 If any fixable findings exist, resume the implementer per `IMPLEMENTERS.md` using the **explicit
-`sessionId`** from `.metate/session.json`. The prompt:
+`sessionId`** from `.metate/session.json`. **No session (a cold takeover)** → start a fresh one
+and write `session.json`; the branch and `rounds[]` carry the context the handle would have. The
+prompt:
 - lists only fixable findings by `file:line` + fix intent;
 - forbids unrelated changes;
 - when `codebaseMemory.enabled`, prepends the Code Discovery clause.
@@ -224,7 +231,8 @@ Zero fixable findings → skip patching; proceed to exit evaluation below.
 ### 4. Fast gate
 
 After patching, run `fastGate` from the profile (`bash -c "$fastGate"` from repo root).
-Failures become **blockers** for the next round.
+Failures become **blockers** for the next round. Close this round's `rounds[]` entry: set `gate`
+to `pass` or `red`.
 
 **Re-index** (only when `codebaseMemory.enabled` and implementer patched):
 - `reindex: git` — auto watcher picks up changes (no action);
@@ -238,11 +246,6 @@ Convergence is anchored on **blockers**. ≤3 review rounds maximum (after round
 **A round that applied fixes can never declare done** — "0 blockers" must come from a fan-out
 round on the patched tree. A green fast gate is necessary, not sufficient.
 
-| Condition | Verdict |
-|-----------|---------|
-| Round 3 **applied** fixes (patch this round) | 🛑 STOP — cap leaves no fan-out on the patched tree |
-| Blockers remain after round 3 (no patch this round) | 🛑 STOP — summarize survivors |
-
 At the end of each fan-out round, evaluate top to bottom; the first matching row is the verdict.
 **Only blockers gate convergence.** Warnings and suggestions are still *routed* to the implementer
 under `blockers+warnings` / `all`, but they never hold the loop open — the elegance lens is
@@ -251,6 +254,8 @@ terminator, it is an infinite loop.
 
 | Condition | Verdict |
 |-----------|---------|
+| Round 3 **applied** fixes (patch this round) | 🛑 `round-cap` — no fan-out left on the patched tree |
+| Blockers remain after round 3 (no patch this round) | 🛑 `round-cap` — summarize survivors |
 | Any lens failed this round | 🛑 `stop-incomplete` — cannot certify 0 blockers |
 | Blockers remain and `autoFix` routes them | ↻ next round — route fixes, re-run |
 | Blockers remain but `autoFix` won't route them | 🛑 `stop-blockers` — hand back |
@@ -258,12 +263,7 @@ terminator, it is an infinite loop.
 | 0 blockers, gate never run yet this loop | Run `fastGate` once; green ⇒ ✅ `done`, red ⇒ `stop-gate` |
 | 0 blockers, gate was green on a prior fan-out round on the patched tree | ✅ `done` |
 
-Exit messages (mirror for the user):
-- ✅ `done` — 0 blockers on a clean fan-out round on the patched tree.
-- 🛑 `stop-blockers` — blockers remain that `autoFix` does not route.
-- 🛑 `stop-gate` — last patch left the fast gate red.
-- 🛑 `stop-incomplete` — a reviewer lens failed; review incomplete.
-- 🛑 round-cap — survivors after round 3, or fixes applied in round 3 with no verify round left.
+Mirror the verdict and its reason to the user verbatim.
 
 ## Output
 

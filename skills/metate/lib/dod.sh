@@ -40,10 +40,13 @@ validate_dod() {
     | if ($rounds|type) != "array" then error("rounds must be an array") else . end
     | if ($rounds|map(.n)|unique|length) != ($rounds|length) then error("duplicate round n") else . end
     | reduce $rounds[] as $rd (true;
-        if ($rd.n|type) != "number" or $rd.n < 1 then error("bad round n") else . end
-        | if ($rd.gate|type) != "string" or ($rd.gate|length) == 0
-          then error("round \($rd.n) needs a gate result") else . end
+        if ($rd.n|type) != "number" or $rd.n < 1 or ($rd.n|floor) != $rd.n
+          then error("round n must be a positive integer") else . end
+        | if ($rd.gate != "pass" and $rd.gate != "red" and $rd.gate != "pending")
+          then error("round \($rd.n) gate must be pass|red|pending") else . end
         | if ($rd.findings|type) != "array" then error("round \($rd.n) needs findings[]") else . end
+        | if ($rd.findings|map(.id)|unique|length) != ($rd.findings|length)
+          then error("round \($rd.n) has duplicate finding ids") else . end
         | reduce $rd.findings[] as $f (true;
             if ($f.id|type) != "string" or ($f.id|length) == 0 then error("finding needs id") else . end
             | if ($f.summary|type) != "string" or ($f.summary|length) == 0
