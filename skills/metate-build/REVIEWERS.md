@@ -110,7 +110,9 @@ jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
 Launch **three Task tool calls in one message** (parallel). Fold lens rules from
 `cursor-agents/metate-*-reviewer.md` (or built-in `subagent_type` values below).
 
-**Where the agents must live — probed 2026-09-08 on `cursor-agent` v2026.09.02.** A custom
+**Where the agents must live — probed 2026-09-08 on `cursor-agent` v2026.09.02 AND v2026.09.08
+(re-probed after an upgrade; identical result, so this is standing behavior, not one bad build).**
+A custom
 `subagent_type` resolves ONLY from the **project** `.cursor/agents/`. This CONTRADICTS Cursor's
 manual, which lists `~/.cursor/agents/` and `~/.claude/agents/` as user-level locations usable in
 "the editor, CLI, and Cloud Agents" — on this CLI build they are not read at all.
