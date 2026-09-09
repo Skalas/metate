@@ -44,8 +44,9 @@ modifies the review engine's own instruction files (lens prompts, prompt-clause,
 can subvert its own review; on a trusted repo treat such a diff as suspect, and never run
 review on an untrusted branch.
 
-The orchestrator may **`Write` only to `.metate/session.json`, `.metate/signals.json`, and
-`start.techDebtFile`** (session in round 0; captures in §2b).
+The orchestrator may **`Write` only to `.metate/session.json`, `.metate/dod.json`,
+`.metate/signals.json`, and `start.techDebtFile`** (session in round 0; round ledger and captures
+in §2b).
 
 ## Step 0 — load the project profile
 
@@ -83,25 +84,27 @@ silently**; they are review's most valuable by-product and scope's only `capture
 
 ## Round 0 — write (when this sprint has no session yet)
 
-Read `.metate/session.json`. Three cases:
+Read `.metate/session.json`. Four cases:
 
 - **Present and `sprint` matches this sprint** (branch topic / `.metate/dod.json` → `sprint`)
   → skip to rounds 1–3. Resume by **explicit** `sessionId` — never `--last` when the
   orchestrator shares a backend with reviewers. Empty or unsafe `"--last"` → 🛑 STOP.
 - **Present but `sprint` mismatches** → 🛑 STOP. Report both values; do not resume a prior
-  sprint's session and do not overwrite it. Existence is not freshness: ship retires the file
-  only when a sprint fully lands, so abandoned handles sit for months and look live.
-- **Missing** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
+  sprint's session and do not overwrite it (existence is not freshness — abandoned handles sit
+  for months and look live).
+- **Missing, and `dod.json` has no `rounds[]`** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
   invocation; validate the id from the JSON envelope with `jq` before writing — UUID for
   cursor/codex/claude/grok, non-empty ref for claude-subagent). Write
   `{ "implementer", "sessionId", "sprint", "model"? }` to `.metate/session.json`. `sprint` is
   **required**. Build in layers (domain → application → infrastructure → presentation). Run
   `fastGate`. Then continue to rounds 1–3.
 
+- **Missing, but `rounds[]` is present** → the sprint is underway and the session is gone. **Take
+  it over cold**: read `rounds[]` for open and declined findings, diff the branch against `base`,
+  and continue at the next round. Do not restart round 0. A vendor session is an optimization.
+
 A **missing `sprint` key** (a file written before that rule) is not proof of staleness — report
 it, ask whether the session is this sprint's, and rewrite the file with `sprint` set either way.
-
-Interactive GUI builds must still write `.metate/session.json` or rounds 1–3 cannot resume.
 
 ## Diff scope (mandatory)
 
@@ -154,7 +157,7 @@ default `build.reviewer.backend`). Launch **all three concurrently**; merge per 
   independently; for each prior **blocker**, state explicitly whether it is still present,
   resolved, or unverifiable — a blocker is closed only by an affirmative re-read, never by
   absence from this round's findings);
-- instruction not to re-raise declined items.
+- instruction not to re-raise declined items (from `rounds[]`, not from your context).
 
 From round 2 on, elegance runs **unanchored**: no prior-findings memo.
 Before dedupe (§2), drop from the unanchored lens's output exact `file:line:summary` matches
@@ -192,11 +195,13 @@ Which buckets get auto-fixed is governed by `build.autoFix`:
 | `blockers+warnings` | blocker · warning    | DESIGN              |
 | `all`               | blocker · warning · DESIGN | —           |
 
-### 2b. Capture survivors (orchestrator writes only)
+### 2b. Persist the round, then capture survivors (orchestrator writes only)
 
-After bucketing, persist findings that won't be fixed this sprint. Append with **`Write` only**
-to the capture sinks — never a reviewer, never a `Bash` redirect.
+Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
 
+- **The round** → `.metate/dod.json` `rounds[]`: `{n, gate, failedLenses, findings[]}`, each
+  finding carrying `disposition` (`fixed` · `declined` · `deferred` · `open`) and, when
+  `declined`, a **`rationale`**. Validate with `metate/lib/dod.sh dod`.
 - **Out-of-diff bug** → `.metate/signals.json` per `metate-verify/signal.schema.json`.
 - **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
@@ -213,10 +218,6 @@ If any fixable findings exist, resume the implementer per `IMPLEMENTERS.md` usin
 
 After the implementer returns, report in the round report which files the patch touched that no
 routed finding named.
-
-**A round that applied a fix CANNOT self-declare done.** Patching ends the round; the **next**
-round must fan out again on the patched tree. If round 3 applied fixes and cleared blockers,
-that is still 🛑 STOP — no round remains for a fan-out on the patched tree.
 
 Zero fixable findings → skip patching; proceed to exit evaluation below.
 
@@ -274,7 +275,6 @@ that elegance ran unanchored. End with the verdict and uncaptured survivors. Han
 
 ## Guardrails
 
-- `Write` scoped to `.metate/session.json`, `.metate/signals.json`, and `start.techDebtFile` only.
 - Implementer write mode is auto-approving; use `isolation: worktree` when you want an isolated
   tree (see `IMPLEMENTERS.md`).
 - Route every in-branch fix through the implementer — reviewers do not edit code.

@@ -1,0 +1,11 @@
+{
+  "sprint": "round-ledger",
+  "rows": [ { "id": "T1", "title": "t", "command": "true" } ],
+  "rounds": [
+    { "n": 1, "gate": "pass",
+      "findings": [
+        { "id": "R1-1", "file": "a.md", "line": 1, "bucket": "warning",
+          "summary": "s", "disposition": "declined" }
+      ] }
+  ]
+}

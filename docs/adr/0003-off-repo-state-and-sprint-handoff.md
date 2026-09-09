@@ -1,6 +1,8 @@
 # ADR-0003 — State off the repo, one sprint ledger, sprints any agent can take over
 
-- **Status:** **Proposed** (2026-09-08). Not implemented.
+- **Status:** **Phase 1 accepted and implemented** (2026-09-08) — `rounds[]` in `.metate/dod.json`,
+  plus the cold-takeover branch in build's Round 0. **Phase 2 remains Proposed** (relocation,
+  consolidation, parallel worktree sprints).
 - **Kind:** `decision`
 - **Deciders:** repo author.
 - **Relates to:** extends ADR-0001 (fixed state paths, ledger consolidation); sequenced with
