@@ -115,6 +115,12 @@ bash "$DOD" dod "$FIX/dod-both.json" >/dev/null 2>&1 \
   && die "dod-both.json should fail" || true
 ok "dod.json (exactly one of command or gate; cut exempt)"
 
+bash "$DOD" dod "$FIX/dod-rounds-valid.json" >/dev/null \
+  || die "dod-rounds-valid.json should pass"
+bash "$DOD" dod "$FIX/dod-rounds-declined-no-rationale.json" >/dev/null 2>&1 \
+  && die "a declined finding with no rationale should fail" || true
+ok "dod rounds[] ledger (declines carry a rationale; rounds-less dod still valid)"
+
 bash "$DOD" gates "$FIX/human-gates-valid.json" >/dev/null \
   || die "legacy gates should pass without --sprint"
 bash "$DOD" gates "$FIX/human-gates-valid.json" s71 >/dev/null \

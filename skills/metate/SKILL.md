@@ -154,7 +154,7 @@ Only `techDebtFile` and `start.readingOrder` are config. `metate-init --update` 
 A stage may refuse to advance only on a check a script can run. Prose advises; files block.
 The blocking set: the profile parses and has no template placeholder; `dod.json` validates
 and every row passes or is `cut`; every current-sprint human gate is dispositioned and
-carries `type`, `steps`, `expected`; `session.json` exists for review rounds ≥ 1; `fastGate`
+carries `type`, `steps`, `expected`; `fastGate`
 is green after each patch round; `shipGate` is green. A 🛑 names which of these it is; the checks
 are `lib/dod.sh` in `<metate-skill>`, the directory this file is installed in. **One exception,
 kept on purpose:** build's review verdict (blockers remain, a lens fails, round cap) is judgment,
@@ -198,4 +198,4 @@ Bootstrap does the mechanical renames; this is the judgment half, for a profile 
 ## First-round checklist
 1. `.metate/profile.yml` filled (esp. `reviewFocus`) ✅
 2. an implementer CLI installed and chosen ✅
-3. run `metate-build` — round 0 writes `.metate/session.json`; rounds 1–3 resume it.
+3. run `metate-build` — round 0 writes `.metate/session.json`; rounds 1–3 resume it, or take over cold from `rounds[]`.

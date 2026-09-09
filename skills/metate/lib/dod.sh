@@ -15,9 +15,10 @@ validate_dod() {
   local file="$1"
   [ -f "$file" ] || die "missing $file"
   jq -e '
-    if (.sprint|type) != "string" or (.sprint|length) == 0 then error("sprint missing") else . end
+    . as $doc
+    | if (.sprint|type) != "string" or (.sprint|length) == 0 then error("sprint missing") else . end
     | if (.rows|type) != "array" then error("rows[] missing") else . end
-    | if (keys - ["sprint","rows"]) != [] then error("stray top-level key") else . end
+    | if (keys - ["sprint","rows","rounds"]) != [] then error("stray top-level key") else . end
     | (.rows|map(.id)|unique|length) as $u
     | if $u != (.rows|length) then error("duplicate or missing id") else . end
     | reduce .rows[] as $r (true;
@@ -34,6 +35,31 @@ validate_dod() {
             | if ($c and $g) or (($c|not) and ($g|not))
               then error("row \($r.id) needs exactly one of command or gate") else . end
           end
+      )
+    | ($doc.rounds // []) as $rounds
+    | if ($rounds|type) != "array" then error("rounds must be an array") else . end
+    | if ($rounds|map(.n)|unique|length) != ($rounds|length) then error("duplicate round n") else . end
+    | reduce $rounds[] as $rd (true;
+        if ($rd.n|type) != "number" or $rd.n < 1 or ($rd.n|floor) != $rd.n
+          then error("round n must be a positive integer") else . end
+        | if ($rd.gate != "pass" and $rd.gate != "red" and $rd.gate != "pending")
+          then error("round \($rd.n) gate must be pass|red|pending") else . end
+        | if ($rd.findings|type) != "array" then error("round \($rd.n) needs findings[]") else . end
+        | if ($rd.findings|map(.id)|unique|length) != ($rd.findings|length)
+          then error("round \($rd.n) has duplicate finding ids") else . end
+        | reduce $rd.findings[] as $f (true;
+            if ($f.id|type) != "string" or ($f.id|length) == 0 then error("finding needs id") else . end
+            | if ($f.summary|type) != "string" or ($f.summary|length) == 0
+              then error("finding \($f.id) needs summary") else . end
+            | ($f.bucket // "") as $b
+            | if $b != "blocker" and $b != "warning" and $b != "suggestion"
+              then error("finding \($f.id) bad bucket") else . end
+            | ($f.disposition // "") as $d
+            | if $d != "fixed" and $d != "declined" and $d != "deferred" and $d != "open"
+              then error("finding \($f.id) bad disposition") else . end
+            | if $d == "declined" and (($f.rationale|type) != "string" or ($f.rationale|length) == 0)
+              then error("declined finding \($f.id) needs rationale") else . end
+          )
       )
   ' "$file" >/dev/null
 }
