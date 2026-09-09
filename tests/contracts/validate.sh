@@ -121,6 +121,55 @@ bash "$DOD" dod "$FIX/dod-rounds-declined-no-rationale.json" >/dev/null 2>&1 \
   && die "a declined finding with no rationale should fail" || true
 ok "dod rounds[] ledger (declines carry a rationale; rounds-less dod still valid)"
 
+# --- state.sh: off-repo layout (ADR-0003 phase 2) ---------------------------
+STATE="$ROOT/skills/metate/lib/state.sh"
+ST_TMP="$(mktemp -d)"
+trap 'rm -rf "$ST_TMP"' EXIT
+export METATE_STATE_ROOT="$ST_TMP/state"
+st_repo() {  # $1 = dir, $2 = origin url (empty for none)
+  git init -qb main "$1"
+  [ -n "${2:-}" ] && git -C "$1" remote add origin "$2"
+  git -C "$1" -c user.email=a@b -c user.name=a commit -q --allow-empty -m init
+}
+st_repo "$ST_TMP/ssh"   "git@github.com:Skalas/metate.git"
+st_repo "$ST_TMP/https" "https://github.com/Skalas/metate.git"
+[ "$(cd "$ST_TMP/ssh" && bash "$STATE" key)" = "$(cd "$ST_TMP/https" && bash "$STATE" key)" ] \
+  || die "ssh and https clones of one repo must resolve to the same repo-key"
+st_repo "$ST_TMP/other" "https://github.com/Skalas/brain-mcp.git"
+[ "$(cd "$ST_TMP/other" && bash "$STATE" key)" != "$(cd "$ST_TMP/ssh" && bash "$STATE" key)" ] \
+  || die "different repos must not share a repo-key"
+ok "state repo-key (ssh/https agree; distinct repos differ)"
+
+( cd "$ST_TMP/ssh" && git checkout -qb sprint-a \
+  && git worktree add -q "$ST_TMP/wt-b" -b sprint-b ) >/dev/null 2>&1
+A_REPO="$(cd "$ST_TMP/ssh" && bash "$STATE" repo-dir)"
+B_REPO="$(cd "$ST_TMP/wt-b" && bash "$STATE" repo-dir)"
+A_SPR="$(cd "$ST_TMP/ssh" && bash "$STATE" sprint-dir)"
+B_SPR="$(cd "$ST_TMP/wt-b" && bash "$STATE" sprint-dir)"
+[ "$A_REPO" = "$B_REPO" ] || die "worktrees of one repo must share the repo dir"
+[ "$A_SPR" != "$B_SPR" ] || die "parallel worktree sprints must not share a sprint dir"
+st_repo "$ST_TMP/nr" ""
+git -C "$ST_TMP/nr" worktree add -q "$ST_TMP/nr-wt" -b other >/dev/null 2>&1
+[ "$(cd "$ST_TMP/nr" && bash "$STATE" key)" = "$(cd "$ST_TMP/nr-wt" && bash "$STATE" key)" ] \
+  || die "remote-less worktrees must still share one repo-key"
+ok "state sprint-key (worktrees share repo dir, isolate sprint dir; no-remote case)"
+
+st_repo "$ST_TMP/mig" "https://github.com/Skalas/demo.git"
+mkdir -p "$ST_TMP/mig/.metate"
+( cd "$ST_TMP/mig" && git checkout -qb feat/x ) >/dev/null 2>&1
+for f in profile.yml signals.json human-gates.json; do echo '{}' > "$ST_TMP/mig/.metate/$f"; done
+for f in plan.md dod.json session.json; do echo '{}' > "$ST_TMP/mig/.metate/$f"; done
+( cd "$ST_TMP/mig" && bash "$STATE" migrate ) >/dev/null
+M_REPO="$(cd "$ST_TMP/mig" && bash "$STATE" repo-dir)"
+M_SPR="$(cd "$ST_TMP/mig" && bash "$STATE" sprint-dir)"
+for f in profile.yml signals.json human-gates.json; do
+  [ -f "$M_REPO/$f" ] || die "migrate: $f should be repo-scoped"; done
+for f in plan.md dod.json session.json; do
+  [ -f "$M_SPR/$f" ] || die "migrate: $f should be sprint-scoped"; done
+[ -d "$ST_TMP/mig/.metate" ] && die "migrate should remove the emptied legacy dir" || true
+ok "state migrate (splits legacy .metate/ by lifetime; removes the empty dir)"
+unset METATE_STATE_ROOT
+
 bash "$DOD" gates "$FIX/human-gates-valid.json" >/dev/null \
   || die "legacy gates should pass without --sprint"
 bash "$DOD" gates "$FIX/human-gates-valid.json" s71 >/dev/null \
