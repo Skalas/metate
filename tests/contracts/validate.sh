@@ -168,6 +168,22 @@ for f in plan.md dod.json session.json; do
   [ -f "$M_SPR/$f" ] || die "migrate: $f should be sprint-scoped"; done
 [ -d "$ST_TMP/mig/.metate" ] && die "migrate should remove the emptied legacy dir" || true
 ok "state migrate (splits legacy .metate/ by lifetime; removes the empty dir)"
+
+st_repo "$ST_TMP/plan" "https://github.com/Skalas/planflow.git"
+( cd "$ST_TMP/plan" && eval "$(bash "$STATE" env)" \
+  && [ -n "${STATE:-}" ] && [ -n "${SPRINT:-}" ] ) || die "state.sh env must export STATE and SPRINT"
+P_REPO="$(cd "$ST_TMP/plan" && bash "$STATE" repo-dir)"
+echo "# plan" > "$P_REPO/plan.md"                       # scope writes it on the base branch
+( cd "$ST_TMP/plan" && git checkout -qb feat/thing && bash "$STATE" claim-plan ) >/dev/null 2>&1
+P_SPR="$(cd "$ST_TMP/plan" && bash "$STATE" sprint-dir)"
+[ -f "$P_SPR/plan.md" ] || die "claim-plan must move the pending plan into the sprint"
+[ -f "$P_REPO/plan.md" ] && die "claim-plan must not leave the pending plan behind" || true
+( cd "$ST_TMP/plan" && bash "$STATE" claim-plan ) >/dev/null 2>&1 \
+  || die "claim-plan must be idempotent once the sprint owns a plan"
+( cd "$ST_TMP/plan" && git worktree add -q "$ST_TMP/plan-wt" -b feat/second ) >/dev/null 2>&1
+( cd "$ST_TMP/plan-wt" && bash "$STATE" claim-plan ) >/dev/null 2>&1 \
+  && die "a second sprint must not inherit another sprint's plan" || true
+ok "state env + claim-plan (plan is repo-scoped until the branch cut, then sprint-owned)"
 unset METATE_STATE_ROOT
 
 bash "$DOD" gates "$FIX/human-gates-valid.json" >/dev/null \
