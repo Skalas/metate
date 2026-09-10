@@ -296,6 +296,23 @@ gi_ignore_untrack() {
 # doing: stale state read as current is worse than no state, and adapting from scratch
 # beats adapting from a false picture of where the repo stands. One rule covers the
 # directory, and the untrack pass migrates repos that committed these files earlier.
+# BACK UP FIRST. `git rm --cached` stages a deletion: the file survives in THIS working
+# tree, but once that commit is merged, any other tree that pulls it — another branch,
+# another clone, another worktree — deletes the file, because from its side a tracked
+# file went away. That is how this repo lost its own profile.yml on 2026-09-09. Copy the
+# tracked state off-repo before untracking, so the canonical copy outlives the deletion.
+if [ -n "$(git -C "$PROJECT_ROOT" ls-files '.metate/' 2>/dev/null)" ]; then
+  STATE_SH="$SCRIPT_DIR/../metate/lib/state.sh"
+  if [ -f "$STATE_SH" ]; then
+    BACKUP="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )/pre-untrack-backup"
+    mkdir -p "$BACKUP"
+    git -C "$PROJECT_ROOT" ls-files -z '.metate/' \
+      | xargs -0 -I{} cp "$PROJECT_ROOT/{}" "$BACKUP/" 2>/dev/null || true
+    echo "  ✓ backed up tracked .metate/ state → $BACKUP"
+  else
+    echo "  ⚠ state.sh not found — untracking .metate/ WITHOUT a backup" >&2
+  fi
+fi
 gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
 # A vendored (`--project`) install is a version pin: it stays TRACKED, or it is not
 # a pin at all — a gitignored copy is invisible to teammates and reproducible by no
