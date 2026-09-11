@@ -40,18 +40,23 @@ validate_doc_as_code() {
   fi
 }
 
-# GITHUB_BASE_REF is a bare branch name, and an Actions checkout usually has only the
-# remote-tracking ref for it. Prefer the bare name; fall back to origin/<ref> when it does
-# not resolve; hand back the caller's name when neither does, so the merge base fails closed.
+# A PR merges into the remote target, so measure against origin/<branch> and not a local
+# branch of the same name that may be stale. This is also what CI needs: GITHUB_BASE_REF is
+# a bare branch name, and an Actions checkout usually carries only the remote-tracking ref.
+# Only plain branch names are rewritten — HEAD, a sha and any revision expression are taken
+# as given, since origin/HEAD generally exists and would otherwise hijack them. An
+# unresolvable name is handed back untouched so the merge base fails closed.
 resolve_doc_base() {
   local repo="$1" ref="$2"
-  if git -C "$repo" rev-parse --verify -q "$ref^{commit}" >/dev/null; then
-    echo "$ref"
-  elif git -C "$repo" rev-parse --verify -q "refs/remotes/origin/$ref^{commit}" >/dev/null; then
-    echo "origin/$ref"
-  else
-    echo "$ref"
-  fi
+  case "$ref" in
+    HEAD*|*/*|*[~^:@]*) ;;
+    *)
+      if git -C "$repo" rev-parse --verify -q "refs/remotes/origin/$ref^{commit}" >/dev/null; then
+        echo "origin/$ref"
+        return
+      fi ;;
+  esac
+  echo "$ref"
 }
 
 # Supply the actual PR target when it differs from main. Fail closed on missing refs.
@@ -225,13 +230,21 @@ if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "untracked docs sho
 git -C "$DC" add docs/new.md
 validate_doc_as_code "$DC" doc-base || die "staged new docs should satisfy gate"
 if validate_doc_as_code "$DC" missing-ref 2>/dev/null; then die "missing base should fail closed"; fi
-# CI hands us a bare branch name that exists only as a remote-tracking ref.
+# The remote target wins over a same-named local branch, and CI's bare ref resolves at all.
 git -C "$DC" update-ref refs/remotes/origin/ci-base doc-base
-[ "$(resolve_doc_base "$DC" doc-base)" = doc-base ] || die "local ref should win over origin/"
+git -C "$DC" branch -q both doc-base
+git -C "$DC" update-ref refs/remotes/origin/both doc-base
+git -C "$DC" update-ref refs/remotes/origin/HEAD doc-base
+[ "$(resolve_doc_base "$DC" both)" = origin/both ] || die "origin/ should win over a local branch"
 [ "$(resolve_doc_base "$DC" ci-base)" = origin/ci-base ] || die "bare CI ref should resolve to origin/"
+[ "$(resolve_doc_base "$DC" doc-base)" = doc-base ] || die "local-only ref should pass through"
 [ "$(resolve_doc_base "$DC" missing-ref)" = missing-ref ] || die "unresolvable ref should pass through"
+# origin/HEAD exists in most clones; revisions must not be rewritten through it.
+for rev in HEAD HEAD~1 origin/doc-base "$(git -C "$DC" rev-parse doc-base)"; do
+  [ "$(resolve_doc_base "$DC" "$rev")" = "$rev" ] || die "revision $rev should be taken as given"
+done
 validate_doc_as_code "$DC" "$(resolve_doc_base "$DC" ci-base)" || die "origin/ base should be usable"
-ok "Doc-as-Code fixtures (contract paths, diff states, README, deletion, rename, new docs, CI base ref)"
+ok "Doc-as-Code fixtures (contract paths, diff states, README, deletion, rename, new docs, base refs)"
 
 st_repo "$ST_TMP/ssh"   "git@github.com:Skalas/metate.git"
 st_repo "$ST_TMP/https" "https://github.com/Skalas/metate.git"
