@@ -46,32 +46,6 @@ esac
 
 echo "▸ bootstrapping metate in: $PROJECT_ROOT"
 
-# --- state lives off-repo (ADR-0003): resolve it, and move a legacy .metate/ ---
-# BEFORE anything reads a path. A tree where half the tooling reads the new layout
-# and half the old is the split-brain this whole change exists to prevent.
-# BACK UP FIRST. `git rm --cached` (the untrack pass below) stages a deletion: the
-# file survives in THIS working tree, but once that commit is merged, any other tree
-# that pulls it deletes the file, because from its side a tracked file went away.
-# That is how this repo lost its own profile.yml on 2026-09-09.
-STATE_SH="$SCRIPT_DIR/../metate/lib/state.sh"
-if [ -f "$STATE_SH" ]; then
-  if [ -n "$(git -C "$PROJECT_ROOT" ls-files '.metate/' 2>/dev/null)" ]; then
-    BACKUP="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )/pre-untrack-backup"
-    mkdir -p "$BACKUP"
-    git -C "$PROJECT_ROOT" ls-files -z '.metate/' \
-      | xargs -0 -I{} cp "$PROJECT_ROOT/{}" "$BACKUP/" 2>/dev/null || true
-    echo "  ✓ backed up tracked .metate/ state → $BACKUP"
-  fi
-  ( cd "$PROJECT_ROOT" && bash "$STATE_SH" migrate "$PROJECT_ROOT" )
-  METATE_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )"
-  SPRINT_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" sprint-dir) )"
-else
-  echo "  ⚠ state.sh not found — keeping state in-repo at .metate/" >&2
-  METATE_DIR="$PROJECT_ROOT/.metate"
-  SPRINT_DIR="$METATE_DIR"
-fi
-PROFILE="$METATE_DIR/profile.yml"
-
 # --- required prerequisite: codebase-memory-mcp ----------------------------
 # Fail fast before writing anything. Present if the CLI is on PATH OR it's wired
 # as an MCP server in a known client config (a client may manage the server
@@ -93,6 +67,37 @@ if ! cbm_present; then
   echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
   exit 1
 fi
+
+# --- state lives off-repo (ADR-0003): resolve it, and move a legacy .metate/ ---
+# BEFORE anything reads a path. A tree where half the tooling reads the new layout
+# and half the old is the split-brain this whole change exists to prevent.
+# BACK UP FIRST. `git rm --cached` (the untrack pass below) stages a deletion: the
+# file survives in THIS working tree, but once that commit is merged, any other tree
+# that pulls it deletes the file, because from its side a tracked file went away.
+# That is how this repo lost its own profile.yml on 2026-09-09.
+STATE_SH="$SCRIPT_DIR/../metate/lib/state.sh"
+if [ -f "$STATE_SH" ]; then
+  if [ -n "$(git -C "$PROJECT_ROOT" ls-files '.metate/' 2>/dev/null)" ]; then
+    BACKUP="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )/pre-untrack-backup"
+    mkdir -p "$BACKUP"
+    git -C "$PROJECT_ROOT" ls-files -z '.metate/' \
+      | xargs -0 -I{} cp "$PROJECT_ROOT/{}" "$BACKUP/" 2>/dev/null || true
+    echo "  ✓ backed up tracked .metate/ state → $BACKUP"
+  fi
+  ( cd "$PROJECT_ROOT" && bash "$STATE_SH" migrate "$PROJECT_ROOT" )
+  METATE_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )"
+  SPRINT_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" sprint-dir) )"
+  STATE_OK=1
+else
+  # No resolver means no off-repo destination, so there is nowhere safe to back a
+  # tracked profile up to. Keep state in-repo AND skip the untrack pass below —
+  # `git rm --cached` without a backup is the exact deletion bug a8d5908 fixed.
+  echo "  ⚠ state.sh not found — keeping state in-repo at .metate/, NOT untracking it" >&2
+  METATE_DIR="$PROJECT_ROOT/.metate"
+  SPRINT_DIR="$METATE_DIR"
+  STATE_OK=0
+fi
+PROFILE="$METATE_DIR/profile.yml"
 
 # --- write the profile ------------------------------------------------------
 mkdir -p "$METATE_DIR"
@@ -322,7 +327,11 @@ gi_ignore_untrack() {
 # directory, and the untrack pass migrates repos that committed these files earlier.
 # The working-tree copies were already moved off-repo (and the tracked ones backed up)
 # at the top of this script; what is left here is the index entry and the ignore rule.
-gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
+if [ "$STATE_OK" -eq 1 ]; then
+  gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
+else
+  echo "  ⚠ left .metate/ tracked — no state.sh, so the pre-untrack backup was impossible" >&2
+fi
 # A vendored (`--project`) install is a version pin: it stays TRACKED, or it is not
 # a pin at all — a gitignored copy is invisible to teammates and reproducible by no
 # one, while still drifting from the user-level skills. Only leftovers from a

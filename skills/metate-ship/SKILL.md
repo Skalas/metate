@@ -33,9 +33,9 @@ Run `eval "$(bash <metate-skill>/lib/state.sh env)"`, then read `$STATE/profile.
 Fixed paths: `$SPRINT/dod.json`, `$SPRINT/session.json` (retired after the PR is open),
 `$STATE/human-gates.json` — ship does not write dispositions. Sprint id = `dod.json` → `sprint`.
 
-Run `bash <metate-skill>/lib/dod.sh dod $SPRINT/dod.json` (🛑 **dod.json validates**).
+Run `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json validates**).
 When `verify.humanGates.required`, run
-`bash <metate-skill>/lib/dod.sh gates $STATE/human-gates.json <sprint>` and refuse
+`bash <metate-skill>/lib/dod.sh gates "$STATE/human-gates.json" <sprint>` and refuse
 while any current-sprint (or prior still-`open`) gate is `open` — route to
 `metate-verify`. `{N}` in a deliverable path: first integer in the sprint topic, else
 highest matching file + 1, else ask. Never write a literal `{N}`.

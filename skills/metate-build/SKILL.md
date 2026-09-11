@@ -206,7 +206,7 @@ Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
   `declined`, a **`rationale`**. Open the entry here with `gate: "pending"`; §4 closes it with
   `pass`/`red`. **Re-read `dod.json` and preserve `sprint` and `rows[]`** — `Write` replaces the
   whole file and ship reads those rows. Then
-  `bash <metate-skill>/lib/dod.sh dod $SPRINT/dod.json`.
+  `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"`.
 - **Out-of-diff bug** → `$STATE/signals.json` per `metate-verify/signal.schema.json`.
 - **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.

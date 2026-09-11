@@ -31,9 +31,9 @@ Run `eval "$(bash <metate-skill>/lib/state.sh env)"`, then read `$STATE/profile.
 `$SPRINT/dod.json`, `$STATE/human-gates.json`, `$STATE/signals.json`. Identify the current
 sprint from `dod.json` → `sprint` (else the plan / branch topic).
 
-Run `bash <metate-skill>/lib/dod.sh dod $SPRINT/dod.json` (🛑 **dod.json validates**).
+Run `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json validates**).
 When `verify.humanGates` is set, run
-`bash <metate-skill>/lib/dod.sh gates $STATE/human-gates.json <sprint>` (🛑 **gate
+`bash <metate-skill>/lib/dod.sh gates "$STATE/human-gates.json" <sprint>` (🛑 **gate
 admission**). Fail closed when `required: true` if the ledger is missing, invalid, or has
 no current-sprint batch (start seeds one, including zero-gate). Empty current-sprint set
 is green. Partition valid gates: current-sprint `open` is the walkthrough; prior-sprint

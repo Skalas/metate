@@ -21,8 +21,7 @@ allowed-tools:
 
 # metate-start — prepare the terrain
 
-Runs after `metate-scope` (or as the entry point when the plan already exists). No
-implementation here — just orient, decide scope, branch.
+Runs after `metate-scope`, or as the entry point when a plan already exists. No code here.
 
 ## Step 0 — load the profile
 Run `eval "$(bash <metate-skill>/lib/state.sh env)"` for `$STATE`/`$SPRINT`, then read
@@ -46,10 +45,11 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
 5. **Reset session file** — a new branch gets a fresh `$SPRINT`, so nothing carries over. Only
    when a new sprint reuses the current branch: clear `$SPRINT/session.json`.
 6. **Cut the branch** — from `start.baseBranch`, then re-resolve state and claim the plan.
-   `$SPRINT` is branch-derived: nothing sprint-scoped may be written before this.
+   `$SPRINT` is branch-derived: nothing sprint-scoped may be written before this. `claim-plan`
+   exits non-zero when no plan is pending — fine when the plan came via `readingOrder`, not scope.
    ```bash
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
-   eval "$(bash <metate-skill>/lib/state.sh env)" && bash <metate-skill>/lib/state.sh claim-plan
+   eval "$(bash <metate-skill>/lib/state.sh env)"; bash <metate-skill>/lib/state.sh claim-plan || true
    ```
 7. **Write DoD and seed gates** — after the branch exists, with the **`Write` tool**:
 
@@ -57,7 +57,7 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
    `command` or `gate`. A proposed gate phrased *walk A → B → C, expect D* is a `command`
    row, not a gate. A gate that recurs sprint after sprint is a `command` row. `cut` rows
    need `reason` and neither field. `id` may span (`T1-T3`). Fill `tracker` (`#N`) from
-   step 4. Run `bash <metate-skill>/lib/dod.sh dod $SPRINT/dod.json` (🛑 **dod.json
+   step 4. Run `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json
    validates** — blocking set). Overwrite; never append a prior sprint.
 
    **Gates** (when `verify.humanGates` is set) — always write this sprint's batch, even if
@@ -67,7 +67,7 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
    `expected` non-empty, `status: "open"`. A 🛑 **gate admission** (blocking set) if the
    validator refuses. Prior-sprint history stays; if any prior item is still `open`, 🛑
    **open prior-sprint gate** — fold or `deferred`+reason. Run
-   `bash <metate-skill>/lib/dod.sh gates $STATE/human-gates.json <sprint>`.
+   `bash <metate-skill>/lib/dod.sh gates "$STATE/human-gates.json" <sprint>`.
    No `verify.humanGates` block → skip; H-matrix stays plan prose.
 
 ## Output

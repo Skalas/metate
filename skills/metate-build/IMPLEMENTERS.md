@@ -145,9 +145,9 @@ cursor-agent --print --resume "$CID" --force "<blocker fixes, by file:line>"
 ```bash
 # start: capture the REAL session id.
 # `--json` emits JSONL events; the session/thread id is on the session-configured event.
-codex exec -s workspace-write --json "<build prompt>" < /dev/null > $SPRINT/.session-start.jsonl
+codex exec -s workspace-write --json "<build prompt>" < /dev/null > "$SPRINT/.session-start.json"l
 SESSION_ID="$(jq -r 'select(.session_id // .thread_id) | (.session_id // .thread_id)' \
-  $SPRINT/.session-start.jsonl | head -1)"
+  "$SPRINT/.session-start.jsonl" | head -1)"
 # resume — NOTE: the `resume` subcommand does NOT accept -s or -C.
 # Pass the sandbox via -c, and set cwd with the shell (cd) beforehand.
 codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixes>" < /dev/null
@@ -167,7 +167,7 @@ codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixe
 ```bash
 # start: pass to the Bash tool with run_in_background: true (foreground hits SIGTERM/exit 143)
 # — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .session_id …
-claude -p --output-format json "<build prompt>" < /dev/null > $SPRINT/.session-start.json  # background this
+claude -p --output-format json "<build prompt>" < /dev/null > "$SPRINT/.session-start.json"  # background this
 claude -p --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null   # resume round — also a work call, background it
 ```
 
@@ -184,7 +184,7 @@ the loop stalls waiting on a prompt with no TTY:
 
    ```bash
    # both backgrounded work calls; start redirects stdout to recover the id (see above)
-   claude -p --dangerously-skip-permissions --output-format json "<build prompt>" < /dev/null > $SPRINT/.session-start.json
+   claude -p --dangerously-skip-permissions --output-format json "<build prompt>" < /dev/null > "$SPRINT/.session-start.json"
    claude -p --dangerously-skip-permissions --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null
    ```
 
@@ -229,7 +229,7 @@ subagent** instead: it is already resumable, already has context, and needs no C
 # — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .sessionId
 # `-p/--single` consumes the NEXT argv as the prompt. Flags go after the prompt
 # (or before `-p`). `grok -p --output-format json "prompt"` exits 2: missing --single value.
-grok -p "<build prompt>" --output-format json < /dev/null > $SPRINT/.session-start.json
+grok -p "<build prompt>" --output-format json < /dev/null > "$SPRINT/.session-start.json"
 grok -p "<blocker fixes>" --resume "<SESSION_ID>" < /dev/null   # resume round — also a work call, background it
 ```
 
@@ -250,7 +250,7 @@ grok -p "<blocker fixes>" --resume "<SESSION_ID>" < /dev/null   # resume round �
 2. **Inner** — the nested `grok -p` writing files + running the gate needs `--yolo`:
 
    ```bash
-   grok -p "<build prompt>" --yolo --output-format json < /dev/null > $SPRINT/.session-start.json
+   grok -p "<build prompt>" --yolo --output-format json < /dev/null > "$SPRINT/.session-start.json"
    grok -p "<blocker fixes>" --yolo --resume "<SESSION_ID>" < /dev/null
    ```
 
