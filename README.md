@@ -180,7 +180,9 @@ reviewers must still verify that the documentation describes the changed contrac
 
 The diff runs from the merge base of `main` and `HEAD` through the tracked working
 tree, including committed, staged, and unstaged changes. For another PR target,
-run `METATE_DOC_BASE=origin/<target> make verify` (CI may also set `GITHUB_BASE_REF`).
-Fetch the target and enough history to resolve its merge base before checking;
-a missing base fails the gate. On `main`, set `METATE_DOC_BASE` to the pre-change
-commit to validate an already merged change.
+run `METATE_DOC_BASE=origin/<target> make verify`. CI may instead set `GITHUB_BASE_REF`,
+which is a bare branch name; the gate prefers a local ref of that name and falls back to
+`origin/<ref>`, which is all an Actions checkout usually has. Fetch the target and enough
+history to resolve its merge base before checking; a missing base fails the gate.
+On `main`, set `METATE_DOC_BASE` to the pre-change commit to validate an already
+merged change.

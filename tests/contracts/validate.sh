@@ -40,8 +40,22 @@ validate_doc_as_code() {
   fi
 }
 
+# GITHUB_BASE_REF is a bare branch name, and an Actions checkout usually has only the
+# remote-tracking ref for it. Prefer the bare name; fall back to origin/<ref> when it does
+# not resolve; hand back the caller's name when neither does, so the merge base fails closed.
+resolve_doc_base() {
+  local repo="$1" ref="$2"
+  if git -C "$repo" rev-parse --verify -q "$ref^{commit}" >/dev/null; then
+    echo "$ref"
+  elif git -C "$repo" rev-parse --verify -q "refs/remotes/origin/$ref^{commit}" >/dev/null; then
+    echo "origin/$ref"
+  else
+    echo "$ref"
+  fi
+}
+
 # Supply the actual PR target when it differs from main. Fail closed on missing refs.
-DOC_BASE="${METATE_DOC_BASE:-${GITHUB_BASE_REF:-main}}"
+DOC_BASE="$(resolve_doc_base "$ROOT" "${METATE_DOC_BASE:-${GITHUB_BASE_REF:-main}}")"
 validate_doc_as_code "$ROOT" "$DOC_BASE" || die "Doc-as-Code failed against $DOC_BASE"
 ok "Doc-as-Code ($DOC_BASE merge base through tracked working tree)"
 
@@ -211,7 +225,13 @@ if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "untracked docs sho
 git -C "$DC" add docs/new.md
 validate_doc_as_code "$DC" doc-base || die "staged new docs should satisfy gate"
 if validate_doc_as_code "$DC" missing-ref 2>/dev/null; then die "missing base should fail closed"; fi
-ok "Doc-as-Code fixtures (contract paths, diff states, README, deletion, rename, new docs)"
+# CI hands us a bare branch name that exists only as a remote-tracking ref.
+git -C "$DC" update-ref refs/remotes/origin/ci-base doc-base
+[ "$(resolve_doc_base "$DC" doc-base)" = doc-base ] || die "local ref should win over origin/"
+[ "$(resolve_doc_base "$DC" ci-base)" = origin/ci-base ] || die "bare CI ref should resolve to origin/"
+[ "$(resolve_doc_base "$DC" missing-ref)" = missing-ref ] || die "unresolvable ref should pass through"
+validate_doc_as_code "$DC" "$(resolve_doc_base "$DC" ci-base)" || die "origin/ base should be usable"
+ok "Doc-as-Code fixtures (contract paths, diff states, README, deletion, rename, new docs, CI base ref)"
 
 st_repo "$ST_TMP/ssh"   "git@github.com:Skalas/metate.git"
 st_repo "$ST_TMP/https" "https://github.com/Skalas/metate.git"
