@@ -11,7 +11,9 @@ the rationale behind its own code instead of re-deriving it.
 
 ## Build handshake
 
-Round 0 writes the session handoff to `.metate/session.json` so rounds 1–3 know how to resume:
+Round 0 writes the session handoff to `$SPRINT/session.json` so rounds 1–3 know how to resume.
+Every snippet below assumes `$SPRINT` is exported — the shell does not carry it between tool
+calls, so re-run `eval "$(bash <metate-skill>/lib/state.sh env)"` in any call that uses it:
 
 ```json
 { "implementer": "cursor", "sessionId": "44ca13f5-...", "sprint": "<topic>", "model": "composer-2.5" }
@@ -58,11 +60,11 @@ ceiling: it runs across turns and re-invokes the orchestrator when it exits, at 
 its output is retrievable.
 
 So capture the id **on completion**, not mid-run — nothing needs it earlier (build only writes
-`.metate/session.json` for the *later* review stage). When the work call is also the id source (claude's
+`$SPRINT/session.json` for the *later* review stage). When the work call is also the id source (claude's
 `claude -p --output-format json` → `.session_id`), read it from the completed call's output;
 redirecting stdout to a file (see the `claude` section below) is the robust form — it isolates
 clean JSON for `jq` instead of fishing it out of the completion buffer's mixed stdout/stderr.
-That file is a **transient** capture buffer — distinct from the durable `.metate/session.json`; overwrite
+That file is a **transient** capture buffer — distinct from the durable `$SPRINT/session.json`; overwrite
 or delete it freely. Backends that resume by most-recent (`codex … resume --last`, `grok -c`) need no id
 capture — **except** when the orchestrator shares the backend, where intervening
 review sessions make most-recent resolve to the wrong thread; there, capture the explicit id.
@@ -143,15 +145,15 @@ cursor-agent --print --resume "$CID" --force "<blocker fixes, by file:line>"
 ```bash
 # start: capture the REAL session id.
 # `--json` emits JSONL events; the session/thread id is on the session-configured event.
-codex exec -s workspace-write --json "<build prompt>" < /dev/null > .metate/.session-start.jsonl
+codex exec -s workspace-write --json "<build prompt>" < /dev/null > $SPRINT/.session-start.jsonl
 SESSION_ID="$(jq -r 'select(.session_id // .thread_id) | (.session_id // .thread_id)' \
-  .metate/.session-start.jsonl | head -1)"
+  $SPRINT/.session-start.jsonl | head -1)"
 # resume — NOTE: the `resume` subcommand does NOT accept -s or -C.
 # Pass the sandbox via -c, and set cwd with the shell (cd) beforehand.
 codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixes>" < /dev/null
 ```
 
-- session: **record the explicit id** in `.metate/session.json` — `{ "implementer":"codex",
+- session: **record the explicit id** in `$SPRINT/session.json` — `{ "implementer":"codex",
   "sessionId":"<id>" }`. ⚠️ `resume --last` is **only** safe in a single-vendor loop where the
   orchestrator is *not* codex. When the **orchestrator is also codex**, reviewer fan-out spawns
   newer codex sessions each round, so `--last` would resolve to a *reviewer* thread, not the build
@@ -165,7 +167,7 @@ codex exec resume "$SESSION_ID" -c sandbox_mode="workspace-write" "<blocker fixe
 ```bash
 # start: pass to the Bash tool with run_in_background: true (foreground hits SIGTERM/exit 143)
 # — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .session_id …
-claude -p --output-format json "<build prompt>" < /dev/null > .metate/.session-start.json  # background this
+claude -p --output-format json "<build prompt>" < /dev/null > $SPRINT/.session-start.json  # background this
 claude -p --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null   # resume round — also a work call, background it
 ```
 
@@ -182,7 +184,7 @@ the loop stalls waiting on a prompt with no TTY:
 
    ```bash
    # both backgrounded work calls; start redirects stdout to recover the id (see above)
-   claude -p --dangerously-skip-permissions --output-format json "<build prompt>" < /dev/null > .metate/.session-start.json
+   claude -p --dangerously-skip-permissions --output-format json "<build prompt>" < /dev/null > $SPRINT/.session-start.json
    claude -p --dangerously-skip-permissions --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null
    ```
 
@@ -227,11 +229,11 @@ subagent** instead: it is already resumable, already has context, and needs no C
 # — see "Long-running invocations". Stdout → file for clean JSON; on completion: jq -r .sessionId
 # `-p/--single` consumes the NEXT argv as the prompt. Flags go after the prompt
 # (or before `-p`). `grok -p --output-format json "prompt"` exits 2: missing --single value.
-grok -p "<build prompt>" --output-format json < /dev/null > .metate/.session-start.json
+grok -p "<build prompt>" --output-format json < /dev/null > $SPRINT/.session-start.json
 grok -p "<blocker fixes>" --resume "<SESSION_ID>" < /dev/null   # resume round — also a work call, background it
 ```
 
-- session: **record the explicit id** in `.metate/session.json` — `{ "implementer":"grok",
+- session: **record the explicit id** in `$SPRINT/session.json` — `{ "implementer":"grok",
   "sessionId":"<id>" }`. `jq -r .sessionId` on the JSON envelope. ⚠️ `--continue` / `-c` is
   **only** safe in a single-vendor loop where the orchestrator is *not* grok. When the
   **orchestrator is also grok**, reviewer fan-out spawns newer grok sessions each round, so
@@ -248,7 +250,7 @@ grok -p "<blocker fixes>" --resume "<SESSION_ID>" < /dev/null   # resume round �
 2. **Inner** — the nested `grok -p` writing files + running the gate needs `--yolo`:
 
    ```bash
-   grok -p "<build prompt>" --yolo --output-format json < /dev/null > .metate/.session-start.json
+   grok -p "<build prompt>" --yolo --output-format json < /dev/null > $SPRINT/.session-start.json
    grok -p "<blocker fixes>" --yolo --resume "<SESSION_ID>" < /dev/null
    ```
 

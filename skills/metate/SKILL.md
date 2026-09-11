@@ -4,7 +4,7 @@ version: 1.0.0
 description: |
   Entry point, first-run setup wizard, and router for the `metate` development
   pipeline (scope → start → build → verify → ship). Use this to get
-  oriented, to configure `.metate/profile.yml` with autodetected defaults on a
+  oriented, to configure `$STATE/profile.yml` with autodetected defaults on a
   fresh repo, or to find out which ceremony to run next. The actual work lives in
   the `metate-<stage>` skills; this one explains the flow and sets it up.
 license: MIT
@@ -39,17 +39,18 @@ Two roles, both pluggable and **independent** (see `metate-build/REVIEWERS.md` a
 `IMPLEMENTERS.md`): **reviewers** (`build.reviewer.backend` — spawn as other-harness CLIs) report
 findings; the **implementer** (`implementer.backend` — cursor / codex / claude / grok / gemini) is the
 only writer. The harness session you opened is the orchestrator. Everything project-specific
-lives in `.metate/profile.yml`.
+lives in `$STATE/profile.yml`.
 
 ## Step 1 — detect state
 
 ```bash
-test -f .metate/profile.yml && echo "profile: present" || echo "profile: MISSING"
-test -f .metate/session.json && echo "build session: present" || echo "build session: none"
+eval "$(bash <metate-skill>/lib/state.sh env)"   # $STATE (repo-wide) · $SPRINT (this branch)
+test -f "$STATE/profile.yml" && echo "profile: present" || echo "profile: MISSING"
+test -f "$SPRINT/session.json" && echo "build session: present" || echo "build session: none"
 git branch --show-current
 ```
 
-- **No profile** → run first-run setup (Step 2). If `.metate/` doesn't exist at all,
+- **No profile** → run first-run setup (Step 2). If `$STATE` holds nothing at all,
   run the bootstrap first: `metate-init` if installed user-level, or
   `bash .agents/skills/metate-build/bootstrap.sh` / `bash .claude/skills/metate-build/bootstrap.sh`
   for a project-vendored install.
@@ -60,7 +61,7 @@ git branch --show-current
 
 Bootstrap writes the template with failing placeholder gates. Fill everything by
 **autodetecting, proposing a default, and confirming with the user** before writing.
-Edit `.metate/profile.yml` in place.
+Edit `$STATE/profile.yml` in place.
 
 **gates** (`fastGate` / `shipGate`) — read the repo's real tooling, don't guess from the
 lockfile alone:
@@ -86,8 +87,6 @@ for c in cursor-agent codex claude grok; do command -v "$c" >/dev/null && echo "
 (matches the Claude Code plugin path). Set `codex`, `cursor`, or `grok` for cross-harness fan-out — see
 `metate-build/REVIEWERS.md`. Lives at `build.reviewer` in the profile.
 
-Invoke stage skills natively in your harness (`metate-build`, `metate-start`, etc.).
-
 **reviewFocus** (highest-value field) — draft from the repo's own rules, don't invent:
 ```bash
 ls CLAUDE.md AGENTS.md .cursor/rules/* docs/adr/* docs/ADR* 2>/dev/null
@@ -105,7 +104,7 @@ and drifts out of sync with the source.
 (`aftercare`, `codebaseMemory`, `issues`, `gitHistory`, `captures`, `productIntent`),
 `mode: steady`, `candidates: 5`. Turn `codebaseMemory` off
 here only if `codebaseMemory.enabled` is false. `productIntent` reads README plus
-`start.readingOrder` for stated goals — no separate path config. `.metate/plan.md` is what
+`start.readingOrder` for stated goals — no separate path config. `$STATE/plan.md` is what
 `start` reads as its entry doc.
 
 **start** — detect docs + base branch:
@@ -122,9 +121,8 @@ grep -oE '"(e2e|test:e2e|db:seed|seed)"\s*:' package.json 2>/dev/null  # → com
 ```
 Map: Playwright/Cypress present → `command: "<pm> e2e"`; a `db:seed` script → that.
 If the product needs PO/UX or live graduations a suite cannot sign off on, propose optional
-`verify.humanGates` (`ledger: .metate/human-gates.json`, `required: true`) and confirm —
-verify will then walk the human through open H items instead of a bare checklist. The ledger
-is **local** state — like everything under `.metate/`, it is never committed.
+`verify.humanGates` (`ledger: $STATE/human-gates.json`, `required: true`) and confirm —
+verify will then walk the human through open H items instead of a bare checklist.
 
 **ship** — propose `deliverables` from the docs layout (handoff notes, CHANGELOG,
 coverage docs, roadmap, this profile's sibling rules). Confirm with the user.
@@ -145,9 +143,11 @@ After writing, show the user the filled profile and confirm before they run the 
 
 ## Fixed paths — state is not config
 
-metate's state lives at fixed paths under `.metate/` — `plan.md`, `dod.json`, `session.json`,
-`signals.json`, `human-gates.json` — **not** configurable, and **never committed**.
-Only `techDebtFile` and `start.readingOrder` are config. `metate-init --update` retires old keys.
+metate's state lives off-repo, at fixed paths `state.sh env` resolves. `$STATE` is repo-scoped and
+shared by every worktree: `profile.yml`, `signals.json`, `human-gates.json`, a pending `plan.md`.
+`$SPRINT` is this branch's alone: the claimed `plan.md`, `dod.json`, `session.json`, `release.json`.
+Neither is configurable — only `techDebtFile` and `start.readingOrder` are; `metate-init --update`
+retires old keys. Nothing lands in the repo, so nothing shows up in `git status`.
 
 ## Enforcement
 
@@ -164,7 +164,7 @@ not a script — reviewers are soft-enforced by design.
 
 Bootstrap does the mechanical renames; this is the judgment half, for a profile that predates an update:
 
-1. Read `.metate/profile.yml` and the shipped `profile.template.yml` (beside `bootstrap.sh`).
+1. Read `$STATE/profile.yml` and the shipped `profile.template.yml` (beside `bootstrap.sh`).
 2. List keys present in the template but missing from the profile.
 3. For each missing key, propose a value fitted to THIS repo (detect it as in Step 2 —
    never paste the template placeholder verbatim when a real value is detectable).
@@ -196,6 +196,6 @@ Bootstrap does the mechanical renames; this is the judgment half, for a profile 
 | verify green, ready to land | `metate-ship` (docs, gate, PR, merge, tag) |
 
 ## First-round checklist
-1. `.metate/profile.yml` filled (esp. `reviewFocus`) ✅
+1. `$STATE/profile.yml` filled (esp. `reviewFocus`) ✅
 2. an implementer CLI installed and chosen ✅
-3. run `metate-build` — round 0 writes `.metate/session.json`; rounds 1–3 resume it, or take over cold from `rounds[]`.
+3. run `metate-build` — round 0 writes `$SPRINT/session.json`; rounds 1–3 resume it, or take over cold from `rounds[]`.

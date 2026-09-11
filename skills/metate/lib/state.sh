@@ -72,6 +72,7 @@ sprint_dir() { local d; d="$(repo_dir)/sprints/$(sprint_key)"; mkdir -p "$d"; pr
 is_sprint_file() {
   case "$1" in
     plan.md|dod.json|session.json|release.json|.session-start.json) return 0 ;;
+    issues.json|smoke-matrix.json) return 0 ;;   # legacy per-sprint ledgers dod.sh folds in
     *) return 1 ;;
   esac
 }

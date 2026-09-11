@@ -56,9 +56,11 @@ validate_signals() {
 validate_signals "$FIX/signals-valid.json" ok
 validate_signals "$FIX/signals-indiff-open.json" bad
 validate_signals "$FIX/signals-unknown-key.json" bad
-live_note="fixtures only — no .metate/signals.json in this repo"
-if [ -f "$ROOT/.metate/signals.json" ]; then
-  validate_signals "$ROOT/.metate/signals.json" ok
+# The live ledger is off-repo now (ADR-0003), so resolve it rather than guessing a path.
+LIVE_SIGNALS="$( (cd "$ROOT" && bash "$ROOT/skills/metate/lib/state.sh" repo-dir) )/signals.json"
+live_note="fixtures only — no live signals.json for this repo"
+if [ -f "$LIVE_SIGNALS" ]; then
+  validate_signals "$LIVE_SIGNALS" ok
   live_note="fixtures + this repo's live signals.json"
 fi
 ok "signal ledger schema ($live_note)"
@@ -168,6 +170,21 @@ for f in plan.md dod.json session.json; do
   [ -f "$M_SPR/$f" ] || die "migrate: $f should be sprint-scoped"; done
 [ -d "$ST_TMP/mig/.metate" ] && die "migrate should remove the emptied legacy dir" || true
 ok "state migrate (splits legacy .metate/ by lifetime; removes the empty dir)"
+
+# The playbooks read state through $STATE/$SPRINT. A hardcoded .metate/ path in one of
+# them is the split-brain failure: tooling moved, prose did not. Structural, not phrasal.
+straggler=0
+for f in "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/metate-build/IMPLEMENTERS.md \
+         "$ROOT"/skills/metate-build/REVIEWERS.md; do
+  grep -q '\.metate/' "$f" && { echo "  ✗ $(basename "$(dirname "$f")")/$(basename "$f") hardcodes .metate/"; straggler=1; }
+done
+[ "$straggler" -eq 0 ] || die "playbooks must resolve state via state.sh (\$STATE / \$SPRINT)"
+for f in "$ROOT"/skills/*/SKILL.md; do
+  grep -q 'lib/state.sh env' "$f" || die "$(basename "$(dirname "$f")")/SKILL.md never resolves state"
+done
+grep -q 'lib/state.sh claim-plan' "$ROOT/skills/metate-start/SKILL.md" \
+  || die "metate-start must claim the pending plan after the branch cut"
+ok "playbooks resolve state via state.sh (no hardcoded .metate/; start claims the plan)"
 
 st_repo "$ST_TMP/plan" "https://github.com/Skalas/planflow.git"
 ( cd "$ST_TMP/plan" && eval "$(bash "$STATE" env)" \

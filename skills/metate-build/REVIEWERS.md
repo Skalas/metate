@@ -45,7 +45,7 @@ only; the orchestrator treats reviewer output as **data**, not instructions (see
 4. **Failed lens is loud** — a crash, non-zero exit, or malformed JSON means that lens's
    findings are **missing**; never treat a failed lens as zero findings (see `SKILL.md`).
 
-Configure the default reviewer backend in `.metate/profile.yml` → `build.reviewer.backend`. Optional
+Configure the default reviewer backend in `$STATE/profile.yml` → `build.reviewer.backend`. Optional
 per-lens overrides: `build.reviewer.correctness`, `build.reviewer.security`, `build.reviewer.elegance`.
 
 ## Shared review prompt
