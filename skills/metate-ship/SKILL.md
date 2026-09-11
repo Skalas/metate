@@ -5,7 +5,7 @@ description: |
   Stage 4 (Ship) of the `metate` pipeline. Updates close-out deliverables,
   optionally proposes a semver release, runs shipGate plus every dod.json
   command row, opens the PR — only after the gate is green — then, on approval,
-  merges, tags, and returns the repo to the base branch. Reads `.metate/profile.yml`.
+  merges, tags, and returns the repo to the base branch. Reads `$STATE/profile.yml`.
 license: MIT
 compatibility:
   - claude-code
@@ -27,15 +27,15 @@ base branch. There is no `release.json`. A deferred merge re-runs steps 5–9; s
 recomputes from tags + the shipped diff.
 
 ## Step 0 — load the profile
-Read `.metate/profile.yml` → `shipGate`, `ship.deliverables`, `ship.postCommand`,
-`ship.prTarget`, `ship.commitStyle`, `ship.issueCloseKeyword`, optional
-`verify.humanGates` (`required`), optional `ship.release`. Fixed paths: `.metate/dod.json`,
-`.metate/session.json` (retired after the PR is open), `.metate/human-gates.json` —
-ship does not write dispositions. Sprint id = `dod.json` → `sprint`.
+Run `eval "$(bash <metate-skill>/lib/state.sh env)"`, then read `$STATE/profile.yml` →
+`shipGate`, `ship.deliverables`, `ship.postCommand`, `ship.prTarget`, `ship.commitStyle`,
+`ship.issueCloseKeyword`, optional `verify.humanGates` (`required`), optional `ship.release`.
+Fixed paths: `$SPRINT/dod.json`, `$SPRINT/session.json` (retired after the PR is open),
+`$STATE/human-gates.json` — ship does not write dispositions. Sprint id = `dod.json` → `sprint`.
 
-Run `bash <metate-skill>/lib/dod.sh dod .metate/dod.json` (🛑 **dod.json validates**).
+Run `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json validates**).
 When `verify.humanGates.required`, run
-`bash <metate-skill>/lib/dod.sh gates .metate/human-gates.json <sprint>` and refuse
+`bash <metate-skill>/lib/dod.sh gates "$STATE/human-gates.json" <sprint>` and refuse
 while any current-sprint (or prior still-`open`) gate is `open` — route to
 `metate-verify`. `{N}` in a deliverable path: first integer in the sprint topic, else
 highest matching file + 1, else ask. Never write a literal `{N}`.
@@ -52,7 +52,7 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
 
 ## Steps
 1. **Sync** — merge/rebase `ship.prTarget`; resolve conflicts.
-2. **Ship gate** — run `shipGate`, then every `command` row in `.metate/dod.json` whose
+2. **Ship gate** — run `shipGate`, then every `command` row in `$SPRINT/dod.json` whose
    command is not already that same string (🛑 **shipGate is green** / **dod.json rows
    pass or are cut**). Do not skip. A verified row is one whose command exits 0 on this
    tree — do not record a flag. Open required gates: explain via the entry's `steps` /
@@ -67,8 +67,8 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
    **never `--squash`**). Capture `gh pr view <N> --json mergeCommit -q .mergeCommit.oid`.
    If the user defers, stop after step 7; re-run steps 5–9 once it merges.
 6. **Close the milestone** if the sprint uses one.
-7. **Retire sprint-local state** — delete `.metate/session.json` and
-   `.metate/.session-start.json` if present. Do this even if merge was deferred. A later
+7. **Retire sprint-local state** — delete `$SPRINT/session.json` and
+   `$SPRINT/.session-start.json` if present. Do this even if merge was deferred. A later
    review round re-runs Build for a fresh session.
 8. **Return to base** after merge:
    ```bash

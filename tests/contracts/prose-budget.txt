@@ -12,7 +12,11 @@
 # post-audit line counts — zero slack, deliberately. That audit pass itself grew playbook prose
 # 1,210 -> 1,403 lines (+16%) in a change whose own diagnosis was that this prose accretes. The
 # caps start where that left off so the next change has to pay for its own additions.
-skills/metate-start/SKILL.md 74
+# 2026-09-10, off-repo wiring (ADR-0003 phase 2): +1 on metate-start. The branch cut (step 6)
+# gained two load-bearing lines — re-resolve $SPRINT after the cut, then claim the pending plan
+# — and paid one back by shrinking the session reset, which the sprint-scoped dir now does by
+# construction. Ordering, not prose: without them scope's plan lands in sprints/<base branch>.
+skills/metate-start/SKILL.md 75
 skills/metate-verify/SKILL.md 74
 skills/metate-ship/SKILL.md 97
 skills/metate/SKILL.md 201

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dod.sh — jq+bash validators for .metate/dod.json and .metate/human-gates.json.
+# dod.sh — jq+bash validators for dod.json and human-gates.json (paths from state.sh).
 # Shipped beside the metate skill; start runs it on write, verify and ship on read.
 #
 #   dod.sh dod   FILE
@@ -152,7 +152,7 @@ migrate() {
     local unbound
     unbound="$(jq -r '[.rows[]|select(.status!="cut" and (has("command")|not) and (has("gate")|not))]|length' "$tmp")"
     rm -f "$tmp"
-    echo "dod.sh: not migrated — $unbound row(s) have neither command nor gate. Write .metate/dod.json binding each T-row to a command or a human gate (metate-start step 7), then delete issues.json / smoke-matrix.json." >&2
+    echo "dod.sh: not migrated — $unbound row(s) have neither command nor gate. Write the sprint's dod.json binding each T-row to a command or a human gate (metate-start step 7), then delete issues.json / smoke-matrix.json." >&2
     return 0
   fi
 }

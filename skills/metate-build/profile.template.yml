@@ -1,4 +1,5 @@
-# .metate/profile.yml — per-repo config for the `metate` pipeline.
+# profile.yml — per-repo config for the `metate` pipeline. Lives off-repo; `state.sh where`
+# prints the path.
 # The skill engines are codebase-agnostic; everything project-specific lives here.
 # The `metate` wizard skill fills the gates and the rest with detected defaults.
 
@@ -35,7 +36,7 @@ reviewFocus: |
   - <invariant 3, e.g. state transitions go through the domain guard>
   - The implementer is the ONLY code writer; reviewers report findings and the orchestrator
     adjudicates findings and routes them to the implementer — the orchestrator may Write ONLY to
-    `.metate/signals.json` and `start.techDebtFile` to persist capture survivors.
+    `$STATE/signals.json` and `start.techDebtFile` to persist capture survivors.
 
 # --- build (metate-build): round 0 writes, rounds 1–3 review --------------
 # Reviewers are separate subprocesses — see metate-build/REVIEWERS.md.

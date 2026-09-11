@@ -32,8 +32,6 @@ CURSOR_AGENTS_SRC="$SCRIPT_DIR/cursor-agents"
 CODEX_RULE="$SCRIPT_DIR/codex-rule.md"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-METATE_DIR="$PROJECT_ROOT/.metate"
-PROFILE="$METATE_DIR/profile.yml"
 
 # Are the skills vendored INTO this project (`install.sh --project`) or installed
 # user-level? The bootstrap runs from the skill dir, so its own path answers it.
@@ -69,6 +67,37 @@ if ! cbm_present; then
   echo "      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/7824e505c192023a21b3e90bcb98ca6210629b64/install.sh | bash" >&2
   exit 1
 fi
+
+# --- state lives off-repo (ADR-0003): resolve it, and move a legacy .metate/ ---
+# BEFORE anything reads a path. A tree where half the tooling reads the new layout
+# and half the old is the split-brain this whole change exists to prevent.
+# BACK UP FIRST. `git rm --cached` (the untrack pass below) stages a deletion: the
+# file survives in THIS working tree, but once that commit is merged, any other tree
+# that pulls it deletes the file, because from its side a tracked file went away.
+# That is how this repo lost its own profile.yml on 2026-09-09.
+STATE_SH="$SCRIPT_DIR/../metate/lib/state.sh"
+if [ -f "$STATE_SH" ]; then
+  if [ -n "$(git -C "$PROJECT_ROOT" ls-files '.metate/' 2>/dev/null)" ]; then
+    BACKUP="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )/pre-untrack-backup"
+    mkdir -p "$BACKUP"
+    git -C "$PROJECT_ROOT" ls-files -z '.metate/' \
+      | xargs -0 -I{} cp "$PROJECT_ROOT/{}" "$BACKUP/" 2>/dev/null || true
+    echo "  ✓ backed up tracked .metate/ state → $BACKUP"
+  fi
+  ( cd "$PROJECT_ROOT" && bash "$STATE_SH" migrate "$PROJECT_ROOT" )
+  METATE_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )"
+  SPRINT_DIR="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" sprint-dir) )"
+  STATE_OK=1
+else
+  # No resolver means no off-repo destination, so there is nowhere safe to back a
+  # tracked profile up to. Keep state in-repo AND skip the untrack pass below —
+  # `git rm --cached` without a backup is the exact deletion bug a8d5908 fixed.
+  echo "  ⚠ state.sh not found — keeping state in-repo at .metate/, NOT untracking it" >&2
+  METATE_DIR="$PROJECT_ROOT/.metate"
+  SPRINT_DIR="$METATE_DIR"
+  STATE_OK=0
+fi
+PROFILE="$METATE_DIR/profile.yml"
 
 # --- write the profile ------------------------------------------------------
 mkdir -p "$METATE_DIR"
@@ -266,7 +295,7 @@ PY
     fi
     dod_sh="$SCRIPT_DIR/../metate/lib/dod.sh"
     if [ -f "$dod_sh" ]; then
-      bash "$dod_sh" migrate "$METATE_DIR" || true
+      bash "$dod_sh" migrate "$SPRINT_DIR" || true
     fi
     fi
   fi
@@ -296,24 +325,13 @@ gi_ignore_untrack() {
 # doing: stale state read as current is worse than no state, and adapting from scratch
 # beats adapting from a false picture of where the repo stands. One rule covers the
 # directory, and the untrack pass migrates repos that committed these files earlier.
-# BACK UP FIRST. `git rm --cached` stages a deletion: the file survives in THIS working
-# tree, but once that commit is merged, any other tree that pulls it — another branch,
-# another clone, another worktree — deletes the file, because from its side a tracked
-# file went away. That is how this repo lost its own profile.yml on 2026-09-09. Copy the
-# tracked state off-repo before untracking, so the canonical copy outlives the deletion.
-if [ -n "$(git -C "$PROJECT_ROOT" ls-files '.metate/' 2>/dev/null)" ]; then
-  STATE_SH="$SCRIPT_DIR/../metate/lib/state.sh"
-  if [ -f "$STATE_SH" ]; then
-    BACKUP="$( (cd "$PROJECT_ROOT" && bash "$STATE_SH" repo-dir) )/pre-untrack-backup"
-    mkdir -p "$BACKUP"
-    git -C "$PROJECT_ROOT" ls-files -z '.metate/' \
-      | xargs -0 -I{} cp "$PROJECT_ROOT/{}" "$BACKUP/" 2>/dev/null || true
-    echo "  ✓ backed up tracked .metate/ state → $BACKUP"
-  else
-    echo "  ⚠ state.sh not found — untracking .metate/ WITHOUT a backup" >&2
-  fi
+# The working-tree copies were already moved off-repo (and the tracked ones backed up)
+# at the top of this script; what is left here is the index entry and the ignore rule.
+if [ "$STATE_OK" -eq 1 ]; then
+  gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
+else
+  echo "  ⚠ left .metate/ tracked — no state.sh, so the pre-untrack backup was impossible" >&2
 fi
-gi_ignore_untrack '.metate/' 'metate state + config are local; stale state reads as current'
 # A vendored (`--project`) install is a version pin: it stays TRACKED, or it is not
 # a pin at all — a gitignored copy is invisible to teammates and reproducible by no
 # one, while still drifting from the user-level skills. Only leftovers from a
@@ -515,5 +533,5 @@ cat <<EOF
      fills reviewFocus (your invariants), backends, and the stage config with you.
   2. Run the pipeline ceremonies as skills in your harness, in order:
        metate-scope → metate-start → metate-build → metate-verify → metate-ship → metate-ship
-  3. metate-build round 0 writes .metate/session.json; rounds 1–3 resume it (see metate-build/IMPLEMENTERS.md).
+  3. metate-build round 0 writes <sprint>/session.json; rounds 1–3 resume it (see metate-build/IMPLEMENTERS.md).
 EOF

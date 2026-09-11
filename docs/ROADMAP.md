@@ -91,6 +91,13 @@ debt fires (see TECH-DEBT.md). Candidates when a later metate sprint IS warrante
 3. **Cold-intake triage + hotfix lane** — only if cold bug reports become a recurring need
    (trigger in TECH-DEBT.md).
 
+### Next-sprint pointers (written by the off-repo-state work, 2026-09-10)
+
+- **Wire the playbooks to off-repo state** — ADR-0003 phase 2 is half-landed: `lib/state.sh`
+  resolves and migrates, but nothing reads it. Implementation brief, with the path mapping,
+  the budget rule and four ordering gotchas: [`docs/WIRING-off-repo-state.md`](WIRING-off-repo-state.md).
+  Must land in ONE commit — a half-wired pipeline is split-brain.
+
 ### Next-sprint pointers (written by `review-aperture`, 2026-08-28)
 
 - **Intent context is a deferred sprint, not shipped.** Round-1 plan/ledger reading, plan-

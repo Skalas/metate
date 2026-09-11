@@ -7,7 +7,7 @@ description: |
   security · elegance) and route fixes back to the same session. One unanchored
   lens per round from round 2 on. Re-runs the fast gate each round; stops when
   0 blockers remain or after round 3. The implementer is the only writer.
-  Reads `.metate/profile.yml`.
+  Reads `$STATE/profile.yml`.
 license: MIT
 compatibility:
   - claude-code
@@ -44,14 +44,15 @@ modifies the review engine's own instruction files (lens prompts, prompt-clause,
 can subvert its own review; on a trusted repo treat such a diff as suspect, and never run
 review on an untrusted branch.
 
-The orchestrator may **`Write` only to `.metate/session.json`, `.metate/dod.json`,
-`.metate/signals.json`, and `start.techDebtFile`** (session in round 0; round ledger and captures
+The orchestrator may **`Write` only to `$SPRINT/session.json`, `$SPRINT/dod.json`,
+`$STATE/signals.json`, and `start.techDebtFile`** (session in round 0; round ledger and captures
 in §2b).
 
 ## Step 0 — load the project profile
 
-Read `.metate/profile.yml` from the repo root. If absent, STOP and tell the user to run
-the bootstrap (`bootstrap.sh`, shipped beside this skill). Keys:
+Run `eval "$(bash <metate-skill>/lib/state.sh env)"` for `$STATE`/`$SPRINT`, then read
+`$STATE/profile.yml`. If absent, STOP and tell the user to run the bootstrap
+(`bootstrap.sh`, shipped beside this skill). Keys:
 
 - `fastGate` — command run after each patch round (quick loop).
 - `shipGate` — full pre-PR gate (mirrors CI); informational here, enforced at Ship.
@@ -78,15 +79,14 @@ filled in sends three reviewers to enforce invariants belonging to some other pr
   there: a `shipGate` whose placeholder text says *fastGate* is a copy-paste frozen into the
   profile, and it is in the field today.
 
-State files are fixed paths, not config: the implement session is `.metate/session.json`; out-of-diff
-captures are appended to `.metate/signals.json` (create it if absent — **never drop a capture
-silently**; they are review's most valuable by-product and scope's only `captures` source).
+Out-of-diff captures are appended to `$STATE/signals.json` (create it if absent — **never drop a
+capture silently**; they are review's most valuable by-product and scope's only `captures` source).
 
 ## Round 0 — write (when this sprint has no session yet)
 
-Read `.metate/session.json`. Four cases:
+Read `$SPRINT/session.json`. Four cases:
 
-- **Present and `sprint` matches this sprint** (branch topic / `.metate/dod.json` → `sprint`)
+- **Present and `sprint` matches this sprint** (branch topic / `$SPRINT/dod.json` → `sprint`)
   → skip to rounds 1–3. Resume by **explicit** `sessionId` — never `--last` when the
   orchestrator shares a backend with reviewers. Empty or unsafe `"--last"` → 🛑 STOP.
 - **Present but `sprint` mismatches** → 🛑 STOP. Report both values; do not resume a prior
@@ -95,7 +95,7 @@ Read `.metate/session.json`. Four cases:
 - **Missing, and the branch has no commits past `base`** → this is round 0. Start the implementer per `IMPLEMENTERS.md` (long-running
   invocation; validate the id from the JSON envelope with `jq` before writing — UUID for
   cursor/codex/claude/grok, non-empty ref for claude-subagent). Write
-  `{ "implementer", "sessionId", "sprint", "model"? }` to `.metate/session.json`. `sprint` is
+  `{ "implementer", "sessionId", "sprint", "model"? }` to `$SPRINT/session.json`. `sprint` is
   **required**. Build in layers (domain → application → infrastructure → presentation). Run
   `fastGate`. Then continue to rounds 1–3.
 
@@ -201,13 +201,13 @@ Which buckets get auto-fixed is governed by `build.autoFix`:
 
 Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
 
-- **The round** → `.metate/dod.json` `rounds[]`: `{n, gate, failedLenses, findings[]}`, each
+- **The round** → `$SPRINT/dod.json` `rounds[]`: `{n, gate, failedLenses, findings[]}`, each
   finding carrying `disposition` (`fixed` · `declined` · `deferred` · `open`) and, when
   `declined`, a **`rationale`**. Open the entry here with `gate: "pending"`; §4 closes it with
   `pass`/`red`. **Re-read `dod.json` and preserve `sprint` and `rows[]`** — `Write` replaces the
   whole file and ship reads those rows. Then
-  `bash <metate-skill>/lib/dod.sh dod .metate/dod.json`.
-- **Out-of-diff bug** → `.metate/signals.json` per `metate-verify/signal.schema.json`.
+  `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"`.
+- **Out-of-diff bug** → `$STATE/signals.json` per `metate-verify/signal.schema.json`.
 - **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
 - If a sink path is blank, **report** the item in Output instead of writing.
 
@@ -216,7 +216,7 @@ Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
 Let **fixable** = findings in buckets selected by `build.autoFix`.
 
 If any fixable findings exist, resume the implementer per `IMPLEMENTERS.md` using the **explicit
-`sessionId`** from `.metate/session.json`. **No session (a cold takeover)** → start a fresh one
+`sessionId`** from `$SPRINT/session.json`. **No session (a cold takeover)** → start a fresh one
 and write `session.json`; the branch and `rounds[]` carry the context the handle would have. The
 prompt:
 - lists only fixable findings by `file:line` + fix intent;

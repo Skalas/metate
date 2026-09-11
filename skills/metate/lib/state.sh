@@ -7,7 +7,9 @@
 #   state.sh key                 print <repo-key>
 #   state.sh repo-dir            print (and create) the repo-scoped dir
 #   state.sh sprint-dir          print (and create) the dir for THIS worktree's sprint
+#   state.sh env                 shell exports: $STATE (repo-scoped) and $SPRINT (this sprint)
 #   state.sh where               human-readable summary — state is invisible to `git status`
+#   state.sh claim-plan          move the pending plan into THIS sprint (after the branch cut)
 #   state.sh migrate [root]      move a legacy in-repo .metate/ into the new layout
 #
 # Two keys, because they answer different questions:
@@ -65,11 +67,23 @@ repo_dir() { local d; d="$ROOT_DIR/repos/$(repo_key)"; mkdir -p "$d"; printf '%s
 sprint_dir() { local d; d="$(repo_dir)/sprints/$(sprint_key)"; mkdir -p "$d"; printf '%s' "$d"; }
 
 # Files that belong to ONE sprint; everything else under .metate/ is repo-scoped.
+# plan.md is here for MIGRATION only: a legacy in-repo plan is the current branch's.
+# A newly scoped plan is different — it is pending, repo-scoped, until claim_plan.
 is_sprint_file() {
   case "$1" in
     plan.md|dod.json|session.json|release.json|.session-start.json) return 0 ;;
+    issues.json|smoke-matrix.json) return 0 ;;   # legacy per-sprint ledgers dod.sh folds in
     *) return 1 ;;
   esac
+}
+
+# One eval in a playbook's Step 0 gives it both dirs. Deliberately short names:
+# `$STATE/profile.yml` and `$SPRINT/dod.json` are no longer than the `.metate/`
+# literals they replace, so playbook prose does not grow to gain off-repo state.
+env_exports() {
+  printf 'STATE=%q\n' "$(repo_dir)"
+  printf 'SPRINT=%q\n' "$(sprint_dir)"
+  printf 'export STATE SPRINT\n'
 }
 
 where() {
@@ -81,6 +95,18 @@ where() {
   echo "sprint dir  $sd"
   echo "sprint files $(find "$sd" -maxdepth 1 -type f -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')"
   echo "repo files   $(find "$rd" -maxdepth 1 -type f -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')"
+}
+
+# `metate-scope` runs on the BASE branch, so the plan it writes cannot be sprint-scoped
+# yet — a plan belongs to no sprint until one exists. It is written to $STATE/plan.md
+# and claimed here, by `metate-start`, immediately after the branch is cut.
+claim_plan() {
+  local sd pending
+  sd="$(sprint_dir)"; pending="$(repo_dir)/plan.md"
+  if [ -f "$sd/plan.md" ]; then echo "  ✓ this sprint already owns a plan"; return 0; fi
+  [ -f "$pending" ] || die "no pending plan at $pending — run metate-scope first"
+  mv "$pending" "$sd/plan.md"
+  echo "  ✓ claimed the pending plan → $sd/plan.md"
 }
 
 # Move a legacy in-repo .metate/ into the new layout. Never clobbers: an existing
@@ -113,7 +139,9 @@ case "${1:-}" in
   key)        repo_key; echo ;;
   repo-dir)   repo_dir; echo ;;
   sprint-dir) sprint_dir; echo ;;
+  env)        env_exports ;;
+  claim-plan) claim_plan ;;
   where)      where ;;
   migrate)    shift; migrate "${1:-}" ;;
-  *) die "usage: state.sh {key|repo-dir|sprint-dir|where|migrate [root]}" ;;
+  *) die "usage: state.sh {key|repo-dir|sprint-dir|env|where|claim-plan|migrate [root]}" ;;
 esac
