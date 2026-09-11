@@ -8,6 +8,43 @@ FIX="$ROOT/tests/contracts/fixtures"
 die() { echo "  ✗ contracts: $*" >&2; exit 1; }
 ok() { echo "  ✓ $*"; }
 
+# --- Doc-as-Code: contracts and their documentation ship in the same diff ---
+# Compare the merge base to the tracked working tree (committed + index + unstaged).
+# Disable rename detection so moving a contract away still counts as a deletion.
+validate_doc_as_code() {
+  local repo="$1" base="$2" ancestor paths path contract=0 docs=0
+  ancestor="$(git -C "$repo" merge-base "$base" HEAD)" || return 1
+  paths="$(mktemp)" || return 1
+  if ! git -C "$repo" diff --no-renames --name-only -z "$ancestor" -- > "$paths"; then
+    rm -f "$paths"
+    return 1
+  fi
+  while IFS= read -r -d '' path; do
+    case "$path" in
+      *.schema.json|profile.template.yml|*/profile.template.yml|sources/*|skills/metate/lib/*)
+        contract=1 ;;
+    esac
+  done < "$paths"
+  # A deleted doc cannot satisfy the invariant; untracked docs must be staged first.
+  if ! git -C "$repo" diff --no-renames --diff-filter=AMT --name-only -z "$ancestor" -- > "$paths"; then
+    rm -f "$paths"
+    return 1
+  fi
+  while IFS= read -r -d '' path; do
+    case "$path" in docs/*|README.md) docs=1 ;; esac
+  done < "$paths"
+  rm -f "$paths"
+  if [ "$contract" -eq 1 ] && [ "$docs" -eq 0 ]; then
+    echo "Doc-as-Code: contract/schema changes require an update in docs/ or README.md (stage new docs)." >&2
+    return 1
+  fi
+}
+
+# Supply the actual PR target when it differs from main. Fail closed on missing refs.
+DOC_BASE="${METATE_DOC_BASE:-${GITHUB_BASE_REF:-main}}"
+validate_doc_as_code "$ROOT" "$DOC_BASE" || die "Doc-as-Code failed against $DOC_BASE"
+ok "Doc-as-Code ($DOC_BASE merge base through tracked working tree)"
+
 # --- structural ordering: prep cuts the branch before seeding the tracked ledger ---
 # Anchored on ORDER, not wording. Phrase greps were deleted deliberately: a probe that gutted
 # four playbooks to frontmatter + five magic tokens passed all of them green, so they reported
@@ -133,6 +170,49 @@ st_repo() {  # $1 = dir, $2 = origin url (empty for none)
   [ -n "${2:-}" ] && git -C "$1" remote add origin "$2"
   git -C "$1" -c user.email=a@b -c user.name=a commit -q --allow-empty -m init
 }
+# Exercise the real git diff check, including committed, staged and unstaged edits.
+st_repo "$ST_TMP/doc-code" ""
+DC="$ST_TMP/doc-code"
+mkdir -p "$DC/docs" "$DC/sources" "$DC/skills/metate/lib" "$DC/skills/metate-build"
+for path in sample.schema.json skills/metate-build/profile.template.yml sources/prompt.md skills/metate/lib/check.sh docs/contract.md README.md ordinary.txt; do
+  echo original > "$DC/$path"
+done
+git -C "$DC" add .
+git -C "$DC" -c user.email=a@b -c user.name=a commit -qm fixtures
+git -C "$DC" branch doc-base
+validate_doc_as_code "$DC" doc-base || die "unchanged tree should pass"
+echo changed >> "$DC/ordinary.txt"
+validate_doc_as_code "$DC" doc-base || die "non-contract changes should pass"
+for path in sample.schema.json skills/metate-build/profile.template.yml sources/prompt.md skills/metate/lib/check.sh; do
+  git -C "$DC" reset --hard -q doc-base
+  echo changed >> "$DC/$path"
+  if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "$path without docs should fail"; fi
+  echo updated >> "$DC/docs/contract.md"
+  validate_doc_as_code "$DC" doc-base || die "$path with docs should pass"
+done
+git -C "$DC" reset --hard -q doc-base
+echo changed >> "$DC/sample.schema.json"
+git -C "$DC" add sample.schema.json
+if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "staged schema without docs should fail"; fi
+git -C "$DC" -c user.email=a@b -c user.name=a commit -qm schema
+if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "committed schema without docs should fail"; fi
+rm "$DC/docs/contract.md"
+if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "deleted docs should not satisfy gate"; fi
+echo updated >> "$DC/README.md"
+validate_doc_as_code "$DC" doc-base || die "README update should satisfy gate"
+git -C "$DC" add .
+git -C "$DC" -c user.email=a@b -c user.name=a commit -qm docs
+validate_doc_as_code "$DC" doc-base || die "committed schema with docs should pass"
+git -C "$DC" reset --hard -q doc-base
+git -C "$DC" mv sample.schema.json ordinary.json
+if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "renamed-away schema should fail without docs"; fi
+echo new > "$DC/docs/new.md"
+if validate_doc_as_code "$DC" doc-base 2>/dev/null; then die "untracked docs should not satisfy gate"; fi
+git -C "$DC" add docs/new.md
+validate_doc_as_code "$DC" doc-base || die "staged new docs should satisfy gate"
+if validate_doc_as_code "$DC" missing-ref 2>/dev/null; then die "missing base should fail closed"; fi
+ok "Doc-as-Code fixtures (contract paths, diff states, README, deletion, rename, new docs)"
+
 st_repo "$ST_TMP/ssh"   "git@github.com:Skalas/metate.git"
 st_repo "$ST_TMP/https" "https://github.com/Skalas/metate.git"
 [ "$(cd "$ST_TMP/ssh" && bash "$STATE" key)" = "$(cd "$ST_TMP/https" && bash "$STATE" key)" ] \

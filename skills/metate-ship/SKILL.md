@@ -91,6 +91,10 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
 ## Guardrails
 - Confirm before commit / push / PR / merge / tag.
 - Never squash-merge.
+- **Doc-as-Code invariant:** changes to `*.schema.json`, `profile.template.yml`, `sources/`,
+  or `skills/metate/lib/` require a corresponding update in `docs/` or `README.md`.
+  In metate, run `METATE_DOC_BASE=<pr-target-ref> bash tests/contracts/validate.sh`;
+  the gate checks the merge-base diff through tracked working edits. Stage new docs first.
 - Gate red → 🛑 **shipGate is green** — never push past it.
 - Open required gates block ship — hand off to `metate-verify`. Write is for deliverables only.
 - Never tag without a fresh yes. Never force-push tags. Never tag `HEAD` after pull — tag

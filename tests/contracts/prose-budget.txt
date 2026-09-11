@@ -18,7 +18,8 @@
 # construction. Ordering, not prose: without them scope's plan lands in sprints/<base branch>.
 skills/metate-start/SKILL.md 75
 skills/metate-verify/SKILL.md 74
-skills/metate-ship/SKILL.md 97
+# Issue #125: +4 lines to specify the enforced Doc-as-Code invariant and base-ref command.
+skills/metate-ship/SKILL.md 101
 skills/metate/SKILL.md 201
 skills/metate-build/SKILL.md 281
 skills/metate-scope/SKILL.md 303
