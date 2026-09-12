@@ -140,7 +140,7 @@ KEYS
       echo "  ⚠ python3 not found — skipped ADR-0001 profile migration (nest/rename). Install python3 and re-run: metate-init --update" >&2
     else
     # ADR-0001 move 2a: nest top-level reviewer:/review: under build:. Values unchanged.
-    if nest_out="$(python3 - "$PROFILE" <<'PY'
+    if nest_out=$(python3 - "$PROFILE" <<'PY'
 import re, sys
 path = sys.argv[1]
 text = open(path).read()
@@ -207,11 +207,11 @@ out[insert_at:insert_at] = header + body
 open(path, "w").write("".join(out))
 print("nested")
 PY
-)"; then
+    ); then
       [ "$nest_out" = nested ] && echo "  ✓ nested reviewer:/review: under build: (ADR-0001 move 2a)"
     fi
     # ADR-0001 move 2b: rename stage blocks; fold aftercare children under ship.
-    if rename_out="$(python3 - "$PROFILE" <<'PY'
+    if rename_out=$(python3 - "$PROFILE" <<'PY'
 import re, sys
 path = sys.argv[1]
 lines = open(path).read().splitlines(keepends=True)
@@ -278,10 +278,10 @@ if notes:
     open(path, "w").write("".join(lines))
     print(" ".join(notes))
 PY
-)"; then
+    ); then
       [ -n "$rename_out" ] && echo "  ✓ renamed profile blocks ($rename_out) (ADR-0001 move 2b)"
     fi
-    if flat_out="$(python3 - "$PROFILE" <<'PY'
+    if flat_out=$(python3 - "$PROFILE" <<'PY'
 import re, sys
 path = sys.argv[1]
 text = open(path).read()
@@ -290,7 +290,7 @@ if n:
     open(path, "w").write(new)
     print("flattened")
 PY
-)"; then
+    ); then
       [ "$flat_out" = flattened ] && echo "  ✓ flattened build.review.autoFix → build.autoFix (ADR-0001 move 3)"
     fi
     dod_sh="$SCRIPT_DIR/../metate/lib/dod.sh"
@@ -494,8 +494,8 @@ if [ "$IMPL_AUTONOMOUS" = "true" ] && [ -n "$RULE" ]; then
   SETTINGS_DIR="$PROJECT_ROOT/.claude"
   SETTINGS="$SETTINGS_DIR/settings.local.json"
   # Already granted in either the committed or the personal settings file? Done.
-  if { [ -f "$SETTINGS_DIR/settings.json" ] && grep -qF "$RULE" "$SETTINGS_DIR/settings.json"; } \
-     || { [ -f "$SETTINGS" ] && grep -qF "$RULE" "$SETTINGS"; }; then
+  if ( [ -f "$SETTINGS_DIR/settings.json" ] && grep -qF "$RULE" "$SETTINGS_DIR/settings.json" ) \
+     || ( [ -f "$SETTINGS" ] && grep -qF "$RULE" "$SETTINGS" ); then
     echo "  ✓ autonomous: $RULE already whitelisted — left untouched"
   elif [ ! -f "$SETTINGS" ]; then
     mkdir -p "$SETTINGS_DIR"
@@ -519,9 +519,9 @@ JSON
     echo "    add this rule under permissions.allow yourself: $RULE" >&2
   fi
   # settings.local.json is personal/per-developer — never commit it.
-  if ! { [ -f "$GI" ] && grep -qxF '.claude/settings.local.json' "$GI"; }; then
-    { echo "# metate autonomous implementer permission (personal, per-developer)"
-      echo ".claude/settings.local.json"; } >> "$GI"
+  if [ ! -f "$GI" ] || ! grep -qxF '.claude/settings.local.json' "$GI"; then
+    echo "# metate autonomous implementer permission (personal, per-developer)" >> "$GI"
+    echo ".claude/settings.local.json" >> "$GI"
     echo "  ✓ added .claude/settings.local.json to .gitignore"
   fi
 fi

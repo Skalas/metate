@@ -169,3 +169,23 @@ re-indexes between rounds. Set `enabled: false` to opt out.
 ## License
 
 MIT
+
+## Doc-as-Code gate
+
+`make verify` requires contract changes (`*.schema.json`, `profile.template.yml`,
+`sources/`, or `skills/metate/lib/`) to include a corresponding documentation update
+under `docs/` or in the root `README.md`. Deleted documentation does not count;
+stage new documentation before running the gate. The check enforces co-change;
+reviewers must still verify that the documentation describes the changed contract.
+
+The diff runs from the merge base of the PR target and `HEAD` through the tracked
+working tree, including committed, staged, and unstaged changes. The target is
+`METATE_DOC_BASE`, else CI's `GITHUB_BASE_REF`, else `main`.
+
+A plain branch name resolves to `origin/<branch>` when that remote-tracking ref
+exists, because the PR merges into the remote target and a same-named local branch
+may be stale — this is also the only form an Actions checkout carries. `HEAD`, a
+commit sha, and any revision expression are used verbatim. Fetch the target and
+enough history to resolve its merge base first; an unresolvable base fails the gate.
+On `main`, set `METATE_DOC_BASE` to the pre-change commit to validate an already
+merged change.
