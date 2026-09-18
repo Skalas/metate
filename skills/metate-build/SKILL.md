@@ -208,7 +208,7 @@ Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
   whole file and ship reads those rows. Then
   `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"`.
 - **Out-of-diff bug** → `$STATE/signals.json` per `metate-verify/signal.schema.json`.
-- **Deferred want** (DESIGN or declined warning) → `start.techDebtFile` in trigger-gated format.
+- **Every suggestion** (DESIGN) and every declined warning → `start.techDebtFile`, trigger-gated.
 - If a sink path is blank, **report** the item in Output instead of writing.
 
 ### 3. Patch via the implementer (resume same session)
@@ -267,11 +267,11 @@ Mirror the verdict and its reason to the user verbatim.
 
 ## Output
 
-Reporting is **unconditional** — every finding surfaces regardless of `autoFix` — and **ranked**:
-within each bucket, most severe first. Per round: findings by bucket (routed vs report-only vs
-captured per §2b), systemic findings with their site lists, implementer declines, gate result, any
-failed lenses, and — from round 2 on — that elegance ran unanchored. End with the verdict and
-uncaptured survivors. Hand off to `metate-verify`.
+Nothing is hidden by `autoFix`, but suggestions do **not** surface per round — they go to the
+§2b sink and are listed **once**, at the verdict. Per round, most severe first: blockers and
+warnings (routed vs report-only), systemic findings with site lists, implementer declines, gate
+result, any failed lenses, the suggestion count, and — round 2 on — that elegance ran unanchored.
+End with the verdict, the suggestions, and uncaptured survivors. Hand off to `metate-verify`.
 
 ## Guardrails
 

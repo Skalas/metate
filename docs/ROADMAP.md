@@ -8,6 +8,21 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`review-present-tense` (2026-09-17)** — Two follow-ups to `review-materiality`, after the
+  operator's objection that the cap forces *a* selection but not a *good* one, and that more
+  machinery to read is itself the problem. (1) A **present-tense test** in the shared materiality
+  bar, run in both directions: *what problem that exists today does this solve?* — "nothing, it is
+  just in case" marks overengineering in the code **and** bikeshedding in the reviewer's own
+  finding. Overengineering is complexity paid now for a speculative benefit; the tell is tense,
+  not size. (2) **Suggestions no longer surface per round** — they go straight to the
+  `techDebtFile` sink and are listed once, at the verdict. They never gated anything, so
+  reprinting them each round bought nothing and spent the operator's attention three times per
+  sprint. **Rejected:** feeding the cross-sprint decline ledger back into reviewer prompts. A
+  decline at round 3 of a long sprint records fatigue, not judgment, and realimenting it launders
+  fatigue into doctrine — self-reinforcing and unfalsifiable, because the reviewer then stops
+  producing the findings that would test it. **Next cut if the noise persists:** turn the elegance
+  lens off by default rather than tuning it further. `metate-build/SKILL.md` stayed at 281 lines.
+
 - **`review-materiality` (2026-09-17)** — Review gains a floor and a budget, not a wider
   aperture. The lenses enumerated what to look for and never what to skip, so the reviewers
   complied: unbounded naming/DRY findings at the same visual weight as real bugs. Four changes,
