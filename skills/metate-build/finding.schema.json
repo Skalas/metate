@@ -11,7 +11,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["file", "line", "bucket", "summary", "rationale"],
+        "required": ["file", "line", "bucket", "summary", "consequence", "rationale"],
         "properties": {
           "file": {
             "type": "string",
@@ -30,9 +30,13 @@
             "type": "string",
             "description": "One-sentence statement of the defect."
           },
+          "consequence": {
+            "type": "string",
+            "description": "What concretely goes wrong if this is not fixed: the failing input or state, the exploit path, or the maintenance cost already being paid (name the sites). A finding with no statable consequence is not a finding — do not report it."
+          },
           "rationale": {
             "type": "string",
-            "description": "Why it is real and why it lands in this bucket; concrete failing input/state where applicable."
+            "description": "Why it is real and why it lands in this bucket; cite the evidence you relied on (code path, graph query, violated invariant)."
           }
         }
       }
