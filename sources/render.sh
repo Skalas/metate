@@ -103,10 +103,15 @@ render_reviewer_agent() {
     echo ""
     echo "$when_invoked"
     echo ""
+    cat "$SRC/reviewers/materiality.md"
+    echo ""
     cat "$SRC/reviewers/$lens.md"
   } > "$OUT_AGENTS/$agent_file"
 
-  printf '%s\n' "$codex_line" > "$OUT_GEN/lens-prompts/$lens.txt"
+  {
+    printf "%s\n\n" "$codex_line"
+    cat "$SRC/reviewers/materiality.md"
+  } > "$OUT_GEN/lens-prompts/$lens.txt"
 }
 
 [ -f "$MANIFEST" ] || die "missing $MANIFEST"

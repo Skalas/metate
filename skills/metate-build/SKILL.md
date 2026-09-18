@@ -267,11 +267,11 @@ Mirror the verdict and its reason to the user verbatim.
 
 ## Output
 
-Reporting is **unconditional** — every finding surfaces regardless of `autoFix`.
-Per round: findings by bucket (routed vs report-only vs captured per §2b), systemic findings with
-their site lists, implementer declines, gate result, any failed lenses, and — from round 2 on —
-that elegance ran unanchored. End with the verdict and uncaptured survivors. Hand off to
-`metate-verify`.
+Reporting is **unconditional** — every finding surfaces regardless of `autoFix` — and **ranked**:
+within each bucket, most severe first. Per round: findings by bucket (routed vs report-only vs
+captured per §2b), systemic findings with their site lists, implementer declines, gate result, any
+failed lenses, and — from round 2 on — that elegance ran unanchored. End with the verdict and
+uncaptured survivors. Hand off to `metate-verify`.
 
 ## Guardrails
 

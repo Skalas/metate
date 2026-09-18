@@ -1,5 +1,3 @@
-Lens: ELEGANCE/DESIGN. Report needless complexity first (abstraction with one implementation, indirection that removes no decision), then layering violations, then duplication of the same decision at 3+ sites. Never propose a new abstraction for fewer than 3 call sites. Informational — bucket as suggestion.
-
 ## Materiality bar (apply before reporting anything)
 
 Every finding must name a **consequence**: the input or state that breaks, the exploit path, or

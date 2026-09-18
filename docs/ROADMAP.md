@@ -8,6 +8,20 @@ history and PR bodies (pruned 2026-07-03, `polish-bootstrap`).
 
 ## Done
 
+- **`review-materiality` (2026-09-17)** — Review gains a floor and a budget, not a wider
+  aperture. The lenses enumerated what to look for and never what to skip, so the reviewers
+  complied: unbounded naming/DRY findings at the same visual weight as real bugs. Four changes,
+  all in `sources/` plus the schema: (1) a shared **materiality bar** rendered into every lens —
+  an explicit do-not-report list (naming, formatting, "extract this" under 3 call sites,
+  speculative requirements, conventions the diff merely follows); (2) a **per-lens cap** — 5
+  blocker/warning, 3 suggestions, most severe first, dropped count declared — because a cap is
+  what forces a reviewer to prioritize; (3) **`consequence` is a required schema field**, so a
+  finding with no statable failure cannot round-trip `--output-schema` at all — the only
+  mechanical enforcement this engine has; (4) the elegance lens **reordered toward subtraction**:
+  needless complexity first, duplication only at 3+ sites of the same *decision*, and no new
+  abstraction proposed for fewer than 3 call sites. Round reports are now ranked within bucket.
+  `metate-build/SKILL.md` stayed at 281 lines.
+
 - **`grok-backend` (2026-09-04, PR #116)** — Grok is a verified implementer and reviewer
   adapter: `grok -p "<prompt>"` (prompt is the next argv), `--resume` + `.sessionId`,
   `--json-schema` inline → `.structuredOutput`, `--yolo` when autonomous. When Grok is the
