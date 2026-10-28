@@ -403,8 +403,8 @@ check_branch() {  # $1 branch, $2 sha being pushed
 status=0 seen=0
 while read -r local_ref local_sha remote_ref _remote_sha; do
   [ -n "${local_ref:-}" ] || continue
+  seen=1    # before the deletion skip: a delete-only push must not fall back to checking HEAD
   case "$local_sha" in *[!0]*) ;; *) continue ;; esac       # all zeros: a deletion
-  seen=1
   # Gate both ends: the branch the commit comes from AND the branch it lands on, so
   # `git push origin main:feat/sprint` or `HEAD:feat/sprint` cannot dodge a sprint's ledger.
   src="" dest=""

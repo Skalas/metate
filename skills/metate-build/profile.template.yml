@@ -111,3 +111,5 @@ ship:
   prTarget: main
   commitStyle: "conventional, bisectable, one per layer"
   issueCloseKeyword: "Closes"
+  autoMerge: false         # true = wait for CI green and merge automatically (--merge, never --squash)
+  chainSprints: false      # true = after merge, automatically advance to the next approved sprint / pending pillar invariant without pausing

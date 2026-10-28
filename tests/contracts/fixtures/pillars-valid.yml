@@ -1,0 +1,37 @@
+# Milestone pillars — long-term horizons and the exit invariants that close them.
+pillars:
+  - id: M1
+    title: "M1: Foundations"   # shipped
+    horizon: 2026-Q3
+    status: completed
+    exit_invariants:
+      - id: M1-I1
+        description: Receipts gate every push
+        status: verified
+  - id: M2
+    title: 'M2: Autonomous ship (#867)'
+    horizon: 2026-Q4
+    status: active
+    description: >
+      Merge on green CI and chain the
+      next sprint without a pause.
+    exit_invariants:
+      - id: M2-I1
+        description: "ship.sh merges with \"--merge\" only"
+        status: verified
+      - id: M2-I2
+        description: >
+          Chaining reaches metate-scope
+          with a quoted 'value' and a #hash
+        status: pending # still open
+      - id: M2-I3
+        description: 'It''s idempotent'
+        status: "pending"
+  - id: M3
+    title: M3 Observability # next
+    horizon: 2027-Q1
+    status: planned
+    exit_invariants:
+      - id: M3-I1
+        description: Traces cover every ceremony
+        status: pending

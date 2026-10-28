@@ -85,6 +85,40 @@ A triple audit found four gaps:
   `~/.hermes/skills` exists, removing the legacy `metate-orchestrator` / `loop-engineering`
   copies; `make drift` checks that root too.
 
+- **`ship.sh`** (2026-10-28) carries the receipt through to the merge:
+  - `wait-and-merge PR [BASE] [--poll-interval S] [--timeout S]` runs only on a clean tree whose
+    `HEAD` is the PR's `headRefOid` and whose receipt passes. It then polls the PR's
+    `statusCheckRollup`: a CheckRun counts as green on `SUCCESS|NEUTRAL|SKIPPED`, a StatusContext
+    on `SUCCESS`, and anything else that has finished is a failure (exit 1, with check names and
+    URLs). When the repo has `.github/workflows/*`, it waits up to 60 s for CheckRuns to
+    register. That way a fast external StatusContext cannot merge the PR before Actions has
+    reported anything. After the 60 s it asks `gh run list --commit`, and with no runs at all it
+    fails closed (`METATE_ALLOW_NO_CHECKS=1` overrides). A head that moves during polling, or a
+    `DIRTY|BEHIND|DRAFT` merge state, aborts; a timeout exits 2. The merge is always
+    `gh pr merge --merge --match-head-commit <oid>`, never squash and never `--delete-branch`.
+    The remote branch is deleted only after GitHub reports `MERGED`, never for a cross-repository
+    (fork) PR, and only with `--force-with-lease` at the merged head, so a branch that moved stays. Session files are then
+    retired and the checkout returns to base. A linked worktree whose base branch is checked
+    out elsewhere detaches at `origin/<base>` instead of switching. Re-running on a merged PR
+    only redoes the cleanup.
+  - `next-in-pillar [FILE]` reads `docs/pillars.yml`, where indentation defines the structure:
+    `  - id:` pillars with `title`/`horizon`/`status`/`description` and `      - id:`
+    `exit_invariants` with `description`/`status`. Quotes are stripped before comments, so
+    `'M2 (#867)'` keeps its `(#867)`, and `>`/`|` blocks are folded. Values travel as TSV into
+    `jq -R`, so quoting cannot break the JSON. It reports the active pillar (falling back to the
+    first planned one) with its pending invariants and progress, the completed pillars and the
+    next planned one, and `milestoneReadyToClose` — true only when the active pillar has
+    invariants and all are `verified`. A pillar status outside `active|planned|completed`, an
+    invariant status outside `pending|verified`, or a non-empty file that parses to no pillars (or
+    to a pillar with no invariants — usually mis-indentation) fails closed.
+  - Profile `ship.autoMerge` routes metate-ship's merge step through `wait-and-merge` without
+    asking first. `ship.chainSprints` lets ship continue into scope → start for the next pending
+    invariant, lets scope select it without the human's pick, and lets start file issues
+    without confirming. Both default to `false`.
+- **pre-push deletions**: the hook now marks a ref line as seen before skipping a deletion, so
+  `git push origin --delete <branch>` no longer falls through to the no-ref-lines fallback (which
+  certified, and could block on, an unrelated current branch).
+
 ## Consequences
 
 - Close-out docs written after the final round do not void the receipt; any code change does.
@@ -92,3 +126,6 @@ A triple audit found four gaps:
   decline, so the decline reason is always the stored one.
 - The hook depends on the installed skill path; if it disappears the hook warns and allows the
   push (re-run `metate-init`).
+- `ship.autoMerge` and `ship.chainSprints` trade the human's merge and pick gates for the receipt
+  plus CI. Leave them `false` unless the receipt, the shipGate and CI together are trusted to
+  stand in for that review.

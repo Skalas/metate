@@ -1,5 +1,5 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh skills/metate/lib/dod.sh skills/metate/lib/round.sh
+SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh skills/metate/lib/dod.sh skills/metate/lib/round.sh skills/metate/lib/ship.sh
 RENDER_SCRIPT := sources/render.sh
 BUDGET := tests/contracts/prose-budget.txt
 RENDERED := skills/metate-build/cursor-rule.mdc \

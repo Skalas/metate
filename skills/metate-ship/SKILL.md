@@ -22,14 +22,15 @@ allowed-tools:
 # metate-ship — land it
 
 Last ceremony. Only after verify is green. **Push/PR/merge/tag only when the user
-explicitly says so.** Docs → optional release proposal → gate → PR → merge → tag →
+explicitly says so** — or `ship.autoMerge: true` pre-authorizes the merge. Docs → optional release proposal → gate → PR → merge → tag →
 base branch. There is no `release.json`. A deferred merge re-runs steps 5–9; step 9
 recomputes from tags + the shipped diff.
 
 ## Step 0 — load the profile
 Run `eval "$(bash <metate-skill>/lib/state.sh env)"`, then read `$STATE/profile.yml` →
 `shipGate`, `ship.deliverables`, `ship.postCommand`, `ship.prTarget`, `ship.commitStyle`,
-`ship.issueCloseKeyword`, optional `verify.humanGates` (`required`), optional `ship.release`.
+`ship.issueCloseKeyword`, `ship.autoMerge`, `ship.chainSprints`, optional `verify.humanGates`
+(`required`), optional `ship.release`.
 Fixed paths: `$SPRINT/dod.json`, `$SPRINT/session.json` (retired after the PR is open),
 `$STATE/human-gates.json` — ship does not write dispositions. Sprint id = `dod.json` → `sprint`.
 
@@ -44,7 +45,9 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
 1. **Diff** — `git diff <baseBranch>...HEAD`.
 2. **Update `ship.deliverables`** — handoff, coverage, roadmap, tech-debt *with a trigger*,
    next-sprint pointers. Surface open `scope: engine` signals. Name `deferred` gates so
-   the next `metate-scope` resurfaces them.
+   the next `metate-scope` resurfaces them. When `docs/pillars.yml` is a deliverable, flip each
+   satisfied `exit_invariants` entry to `status: verified`; if that verifies the `active`
+   pillar's last one, mark it `completed` and the next `planned` one `active` — same commit.
 3. **Release proposal** (when `ship.release.enabled`) — fetch tags, latest exact semver,
    propose patch|minor|major from THIS diff, **stop for the human**. Name the tag in the
    handoff. Skip on unversioned repos. Version-file bumps belong to Build.
@@ -64,10 +67,14 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
    (not ranges). `cut` rows are named as out of scope — never a close line. No dod.json
    (start skipped filing) → fall back to issues referenced on the branch. Confirm
    auto-close wiring. If a tag class was approved before the gate, name it (informational).
-5. **Merge — on explicit human approval only.** `gh pr merge <N> --merge` (or `--rebase`;
-   **never `--squash`**). Capture `gh pr view <N> --json mergeCommit -q .mergeCommit.oid`.
+5. **Merge.** `ship.autoMerge: true` → `bash <metate-skill>/lib/ship.sh wait-and-merge <N>
+   <ship.prTarget>`: polls CI, merges `--merge --match-head-commit`, does steps 7–8, prints the
+   merge OID (exit 1 = red/precondition, 2 = timeout; re-run is idempotent). Otherwise **on
+   explicit human approval only**: `gh pr merge <N> --merge` (or `--rebase`; **never
+   `--squash`**); capture `gh pr view <N> --json mergeCommit -q .mergeCommit.oid`.
    If the user defers, stop after step 7; re-run steps 5–9 once it merges.
-6. **Close the milestone** if the sprint uses one.
+6. **Close the milestone** if the sprint uses one — run `bash <metate-skill>/lib/ship.sh
+   next-in-pillar`; close only when its `exit_invariants` are all `verified` and it has 0 open issues.
 7. **Retire sprint-local state** — delete `$SPRINT/session.json` and `$SPRINT/.session-start.json`
    if present, even if merge was deferred (a later review round re-runs Build fresh).
 8. **Return to base** after merge:
@@ -87,9 +94,11 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
    `githubRelease`: `gh release view` exists → done; else
    `gh release create "$tag" --verify-tag --generate-notes`. Tag-push success + release
    failure → re-run step 9, do not re-create a correct tag.
+10. **Chain** — `ship.chainSprints: true` and `next-in-pillar` lists `pendingInvariants` → go
+    straight to `metate-scope`, then `metate-start`, for the next sprint. Else stop here.
 
 ## Guardrails
-- Confirm before commit / push / PR / merge / tag.
+- Confirm before commit / push / PR / merge / tag (merge: unless `ship.autoMerge`).
 - Never squash-merge.
 - **Doc-as-Code invariant:** changes to `*.schema.json`, `profile.template.yml`, `sources/`,
   or `skills/metate/lib/` require a corresponding update in `docs/` or `README.md`.

@@ -631,6 +631,15 @@ rt_hook() { (cd "$RT" && .git/hooks/pre-push pushto "$ST_TMP/remote.git" </dev/n
 rt_hook || die "pre-push: with no ref lines it should certify the current branch"
 echo 'echo unreviewed' >> "$RT/src/app.sh"; rt_commit unreviewed
 rt_hook && die "pre-push: with no ref lines it must still check HEAD" || true
+# A delete-only push carries ref lines: it must not fall back to certifying the (unreviewed) HEAD.
+rt_git branch -q doomed main
+rt_push doomed || die "pre-push: a ledger-less branch should push"
+HOME="$RT_HOME" git -C "$RT" push -q pushto --delete doomed >/dev/null 2>&1 \
+  || die "pre-push: deleting a branch must not fall back to checking HEAD"
+rt_push doomed || die "pre-push: re-pushing doomed failed"
+HOME="$RT_HOME" git -C "$RT" push -q pushto :refs/heads/doomed >/dev/null 2>&1 \
+  || die "pre-push: a :refs/heads/ deletion must not fall back to checking HEAD"
+rt_git branch -q -D doomed
 # Restore the reviewed code in the worktree only: the receipt would match, the pushed HEAD not.
 rt_git show HEAD~1:src/app.sh > "$RT/src/app.sh"
 rt_push feat/receipt && die "pre-push: uncommitted code hiding an unreviewed commit must be blocked" || true
@@ -699,3 +708,186 @@ receipt_fails_with "$D" "code tree drifted after final review round"
 rt_git reset -q --hard HEAD~1
 ok "dod.sh receipt survives a clean rebase (patchId: forward-only base, whitespace-exact, context-anchored)"
 unset METATE_STATE_ROOT
+
+# --- ship.sh next-in-pillar: indentation-anchored pillars.yml, fail-closed statuses ------------
+SHIP="$ROOT/skills/metate/lib/ship.sh"
+pj="$(bash "$SHIP" next-in-pillar "$FIX/pillars-valid.yml")" || die "next-in-pillar: valid fixture failed"
+pq() { jq -c "$1" <<<"$pj"; }
+[ "$(pq '.activePillar | [.id, .title, .verifiedCount, .totalCount]')" = '["M2","M2: Autonomous ship (#867)",1,3]' ] \
+  || die "next-in-pillar: active pillar wrong: $(pq .activePillar)"
+[ "$(pq '[.activePillar.pendingInvariants[].id]')" = '["M2-I2","M2-I3"]' ] || die "next-in-pillar: pending invariants wrong"
+[ "$(pq '.activePillar.pendingInvariants[0].description')" \
+  = '"Chaining reaches metate-scope with a quoted '"'"'value'"'"' and a #hash"' ] \
+  || die "next-in-pillar: folded description wrong: $(pq '.activePillar.pendingInvariants[0]')"
+[ "$(pq '.activePillar.pendingInvariants[1].description')" = '"It'"'"'s idempotent"' ] \
+  || die "next-in-pillar: single-quote escape wrong"
+[ "$(pq '[.completedPillars, .nextPlannedPillar]')" \
+  = '[[{"id":"M1","title":"M1: Foundations"}],{"id":"M3","title":"M3 Observability"}]' ] \
+  || die "next-in-pillar: completed/next wrong: $pj"
+[ "$(pq .milestoneReadyToClose)" = false ] \
+  || die "next-in-pillar: pending invariants on the active pillar must keep the milestone open"
+sed 's/^    status: planned$/    status: typo/' "$FIX/pillars-valid.yml" > "$ST_TMP/pillars-typo.yml"
+must_fail bash "$SHIP" next-in-pillar "$ST_TMP/pillars-typo.yml" || die "next-in-pillar: an unknown pillar status must fail closed"
+sed 's/^        status: verified$/        status: done/' "$FIX/pillars-valid.yml" > "$ST_TMP/pillars-typo.yml"
+must_fail bash "$SHIP" next-in-pillar "$ST_TMP/pillars-typo.yml" || die "next-in-pillar: an unknown invariant status must fail closed"
+awk '/^  - id: M1$/{skip=1} /^  - id: M2$/{skip=0} !skip' "$FIX/pillars-valid.yml" | sed 's/^        status: .*pending.*$/        status: verified/; s/^    status: active$/    status: planned/' \
+  > "$ST_TMP/pillars-done.yml"
+pj="$(bash "$SHIP" next-in-pillar "$ST_TMP/pillars-done.yml")" || die "next-in-pillar: done fixture failed"
+[ "$(pq '[.activePillar.id, .activePillar.pendingInvariants, .milestoneReadyToClose, .nextPlannedPillar.id]')" \
+  = '["M2",[],true,"M3"]' ] || die "next-in-pillar: planned fallback / closable wrong: $pj"
+[ "$(bash "$SHIP" next-in-pillar "$ST_TMP/absent.yml" | jq -c .)" \
+  = '{"activePillar":null,"milestoneReadyToClose":false,"completedPillars":[],"nextPlannedPillar":null}' ] \
+  || die "next-in-pillar: a missing file should report no pillars"
+printf '# only a comment\n\n' > "$ST_TMP/pillars-empty.yml"
+[ "$(bash "$SHIP" next-in-pillar "$ST_TMP/pillars-empty.yml" | jq -c .activePillar)" = null ] \
+  || die "next-in-pillar: a comment-only file should report no pillars"
+sed 's/^  //' "$FIX/pillars-valid.yml" > "$ST_TMP/pillars-flat.yml"
+must_fail bash "$SHIP" next-in-pillar "$ST_TMP/pillars-flat.yml" \
+  || die "next-in-pillar: an unindented pillars.yml must fail closed"
+sed 's/^      - id: M3-I1$/    - id: M3-I1/' "$FIX/pillars-valid.yml" > "$ST_TMP/pillars-bare.yml"
+must_fail bash "$SHIP" next-in-pillar "$ST_TMP/pillars-bare.yml" \
+  || die "next-in-pillar: a pillar whose invariants parse to none must fail closed"
+ok "ship.sh next-in-pillar (quoted titles keep (#…), folded blocks, closable only when verified, malformed fails closed)"
+
+# --- ship.sh wait-and-merge against a fake gh ----------------------------------------------
+# The fake serves open.1.json … open.K.json to successive `gh pr view` calls (the last repeats),
+# then merged.json once `gh pr merge` has run. Its merge fast-forwards origin/main to HEAD.
+export METATE_STATE_ROOT="$ST_TMP/ship-state"
+FAKE_BIN="$ST_TMP/fake-bin"; FAKE_GH="$ST_TMP/fake-gh"; export FAKE_GH
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'GH'
+#!/usr/bin/env bash
+set -euo pipefail
+F="$FAKE_GH"
+case "$1 $2" in
+  "pr view")
+    if [ -f "$F/merged" ]; then cat "$F/merged.json"; exit 0; fi
+    n=$(( $(cat "$F/n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$F/n"
+    k="$(cat "$F/k")"; [ "$n" -le "$k" ] || n="$k"
+    cat "$F/open.$n.json" ;;
+  "pr merge")
+    echo "$*" > "$F/merge.args"
+    git push -q --no-verify origin "$(git rev-parse HEAD):refs/heads/main"
+    touch "$F/merged" ;;
+  "run list") cat "$F/runs.json" 2>/dev/null || echo '[]' ;;
+  *) echo "fake gh: unexpected $*" >&2; exit 64 ;;
+esac
+GH
+chmod +x "$FAKE_BIN/gh"
+SR="$ST_TMP/ship"; S_REMOTE="$ST_TMP/ship-remote.git"
+git init -q --bare -b main "$S_REMOTE"
+st_repo "$SR" "$S_REMOTE"
+sr_git() { git -C "$1" -c user.email=a@b -c user.name=a "${@:2}"; }
+mkdir -p "$SR/.github/workflows"; echo 'on: push' > "$SR/.github/workflows/ci.yml"; echo 'echo v1' > "$SR/app.sh"
+sr_git "$SR" add -A; sr_git "$SR" commit -qm base; sr_git "$SR" push -q -u origin main
+echo '{"findings": []}' > "$ST_TMP/ship-lens.json"
+ship_branch() {  # $1 worktree, $2 branch — commit, push, certify, open a session
+  echo "echo $2" >> "$1/app.sh"; sr_git "$1" commit -qam "$2"; sr_git "$1" push -q -u origin "$2"
+  S_DIR="$(cd "$1" && bash "$STATE" sprint-dir)"
+  jq -n '{sprint: "ship", rows: [{id: "T1", title: "ship", command: "true"}]}' > "$S_DIR/dod.json"
+  (cd "$1" && bash "$ROUND" record "$S_DIR/dod.json" --round 1 --gate pass \
+    --lens "correctness:$ST_TMP/ship-lens.json") >/dev/null || die "ship: could not certify $2"
+  echo '{}' > "$S_DIR/session.json"; echo '{}' > "$S_DIR/.session-start.json"
+  S_BRANCH="$2"; S_OID="$(git -C "$1" rev-parse HEAD)"
+}
+pr() {  # $1 state, $2 mergeStateStatus, $3 rollup, [$4 head oid]
+  jq -nc --arg s "$1" --arg ms "$2" --argjson r "$3" --arg b "$S_BRANCH" --arg oid "${4:-$S_OID}" \
+    '{number: 7, state: $s, headRefName: $b, headRefOid: $oid, baseRefName: "main", isCrossRepository: false,
+      mergeStateStatus: $ms, statusCheckRollup: $r, mergeCommit: null, url: "https://example/pr/7"}'
+}
+scenario() {  # successive PR views
+  local i=0 view
+  rm -rf "$FAKE_GH"; mkdir -p "$FAKE_GH"
+  for view in "$@"; do i=$((i + 1)); printf '%s\n' "$view" > "$FAKE_GH/open.$i.json"; done
+  echo "$i" > "$FAKE_GH/k"
+  jq -nc --arg b "$S_BRANCH" --arg oid "$S_OID" --argjson fork "${S_FORK:-false}" \
+    '{number: 7, state: "MERGED", headRefName: $b, headRefOid: $oid, isCrossRepository: $fork,
+      mergeCommit: {oid: $oid}}' > "$FAKE_GH/merged.json"
+}
+ship_run() {  # $1 worktree, then extra args
+  (cd "$1" && PATH="$FAKE_BIN:$PATH" bash "$SHIP" wait-and-merge 7 main --poll-interval 1 "${@:2}")
+}
+ship_fails_with() {  # $1 expected exit, $2 message fragment, $3 worktree, then extra args
+  local err rc=0
+  err="$(ship_run "${@:3}" 2>&1 >/dev/null)" || rc=$?
+  [ "$rc" = "$1" ] || die "ship: expected exit $1 ($2), got $rc: $err"
+  printf '%s' "$err" | grep -qF "$2" || die "ship: failed for the wrong reason: $err (wanted: $2)"
+  [ ! -f "$FAKE_GH/merge.args" ] || die "ship: must not merge when $2"
+}
+sr_git "$SR" checkout -qb feat/ship
+ship_branch "$SR" feat/ship
+RUN_OK='{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"SUCCESS","detailsUrl":"https://ci/1"}'
+RUN_BUSY='{"__typename":"CheckRun","name":"test","status":"IN_PROGRESS","conclusion":""}'
+RUN_RED='{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE","detailsUrl":"https://ci/lint"}'
+CTX_OK='{"__typename":"StatusContext","context":"ext/deploy","state":"SUCCESS","targetUrl":"https://ext/1"}'
+CTX_WAIT='{"__typename":"StatusContext","context":"ext/deploy","state":"EXPECTED"}'
+
+# Preconditions fail closed before any poll.
+scenario "$(pr OPEN CLEAN "[$RUN_OK]" "$(sr_git "$SR" rev-parse main)")"
+ship_fails_with 1 "local HEAD does not match remote PR headRefOid" "$SR"
+scenario "$(pr OPEN CLEAN "[$RUN_OK]")"
+echo stray > "$SR/stray.txt"
+ship_fails_with 1 "working tree has uncommitted changes" "$SR"
+rm -f "$SR/stray.txt"
+cp "$S_DIR/dod.json" "$ST_TMP/ship-dod.json"
+jq '.rounds[-1].gate = "red"' "$ST_TMP/ship-dod.json" > "$S_DIR/dod.json"
+ship_fails_with 1 "forensic receipt is red" "$SR"
+cp "$ST_TMP/ship-dod.json" "$S_DIR/dod.json"
+scenario "$(pr CLOSED CLEAN '[]')"
+ship_fails_with 1 "is closed without merge" "$SR"
+scenario "$(pr OPEN DIRTY "[$RUN_OK]")"
+ship_fails_with 1 "mergeStateStatus is DIRTY" "$SR"
+# CI outcomes.
+scenario "$(pr OPEN UNSTABLE "[$RUN_OK, $RUN_RED]")"
+ship_fails_with 1 "lint https://ci/lint" "$SR"
+scenario "$(pr OPEN BLOCKED "[$RUN_BUSY]")" "$(pr OPEN BLOCKED "[$RUN_BUSY]" "$(sr_git "$SR" rev-parse main)")"
+ship_fails_with 1 "headRefOid changed mid-poll" "$SR"
+scenario "$(pr OPEN BLOCKED "[$RUN_BUSY]")"
+ship_fails_with 2 "timed out waiting for CI checks" "$SR" --timeout 1
+ok "ship.sh wait-and-merge fails closed (HEAD, dirty, receipt, closed, DIRTY, failing check, moved head, timeout)"
+
+# Workflows exist: neither an empty rollup nor a lone fast StatusContext may merge before CheckRuns.
+scenario "$(pr OPEN UNKNOWN '[]')" "$(pr OPEN CLEAN "[$CTX_OK]")" \
+  "$(pr OPEN BLOCKED "[$RUN_BUSY, $CTX_WAIT]")" "$(pr OPEN CLEAN "[$RUN_OK, $CTX_OK]")"
+out="$(ship_run "$SR" 2>"$ST_TMP/ship.err")" || die "ship: green CI should merge: $(cat "$ST_TMP/ship.err")"
+[ "$(cat "$FAKE_GH/n")" = 4 ] || die "ship: should poll until CheckRuns are green (polled $(cat "$FAKE_GH/n"))"
+[ "$(jq -c . <<<"$out")" = "$(jq -nc --arg o "$S_OID" '{merged: true, pr: 7, mergeCommit: $o, branch: "feat/ship"}')" ] \
+  || die "ship: wrong output: $out"
+args="$(cat "$FAKE_GH/merge.args")"
+case "$args" in *--merge*"--match-head-commit $S_OID"*) ;; *) die "ship: merge args wrong: $args" ;; esac
+case "$args" in *--squash*|*--delete-branch*) die "ship: never squash or delete-branch: $args" ;; esac
+[ ! -e "$S_DIR/session.json" ] && [ ! -e "$S_DIR/.session-start.json" ] || die "ship: session files must be retired"
+[ "$(git -C "$SR" symbolic-ref --short HEAD)" = main ] || die "ship: should return to main"
+[ "$(git -C "$SR" rev-parse HEAD)" = "$S_OID" ] || die "ship: main should be pulled to the merge"
+git -C "$SR" show-ref --verify --quiet refs/heads/feat/ship && die "ship: the merged branch should be deleted" || true
+git -C "$S_REMOTE" show-ref --verify --quiet refs/heads/feat/ship && die "ship: the remote branch should be deleted" || true
+# Re-running on the MERGED PR only cleans up.
+echo '{}' > "$S_DIR/session.json"
+out="$(ship_run "$SR" 2>"$ST_TMP/ship.err")" || die "ship: re-run on a merged PR should succeed: $(cat "$ST_TMP/ship.err")"
+[ "$(jq -r .mergeCommit <<<"$out")" = "$S_OID" ] || die "ship: re-run output wrong: $out"
+[ ! -e "$S_DIR/session.json" ] || die "ship: re-run must still retire the session"
+# The remote branch goes only when it is ours and still at the merged head.
+sr_git "$SR" push -q --no-verify origin "$S_OID~1:refs/heads/feat/ship"
+ship_run "$SR" >/dev/null 2>&1 || die "ship: re-run with a moved remote branch should succeed"
+git -C "$S_REMOTE" show-ref --verify --quiet refs/heads/feat/ship \
+  || die "ship: a remote branch that moved after the merge must not be deleted"
+sr_git "$SR" push -q --no-verify --force origin "$S_OID:refs/heads/feat/ship"
+S_FORK=true scenario "$(pr OPEN CLEAN "[$RUN_OK]")"; touch "$FAKE_GH/merged"
+ship_run "$SR" >/dev/null 2>&1 || die "ship: re-run on a fork PR should succeed"
+git -C "$S_REMOTE" show-ref --verify --quiet refs/heads/feat/ship \
+  || die "ship: a cross-repository PR branch must never be deleted"
+sr_git "$SR" push -q --no-verify origin --delete feat/ship
+ok "ship.sh wait-and-merge (waits for CheckRuns, --merge --match-head-commit, cleanup, idempotent re-run, lease/fork-safe delete)"
+
+# A linked worktree cannot switch to main while the primary checkout holds it: detach instead.
+sr_git "$SR" worktree add -q "$ST_TMP/ship-wt" -b feat/wt origin/main >/dev/null 2>&1
+ship_branch "$ST_TMP/ship-wt" feat/wt
+scenario "$(pr OPEN CLEAN "[$RUN_OK]")"
+ship_run "$ST_TMP/ship-wt" >/dev/null 2>"$ST_TMP/ship.err" || die "ship: a linked worktree should merge: $(cat "$ST_TMP/ship.err")"
+git -C "$ST_TMP/ship-wt" symbolic-ref -q HEAD >/dev/null && die "ship: the linked worktree should be detached" || true
+[ "$(git -C "$ST_TMP/ship-wt" rev-parse HEAD)" = "$S_OID" ] || die "ship: the worktree should sit on origin/main"
+git -C "$SR" show-ref --verify --quiet refs/heads/feat/wt && die "ship: feat/wt should be deleted" || true
+[ "$(git -C "$SR" symbolic-ref --short HEAD)" = main ] || die "ship: the primary checkout must stay on main"
+[ ! -e "$S_DIR/session.json" ] || die "ship: the worktree session must be retired"
+ok "ship.sh wait-and-merge in a linked worktree (detaches at origin/main, deletes the branch)"
+unset METATE_STATE_ROOT FAKE_GH

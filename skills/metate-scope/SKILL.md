@@ -30,7 +30,7 @@ allowed-tools:
 First ceremony of a cycle, before any plan exists. `metate-start` **consumes** a plan;
 this stage **produces** one. It surveys what the project is telling you, reads the
 situation, ranks the candidates, and hands you a slate to choose from. **You are the gate**
-— scope never picks the work, and never advances on its own.
+— scope never picks the work, and never advances on its own (sole exception: `ship.chainSprints`).
 
 This closes the pipeline's macro-loop: `metate-ship` writes *next-sprint pointers,
 triggered debt, and roadmap* at sprint close; this stage reads them to open the next one.
@@ -50,7 +50,9 @@ every worktree) and `$SPRINT` (this branch alone). Read `$STATE/profile.yml`, th
   open capture, every cycle).
 
 Also read, for context: `$STATE/signals.json` (the captures this stage consumes), `start.readingOrder`,
-`start.techDebtFile`, `ship.deliverables`, `codebaseMemory.enabled`. The chosen plan goes to `$STATE/plan.md`.
+`start.techDebtFile`, `ship.deliverables`, `ship.chainSprints`, `codebaseMemory.enabled`, and optional
+`docs/pillars.yml` (milestone horizon: `bash <metate-skill>/lib/ship.sh next-in-pillar`). The chosen
+plan goes to `$STATE/plan.md`.
 
 ## Mode — steady vs explore
 The mode sets what "a good candidate" even means. It is a **separate axis** from the per-candidate
@@ -149,7 +151,8 @@ Each candidate states:
 - **title** — the work, in one line;
 - **kind** — `sprint` *(default)* | `decision` | `spike` | `retire` | `process` (see below);
 - **why now** — value plus the signal that triggered it, **and how it fits the situation read**;
-- **blast-radius** — scope signal, from the graph where available (callers, fan-out);
+- **blast-radius** — scope signal, from the graph where available (callers, fan-out). Verify the
+  last mile: `in_degree > 0` from tests/DI wiring alone is not shipped end to end;
 - **mode hint** — a *suggested* REDUCE / HOLD / EXPAND (start makes the final call);
 - **quick-scan trailer** — inline `decay` (`none`|`rising`|`hard-deadline`), `effort`
   (small/medium/large, display only), and `corroboration` count;
@@ -229,7 +232,9 @@ signal-backed candidate (→ Step 4 stamps it `invalid` if it is not a real defe
 is real and you are choosing to live with it — with a reason either way), **none** (nothing
 ripe — exit cleanly), or **refine** (exactly **one** round before choosing: e.g. "more like #2",
 "show #1 as REDUCE", "re-read the situation assuming X"). "none" defers, it does not reject —
-only an explicit **drop** closes a signal as not-real. Never auto-select. Example shape:
+only an explicit **drop** closes a signal as not-real. Never auto-select — sole exception:
+`ship.chainSprints: true` with a pending invariant on the active pillar (or an approved queue item)
+→ select it, write `$STATE/plan.md` (Step 4; reason `chained: <invariant id>`) without pausing. Example shape:
 
 ```
 ▸ SCOPE BRIEF  (3 candidates · last pick: seed DoD landed; blast-radius close)
@@ -290,7 +295,7 @@ Confirm the plan file written and its path, and name the next ceremony: hand off
 it cuts the branch. If the human chose "none", report that nothing was ripe and write no file.
 
 ## Guardrails
-- Propose, never decide. The human picks the work; this stage only surfaces and ranks it.
+- Propose, never decide (bar the `ship.chainSprints` exception). The human picks the work.
 - See Step 2 — **Ranking** (within posture; effort display-only; never by dev time).
 - Allowed tools are `Read`, `Bash`, `Agent`, `Task`, and `Write` — `Write` is for the plan file and,
   narrowly, `status` stamps on `$STATE/signals.json` for signals the human just ruled on
