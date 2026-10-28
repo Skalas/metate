@@ -7,6 +7,7 @@
 #   state.sh key                 print <repo-key>
 #   state.sh repo-dir            print (and create) the repo-scoped dir
 #   state.sh sprint-dir          print (and create) the dir for THIS worktree's sprint
+#   state.sh sprint-dir-of BRANCH print (never create) the sprint dir for BRANCH
 #   state.sh env                 shell exports: $STATE (repo-scoped) and $SPRINT (this sprint)
 #   state.sh where               human-readable summary — state is invisible to `git status`
 #   state.sh claim-plan          move the pending plan into THIS sprint (after the branch cut)
@@ -139,9 +140,12 @@ case "${1:-}" in
   key)        repo_key; echo ;;
   repo-dir)   repo_dir; echo ;;
   sprint-dir) sprint_dir; echo ;;
+  sprint-dir-of)
+    [ -n "${2:-}" ] || die "usage: state.sh sprint-dir-of BRANCH"
+    printf '%s/sprints/%s\n' "$(repo_dir)" "$(slug "$2")" ;;
   env)        env_exports ;;
   claim-plan) claim_plan ;;
   where)      where ;;
   migrate)    shift; migrate "${1:-}" ;;
-  *) die "usage: state.sh {key|repo-dir|sprint-dir|env|where|claim-plan|migrate [root]}" ;;
+  *) die "usage: state.sh {key|repo-dir|sprint-dir|sprint-dir-of BRANCH|env|where|claim-plan|migrate [root]}" ;;
 esac

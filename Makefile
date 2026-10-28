@@ -1,5 +1,5 @@
 SHELL := bash
-SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh skills/metate/lib/dod.sh
+SCRIPTS := install.sh skills/metate-build/bootstrap.sh sources/render.sh tests/contracts/validate.sh skills/metate/lib/dod.sh skills/metate/lib/round.sh
 RENDER_SCRIPT := sources/render.sh
 BUDGET := tests/contracts/prose-budget.txt
 RENDERED := skills/metate-build/cursor-rule.mdc \
@@ -71,7 +71,7 @@ drift: ## warn when the copies harnesses actually load are stale (never fails th
 	  diff -q "$$src" "$$dst" >/dev/null 2>&1 || { \
 	    echo "  ! stale: $$dst differs from $$src"; stale=1; }; \
 	done; \
-	for root in "$$HOME/.claude/skills" "$$HOME/.agents/skills"; do \
+	for root in "$$HOME/.claude/skills" "$$HOME/.agents/skills" "$$HOME/.hermes/skills/autonomous-ai-agents"; do \
 	  [ -d "$$root" ] || continue; \
 	  for s in skills/*/SKILL.md; do \
 	    d="$$root/$$(basename $$(dirname $$s))/SKILL.md"; \

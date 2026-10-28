@@ -72,7 +72,10 @@ review sessions make most-recent resolve to the wrong thread; there, capture the
 ## Code Discovery clause
 
 When `codebaseMemory.enabled` in the profile, round 0 and review rounds prepend
-this block to the implementer prompt (build prompt and resume/fix prompt alike). Backends
+this block to the implementer prompt (build prompt and resume/fix prompt alike).
+Assemble the prompt file with `bash <metate-skill>/lib/round.sh prompt maker <out> <task-file>`
+(`reviewFocus` + this clause + the task, copied verbatim — never build it in a double-quoted
+shell string, which would evaluate backticks), then pass the file to the backend. Backends
 differ in how they otherwise learn the preference — see the per-backend table below — so the
 prompt is the **only** path that reaches the `claude` backend in `-p` mode.
 

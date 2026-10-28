@@ -347,6 +347,87 @@ else
   fi
 fi
 
+# --- pre-push: the forensic receipt is a file that blocks, not prose that advises (ADR-0005) ---
+# Lives in the git dir, so it is untracked and shared by every worktree. Ours carries the
+# `metate:pre-push` marker and is rewritten on every bootstrap so its lib path stays current;
+# anyone else's hook is never touched.
+install_pre_push_hook() {
+  local hooks hook lib
+  hooks="$(git -C "$PROJECT_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/hooks" \
+    || { echo "  • pre-push hook skipped — not a git repository"; return 0; }
+  hook="$hooks/pre-push"
+  lib="$(cd "$SCRIPT_DIR/../metate/lib" && pwd)"
+  if [ -f "$hook" ] && ! grep -q 'metate:pre-push' "$hook"; then
+    echo "  • $hook exists and is not metate's — left untouched; to gate pushes, call from it:"
+    echo "      bash $lib/dod.sh receipt \"\$SPRINT/dod.json\" <baseBranch>"
+    return 0
+  fi
+  mkdir -p "$hooks"
+  { echo '#!/usr/bin/env bash'
+    echo '# metate:pre-push — managed by metate-build/bootstrap.sh; rewritten on every bootstrap.'
+    echo '# Blocks a sprint push unless the final review round certifies the pushed code.'
+    printf 'LIB=%q\n' "$lib"
+    cat <<'HOOK'
+set -euo pipefail
+if [ ! -f "$LIB/dod.sh" ] || [ ! -f "$LIB/state.sh" ] || [ ! -f "$LIB/round.sh" ]; then
+  echo "metate pre-push: $LIB is gone — receipt not checked (re-run metate-init)" >&2
+  exit 0
+fi
+BASE_BRANCH="$(bash "$LIB/round.sh" base)"
+CURRENT="$(git symbolic-ref --quiet --short HEAD || true)"
+HEAD_SHA="$(git rev-parse HEAD)"
+
+block() {
+  echo "metate pre-push: push of $1 blocked — $2" >&2
+  echo "  (bypass deliberately: git push --no-verify)" >&2
+}
+
+# Every check returns explicitly: callers use `||`, which switches off `set -e` in here.
+# The receipt certifies the WORKING TREE, so it vouches for a pushed commit only when that
+# commit is the checked-out HEAD of its own branch and nothing uncommitted (docs aside) differs.
+check_branch() {  # $1 branch, $2 sha being pushed
+  local dod
+  [ "$1" != "$BASE_BRANCH" ] || return 0
+  dod="$(bash "$LIB/state.sh" sprint-dir-of "$1")/dod.json"
+  [ -f "$dod" ] || return 0
+  [ "$1" = "$CURRENT" ] && [ "$2" = "$HEAD_SHA" ] \
+    || { block "$1" "$2 is not the checked-out HEAD of $1; check $1 out and push from it"; return 1; }
+  [ -z "$(git status --porcelain -- . ':(exclude,top)docs' ':(exclude,top)README.md' \
+          ':(exclude,top)CHANGELOG.md')" ] \
+    || { block "$1" "uncommitted code changes; commit or stash them so the receipt sees HEAD"; return 1; }
+  bash "$LIB/dod.sh" receipt "$dod" "$BASE_BRANCH" >&2 \
+    || { block "$1" "no passing review round certifies this code; run another metate-build round"; return 1; }
+}
+
+# git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
+status=0 seen=0
+while read -r local_ref local_sha remote_ref _remote_sha; do
+  [ -n "${local_ref:-}" ] || continue
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac       # all zeros: a deletion
+  seen=1
+  # Gate both ends: the branch the commit comes from AND the branch it lands on, so
+  # `git push origin main:feat/sprint` or `HEAD:feat/sprint` cannot dodge a sprint's ledger.
+  src="" dest=""
+  case "$local_ref" in
+    refs/heads/*) src="${local_ref#refs/heads/}" ;;
+    HEAD) src="$CURRENT" ;;
+  esac
+  case "$remote_ref" in refs/heads/*) dest="${remote_ref#refs/heads/}" ;; esac
+  if [ -n "$src" ]; then check_branch "$src" "$local_sha" || status=1; fi
+  if [ -n "$dest" ] && [ "$dest" != "$src" ]; then check_branch "$dest" "$local_sha" || status=1; fi
+done
+# Invoked without ref lines (by hand, or a tool): certify the current branch.
+if [ "$seen" -eq 0 ] && [ -n "$CURRENT" ]; then check_branch "$CURRENT" "$HEAD_SHA" || status=1; fi
+exit "$status"
+HOOK
+  } > "$hook"
+  chmod +x "$hook"
+  echo "  ✓ pre-push hook → $hook (forensic receipt gates sprint pushes)"
+  [ -z "$(git -C "$PROJECT_ROOT" config core.hooksPath 2>/dev/null)" ] \
+    || echo "  ⚠ core.hooksPath is set — git will not run $hook; call it from your hooks path"
+}
+if [ "$STATE_OK" -eq 1 ]; then install_pre_push_hook; fi
+
 # --- codebase-memory-mcp: configure (presence guaranteed by the guard above) -
 # cbm gives review sub-agents a structural knowledge graph (prefer it over grep).
 # CBM_BIN may be empty when a client manages the server itself (no PATH binary);

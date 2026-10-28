@@ -199,14 +199,13 @@ Which buckets get auto-fixed is governed by `build.autoFix`:
 
 ### 2b. Persist the round, then capture survivors (orchestrator writes only)
 
-Append with **`Write` only** — never a reviewer, never a `Bash` redirect.
-
-- **The round** → `$SPRINT/dod.json` `rounds[]`: `{n, gate, failedLenses, findings[]}`, each
-  finding carrying `disposition` (`fixed` · `declined` · `deferred` · `open`) and, when
-  `declined`, a **`rationale`**. Open the entry here with `gate: "pending"`; §4 closes it with
-  `pass`/`red`. **Re-read `dod.json` and preserve `sprint` and `rows[]`** — `Write` replaces the
-  whole file and ship reads those rows. Then
-  `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"`.
+Never a reviewer; sinks below use `Write`, never a `Bash` redirect. `rounds[]` is script-owned:
+- **The round** → `bash <metate-skill>/lib/round.sh record "$SPRINT/dod.json" --round <n> --gate
+  pending --lens <name>:<report.json> …` (one `--lens` per lens; `--failed-lens <name>` for one
+  that returned nothing). It mints `R<n>-<i>` ids, opens findings, marks invalid reports as
+  failed lenses, stamps the reviewed `codeTreeSha`/`patchId`, and validates. Set dispositions
+  with `round.sh adjudicate … --round <n> --id <id> --disposition fixed|declined|deferred`
+  (`--rationale` required to decline). Never hand-edit `rounds[]`.
 - **Out-of-diff bug** → `$STATE/signals.json` per `metate-verify/signal.schema.json`.
 - **Every suggestion** (DESIGN) and every declined warning → `start.techDebtFile`, trigger-gated.
 - If a sink path is blank, **report** the item in Output instead of writing.
@@ -221,7 +220,7 @@ and write `session.json`; the branch and `rounds[]` carry the context the handle
 prompt:
 - lists only fixable findings by `file:line` + fix intent;
 - forbids unrelated changes;
-- when `codebaseMemory.enabled`, prepends the Code Discovery clause.
+- is assembled by `round.sh prompt maker <out> <task-file>` (`reviewFocus` + Code Discovery).
 
 After the implementer returns, report in the round report which files the patch touched that no
 routed finding named.
@@ -231,8 +230,8 @@ Zero fixable findings → skip patching; proceed to exit evaluation below.
 ### 4. Fast gate
 
 After patching, run `fastGate` from the profile (`bash -c "$fastGate"` from repo root).
-Failures become **blockers** for the next round. Close this round's `rounds[]` entry: set `gate`
-to `pass` or `red`.
+Failures become **blockers** for the next round. Close the round:
+`round.sh record "$SPRINT/dod.json" --round <n> --gate pass|red` (keeps the reviewed tree).
 
 **Re-index** (only when `codebaseMemory.enabled` and implementer patched):
 - `reindex: git` — auto watcher picks up changes (no action);
@@ -244,7 +243,8 @@ to `pass` or `red`.
 Convergence is anchored on **blockers**. ≤3 review rounds maximum (after round 0).
 
 **A round that applied fixes can never declare done** — "0 blockers" must come from a fan-out
-round on the patched tree. A green fast gate is necessary, not sufficient.
+round on the patched tree. A green fast gate is necessary, not sufficient. `dod.sh receipt`
+(run by ship and the pre-push hook) enforces this against the recorded `codeTreeSha`.
 
 At the end of each fan-out round, evaluate top to bottom; the first matching row is the verdict.
 **Only blockers gate convergence.** Warnings and suggestions are still *routed* to the implementer
