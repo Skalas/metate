@@ -145,6 +145,20 @@ metate-init                    # per repo: refreshes the two Cursor artifacts (n
 
 Profile reconciliation is handled by the `metate` wizard skill (Step 2b).
 
+When `~/.hermes/skills` exists, `--user` also syncs the skills into
+`~/.hermes/skills/autonomous-ai-agents` (and `make drift` checks that copy).
+
+## Forensic round receipt
+
+Review rounds are written by `skills/metate/lib/round.sh`, never by hand: `record` turns raw
+reviewer JSON into `rounds[]` (deterministic `R<n>-<i>` ids, failed lenses, artifact hashes,
+and the reviewed tree's `codeTreeSha` + `patchId`); `adjudicate` sets dispositions; `prompt`
+assembles `reviewFocus` + the Code Discovery clause for headless makers and reviewers.
+`skills/metate/lib/dod.sh receipt "$SPRINT/dod.json" <base>` fails closed unless the final
+round passed with every lens, has no undeclined blocker, and still matches the working tree
+(docs-only edits and clean rebases pass). `metate-init` installs a `pre-push` hook that runs
+it on sprint branches. See [ADR-0005](docs/adr/0005-forensic-round-receipt-and-hermes-sync.md).
+
 ## First run — profile decisions
 
 `metate-init` scaffolds the profile; the `metate` wizard skill fills it with you:

@@ -52,13 +52,14 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
 
 ## Steps
 1. **Sync** — merge/rebase `ship.prTarget`; resolve conflicts.
-2. **Ship gate** — run `shipGate`, then every `command` row in `$SPRINT/dod.json` whose
-   command is not already that same string (🛑 **shipGate is green** / **dod.json rows
-   pass or are cut**). Do not skip. A verified row is one whose command exits 0 on this
-   tree — do not record a flag. Open required gates: explain via the entry's `steps` /
-   `expected`, then hand off to `metate-verify`.
+2. **Ship gate** — `bash <metate-skill>/lib/dod.sh receipt "$SPRINT/dod.json" <baseBranch>`
+   (🛑 **forensic receipt** — fails closed on unreviewed code; the pre-push hook re-runs it),
+   then `shipGate`, then every `command` row in `$SPRINT/dod.json` whose command is not
+   already that same string (🛑 **shipGate is green** / **dod.json rows pass or are cut**).
+   Do not skip; a verified row exits 0 on this tree — never record a flag. Open required
+   gates: explain via the entry's `steps` / `expected`, then hand off to `metate-verify`.
 3. **Bisectable commits** — per `ship.commitStyle`. Don't bury a refactor in a feature.
-4. **Open the PR** → `ship.prTarget`, with a commit table, evidence, out-of-scope notes,
+4. **Open the PR** → `ship.prTarget`, with the receipt, a commit table, evidence, scope notes,
    and one `<issueCloseKeyword> #N` line per **passing** dod.json row that has `tracker`
    (not ranges). `cut` rows are named as out of scope — never a close line. No dod.json
    (start skipped filing) → fall back to issues referenced on the branch. Confirm
@@ -67,9 +68,8 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
    **never `--squash`**). Capture `gh pr view <N> --json mergeCommit -q .mergeCommit.oid`.
    If the user defers, stop after step 7; re-run steps 5–9 once it merges.
 6. **Close the milestone** if the sprint uses one.
-7. **Retire sprint-local state** — delete `$SPRINT/session.json` and
-   `$SPRINT/.session-start.json` if present. Do this even if merge was deferred. A later
-   review round re-runs Build for a fresh session.
+7. **Retire sprint-local state** — delete `$SPRINT/session.json` and `$SPRINT/.session-start.json`
+   if present, even if merge was deferred (a later review round re-runs Build fresh).
 8. **Return to base** after merge:
    ```bash
    git switch <ship.prTarget> && git pull --ff-only && git branch -d <sprint-branch>
@@ -95,7 +95,7 @@ highest matching file + 1, else ask. Never write a literal `{N}`.
   or `skills/metate/lib/` require a corresponding update in `docs/` or `README.md`.
   In metate, run `METATE_DOC_BASE=<pr-target-ref> bash tests/contracts/validate.sh`;
   the gate checks the merge-base diff through tracked working edits. Stage new docs first.
-- Gate red → 🛑 **shipGate is green** — never push past it.
+- Gate red or receipt failing → 🛑 — never push past it (never `--no-verify`).
 - Open required gates block ship — hand off to `metate-verify`. Write is for deliverables only.
 - Never tag without a fresh yes. Never force-push tags. Never tag `HEAD` after pull — tag
   the merge OID. Never pass unvalidated tag strings to the shell.

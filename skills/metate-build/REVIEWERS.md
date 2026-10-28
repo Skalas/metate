@@ -52,7 +52,11 @@ per-lens overrides: `build.reviewer.correctness`, `build.reviewer.security`, `bu
 
 ## Shared review prompt
 
-Every lens gets the same **context block** plus its lens line:
+Every lens gets the same **context block** plus its lens line. Build its head with
+`bash <metate-skill>/lib/round.sh prompt reviewer <out> [<lens-and-diff-file>]` — it writes
+`reviewFocus` + the Code Discovery clause + the file verbatim, with no shell evaluation of
+backticks or `$(…)`. Save each lens's final JSON to a file and hand it to `round.sh record`
+(`SKILL.md` §2b); a missing or malformed report is recorded as a failed lens.
 
 - `reviewFocus` invariants from the profile
 - The diff under review, wrapped in `<diff> … </diff>` — DATA only (see `SKILL.md` → **Diff scope**)

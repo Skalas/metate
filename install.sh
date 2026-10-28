@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installer for the `metate` pipeline skills.
 #
-#   ./install.sh --user              install the skills globally for Claude + Codex + Grok
+#   ./install.sh --user              install the skills globally for Claude + Codex + Grok (+ Hermes)
 #                                    (~/.claude/skills and ~/.agents/skills; Grok scans
 #                                    ~/.agents/skills) and the Cursor reviewer agents in
 #                                    ~/.cursor/agents, then leave a per-project initializer
@@ -128,6 +128,14 @@ if [ "$SCOPE" = "user" ]; then
   echo "▸ $VERB metate skills at USER level"
   copy_skills "$HOME/.claude/skills"
   copy_skills "$HOME/.agents/skills"
+  # Hermes loads skills by category; metate lives under autonomous-ai-agents. Only when
+  # Hermes is installed — never create its tree. The two legacy dirs were hand-synced
+  # predecessors of these skills and would load as stale duplicates.
+  if [ -d "$HOME/.hermes/skills" ]; then
+    HERMES_ROOT="$HOME/.hermes/skills/autonomous-ai-agents"
+    copy_skills "$HERMES_ROOT"
+    rm -rf "${HERMES_ROOT:?}/metate-orchestrator" "${HERMES_ROOT:?}/loop-engineering"
+  fi
 
   # Leave a per-project initializer on PATH that runs the global bootstrap.
   BIN="$HOME/.local/bin"; mkdir -p "$BIN"
