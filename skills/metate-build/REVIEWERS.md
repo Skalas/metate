@@ -94,7 +94,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # (generated/lens-prompts/correctness.txt | security.txt | elegance.txt)
 codex exec --cd "$ROOT" \
   --output-schema "$SCHEMA" \
-  -o /tmp/correctness.json \
+  -o "$SPRINT/r-correctness.json" \
   "$REVIEW_CONTEXT
 
 $(cat skills/metate-build/generated/lens-prompts/correctness.txt)" \
@@ -103,7 +103,7 @@ $(cat skills/metate-build/generated/lens-prompts/correctness.txt)" \
 wait
 
 jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
-  /tmp/correctness.json /tmp/security.json /tmp/elegance.json
+  "$SPRINT/r-correctness.json" "$SPRINT/r-security.json" "$SPRINT/r-elegance.json"
 ```
 
 - **Output:** JSON file at `-o` path; validate with `jq -e '.findings'`.
@@ -170,6 +170,17 @@ Agent(subagent_type="refactorer",       prompt="<REVIEW_CONTEXT + elegance lens>
 Restate the Code Discovery clause in each prompt — sub-agents do not inherit MCP
 tool-priority from ambient config.
 
+**Headless lens (`claude -p`)** — when no Agent tool is available (a shell orchestrator), run each
+lens as its own background CLI call and validate the structured output:
+
+```bash
+unset ANTHROPIC_API_KEY   # only when a sourced .env carries a key that must not override OAuth
+SCHEMA="$(cat skills/metate-build/finding.schema.json)"   # the schema TEXT, not a path
+claude -p --model opus --output-format json --json-schema "$SCHEMA" "$PROMPT" < /dev/null \
+  > "$SPRINT/r-correctness.raw.json"
+jq -e '.structured_output' "$SPRINT/r-correctness.raw.json" > "$SPRINT/r-correctness.json"
+```
+
 ## grok  ✅ verified (typed JSON + session envelope probed)
 
 One lens per parallel `grok -p`. Preserve **`< /dev/null`**. `--json-schema` takes **inline
@@ -187,16 +198,16 @@ $(cat skills/metate-build/generated/lens-prompts/correctness.txt)" \
   --cwd "$ROOT" \
   --json-schema "$SCHEMA" \
   --output-format json \
-  < /dev/null > /tmp/correctness.raw.json &
+  < /dev/null > "$SPRINT/r-correctness.raw.json" &
 # … security + elegance likewise …
 wait
 
-jq -e '.structuredOutput' /tmp/correctness.raw.json > /tmp/correctness.json
-jq -e '.structuredOutput' /tmp/security.raw.json    > /tmp/security.json
-jq -e '.structuredOutput' /tmp/elegance.raw.json    > /tmp/elegance.json
+jq -e '.structuredOutput' "$SPRINT/r-correctness.raw.json" > "$SPRINT/r-correctness.json"
+jq -e '.structuredOutput' "$SPRINT/r-security.raw.json"    > "$SPRINT/r-security.json"
+jq -e '.structuredOutput' "$SPRINT/r-elegance.raw.json"    > "$SPRINT/r-elegance.json"
 
 jq -s '{findings: (map(.findings) | add | unique_by([.file,.line,.summary]))}' \
-  /tmp/correctness.json /tmp/security.json /tmp/elegance.json
+  "$SPRINT/r-correctness.json" "$SPRINT/r-security.json" "$SPRINT/r-elegance.json"
 ```
 
 - **Output:** `.structuredOutput` matching `finding.schema.json`; validate with `jq -e '.findings'`.

@@ -176,6 +176,12 @@ claude -p --resume "<SESSION_ID>" "<blocker fixes>" < /dev/null   # resume round
 
 Single-vendor loop, or fallback implementer.
 
+**Auth.** A sourced `.env` that carries `ANTHROPIC_API_KEY` silently overrides the OAuth login
+(API billing, different limits): `unset ANTHROPIC_API_KEY` before spawning `claude -p` unless the
+key is meant to be used. **Structured output** (a checker or classifier call, not a build call):
+`claude -p --model opus --output-format json --json-schema "$SCHEMA" "<prompt>" < /dev/null`, then
+`jq -e '.structured_output'` (`$SCHEMA` is the schema text, not a path) — a missing field means the schema was not honored; fail the call.
+
 **Autonomy (`implementer.autonomous: true`).** Two independent gates must both be cleared, or
 the loop stalls waiting on a prompt with no TTY:
 

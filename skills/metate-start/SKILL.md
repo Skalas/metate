@@ -27,7 +27,7 @@ Runs after `metate-scope`, or as the entry point when a plan already exists. No 
 Run `eval "$(bash <metate-skill>/lib/state.sh env)"` for `$STATE`/`$SPRINT`, then read
 `$STATE/profile.yml` → the `start:` block: `readingOrder` (paths may carry `{N}` — resolve as
 metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`, `granularity`,
-`labels`, `milestone`), optional `verify.humanGates`.
+`labels`, `milestone`), `ship.chainSprints`, optional `verify.humanGates`.
 
 ## Steps
 1. **Read the handoff** — every doc in `start.readingOrder`, in order. If a plan exists
@@ -40,8 +40,9 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
 4. **Confirm and file** — when `start.issues.create` is true, show the proposed titles/bodies
    and file via the tracker (`github` → `gh issue create`). **`kind: sprint`:** one issue per
    T-row (plus folded debt). **non-`sprint`:** one tracking issue **`C1`** (for `decision`, name
-   the ADR path; add the ADR dir to `ship.deliverables` if missing). When `create: false`, file
-   nothing. Confirm before filing — it is outward-facing.
+   the ADR path; add the ADR dir to `ship.deliverables` if missing). Pass `--milestone` when
+   `start.issues.milestone` is set. When `create: false`, file nothing. Confirm before filing —
+   it is outward-facing — unless `ship.chainSprints: true` (pre-authorized; file without pausing).
 5. **Reset session file** — a new branch gets a fresh `$SPRINT`, so nothing carries over. Only
    when a new sprint reuses the current branch: clear `$SPRINT/session.json`.
 6. **Cut the branch** — from `start.baseBranch`, then re-resolve state and claim the plan.
@@ -49,6 +50,7 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
    exits non-zero when no plan is pending — fine when the plan came via `readingOrder`, not scope.
    ```bash
    git checkout <baseBranch> && git pull --ff-only && git checkout -b <branch>
+   # <baseBranch> held by another worktree: git fetch origin <baseBranch> && git checkout --no-track -b <branch> "origin/<baseBranch>"
    eval "$(bash <metate-skill>/lib/state.sh env)"; bash <metate-skill>/lib/state.sh claim-plan || true
    ```
 7. **Write DoD and seed gates** — after the branch exists, with the **`Write` tool**:

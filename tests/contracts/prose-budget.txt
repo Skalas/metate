@@ -16,10 +16,16 @@
 # gained two load-bearing lines — re-resolve $SPRINT after the cut, then claim the pending plan
 # — and paid one back by shrinking the session reset, which the sprint-scoped dir now does by
 # construction. Ordering, not prose: without them scope's plan lands in sprints/<base branch>.
-skills/metate-start/SKILL.md 75
+# 2026-10-28, autonomous ship + milestone pillars (ship.sh, ADR-0005): +16 lines across three
+# playbooks. ship +9: autoMerge routes step 5 through `ship.sh wait-and-merge`, pillars.yml
+# invariant flips, milestone close via `next-in-pillar`, and a new step 10 (chain). scope +5:
+# the chainSprints exception to "never auto-select" and the last-mile caller check. start +2:
+# --milestone / chained filing and the linked-worktree branch cut. The mechanics live in ship.sh
+# (tested in validate.sh); the prose only routes to it.
+skills/metate-start/SKILL.md 77
 skills/metate-verify/SKILL.md 74
 # Issue #125: +4 lines to specify the enforced Doc-as-Code invariant and base-ref command.
-skills/metate-ship/SKILL.md 101
+skills/metate-ship/SKILL.md 110
 skills/metate/SKILL.md 201
 skills/metate-build/SKILL.md 281
-skills/metate-scope/SKILL.md 303
+skills/metate-scope/SKILL.md 308

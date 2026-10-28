@@ -159,6 +159,25 @@ round passed with every lens, has no undeclined blocker, and still matches the w
 (docs-only edits and clean rebases pass). `metate-init` installs a `pre-push` hook that runs
 it on sprint branches. See [ADR-0005](docs/adr/0005-forensic-round-receipt-and-hermes-sync.md).
 
+## Autonomous ship and milestone pillars
+
+`skills/metate/lib/ship.sh` makes the last mile deterministic:
+
+- `ship.sh wait-and-merge <PR> [base]` checks that the tree is clean, that `HEAD` matches the
+  PR head and that the receipt passes. It then waits for CI to go green: CheckRuns must exist
+  when the repo has workflows, any failed check exits 1 and a timeout exits 2. The merge runs
+  `--merge --match-head-commit` (never squash). It retires the session files and returns to the
+  base branch, or detaches at `origin/<base>` in a linked worktree. Re-running is idempotent.
+- `ship.sh next-in-pillar [docs/pillars.yml]` reports the active milestone pillar, its pending
+  `exit_invariants`, completed pillars and the next planned one as JSON. An unknown status
+  fails closed.
+
+Two profile switches, both `false` by default:
+
+- `ship.autoMerge: true` lets metate-ship merge through `wait-and-merge` without asking.
+- `ship.chainSprints: true` sends a merged sprint straight on to scope → start for the next
+  pending pillar invariant, with no pause for a pick or for issue confirmation.
+
 ## First run — profile decisions
 
 `metate-init` scaffolds the profile; the `metate` wizard skill fills it with you:
