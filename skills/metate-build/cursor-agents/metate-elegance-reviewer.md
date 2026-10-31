@@ -24,7 +24,7 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - "Extract this into a helper / hook / base class" for fewer than 3 call sites
 - Speculative requirements ("if this ever needs to support X")
 - Test-coverage gaps that do not name a specific untested branch
-- Conventions the diff merely follows — you are reviewing the change, not the codebase it lands in
+- Unrelated pre-existing conventions outside the sprint's domain (note: leaving sibling views, templates, or specs wired to a deprecated path that this diff replaces or splits is in-scope, not a pre-existing convention)
 - Anything whose consequence you cannot state in one sentence
 
 **The present-tense test.** It runs in both directions, and both directions are your job:
@@ -46,6 +46,7 @@ a bucket, order by blast radius, not by how easy the fix looks.
 Report, in this order of priority:
 - **Needless complexity** — abstraction with a single implementation, indirection that adds a hop
   without removing a decision, configuration nobody sets, a layer that only forwards
+- **Parallel legacy paths** — keeping a deprecated prop, DTO field, or duplicate UI card alive beside its replacement instead of migrating all callers
 - **Structure and layering** violations that will force a bad change later
 - **Duplication** — only when the same *decision* is repeated at **3 or more sites**, not merely
   the same shape. Code that looks alike but serves different purposes stays separate.

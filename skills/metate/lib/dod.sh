@@ -22,7 +22,12 @@ validate_dod() {
     . as $doc
     | if (.sprint|type) != "string" or (.sprint|length) == 0 then error("sprint missing") else . end
     | if (.rows|type) != "array" then error("rows[] missing") else . end
-    | if (keys - ["sprint","rows","rounds"]) != [] then error("stray top-level key") else . end
+    | if (keys - ["sprint","rows","rounds","retires","requiredTouches"]) != [] then error("stray top-level key") else . end
+    | reduce ("retires", "requiredTouches") as $k (.;
+        if ($doc|has($k)) and (($doc[$k]|type) != "array" or ($doc[$k]|map(type == "string" and length > 0 and (test("[\\r\\n]")|not))|all|not))
+        then error("\($k) must be an array of non-empty single-line strings") else . end)
+    | if ($doc|has("requiredTouches")) and ($doc.requiredTouches|map(test("^(docs/|README\\.md$|CHANGELOG\\.md$)"))|any)
+      then error("requiredTouches must name code paths only (docs/, README.md, and CHANGELOG.md are excluded from codeTreeSha)") else . end
     | (.rows|map(.id)|unique|length) as $u
     | if $u != (.rows|length) then error("duplicate or missing id") else . end
     | reduce .rows[] as $r (true;
@@ -202,22 +207,37 @@ final_round_field() { jq -r --arg k "$2" '(.rounds | sort_by(.n) | .[-1][$k]) //
 # FORWARD (a rebase onto newer upstream, never a rewind) — still carries the reviewed patch.
 # Prints how it matched.
 receipt_tree_match() {
-  local file="$1" base="$2" want_tree want_patch want_base now now_tree now_base
+  local file="$1" base="$2" now_tree="$3" now_base="$4" now_patch="$5" want_tree want_patch want_base
   want_tree="$(final_round_field "$file" codeTreeSha)"
   want_patch="$(final_round_field "$file" patchId)"
   want_base="$(final_round_field "$file" baseSha)"
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
-    || die "receipt: cannot verify the code tree outside a git worktree"
-  now="$(bash "$DIR/round.sh" tree "$base")"
-  now_tree="$(jq -r .codeTreeSha <<<"$now")"
-  now_base="$(jq -r .baseSha <<<"$now")"
   if [ "$now_tree" = "$want_tree" ]; then echo "codeTreeSha matches"; return 0; fi
   if [ -n "$want_base" ] && [ "$now_base" != "$want_base" ] \
      && git merge-base --is-ancestor "$want_base" "$now_base" 2>/dev/null \
-     && [ -n "$want_patch" ] && [ "$(jq -r .patchId <<<"$now")" = "$want_patch" ]; then
+     && [ -n "$want_patch" ] && [ "$now_patch" = "$want_patch" ]; then
     echo "patchId matches (rebased onto $base)"; return 0
   fi
   die "receipt: code tree drifted after final review round (expected $want_tree, got $now_tree)"
+}
+
+receipt_scope_check() {
+  local file="$1" now_tree="$2" now_base="$3" sym req_path
+  while IFS= read -r sym; do
+    [ -n "$sym" ] || continue
+    local rc=0
+    git grep -q -F -- "$sym" "$now_tree" 2>/dev/null || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      die "receipt: retired symbol '$sym' still exists in code tree (lazy backwards-compatibility is forbidden)"
+    elif [ "$rc" -ne 1 ]; then
+      die "receipt: git grep failed (exit $rc) checking retired symbol '$sym' on tree $now_tree"
+    fi
+  done < <(jq -r '(.retires // [])[]' "$file")
+  while IFS= read -r req_path; do
+    [ -n "$req_path" ] || continue
+    if ! git diff --name-only "$now_base" "$now_tree" -- "$req_path" | grep -qxF "$req_path"; then
+      die "receipt: required consumer '$req_path' in requiredTouches was not modified in sprint diff"
+    fi
+  done < <(jq -r '(.requiredTouches // [])[]' "$file")
 }
 
 print_receipt() {  # $1 file, $2 tree-match note
@@ -239,12 +259,19 @@ print_receipt() {  # $1 file, $2 tree-match note
 }
 
 receipt() {
-  local file="$1" base="${2:-}" problem match
+  local file="$1" base="${2:-}" problem match now now_tree now_base now_patch
   validate_dod "$file" || die "receipt: $file is not a valid dod.json"
   problem="$(receipt_problem "$file")"
   [ -z "$problem" ] || die "receipt: $problem"
   [ -n "$base" ] || base="$(bash "$DIR/round.sh" base)"
-  match="$(receipt_tree_match "$file" "$base")"
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+    || die "receipt: cannot verify the code tree outside a git worktree"
+  now="$(bash "$DIR/round.sh" tree "$base")"
+  now_tree="$(jq -r .codeTreeSha <<<"$now")"
+  now_base="$(jq -r .baseSha <<<"$now")"
+  now_patch="$(jq -r .patchId <<<"$now")"
+  match="$(receipt_tree_match "$file" "$base" "$now_tree" "$now_base" "$now_patch")"
+  receipt_scope_check "$file" "$now_tree" "$now_base"
   print_receipt "$file" "$match"
 }
 

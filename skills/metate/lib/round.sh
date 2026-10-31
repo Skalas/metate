@@ -137,9 +137,10 @@ role_preamble() {
 }
 
 assemble_prompt() {
-  local role="$1" out="$2" task="${3:-}" profile focus preamble
+  local role="$1" out="$2" task="${3:-}" profile focus preamble sprint_dod
   preamble="$(role_preamble "$role")"
   profile="$(bash "$DIR/state.sh" repo-dir)/profile.yml"
+  sprint_dod="$(bash "$DIR/state.sh" sprint-dir 2>/dev/null)/dod.json" || sprint_dod=""
   [ -f "$profile" ] || die "missing $profile — run the metate wizard"
   # shellcheck disable=SC1091  # sibling skill dir, resolved at run time
   . "$BUILD_DIR/lib/yaml.sh"
@@ -148,6 +149,22 @@ assemble_prompt() {
   [ -z "$task" ] || [ -f "$task" ] || die "missing task file $task"
   {
     printf '## Project invariants (reviewFocus)\n\n%s\n\n%s\n' "$preamble" "$focus"
+    local scope=""
+    if [ -f "$sprint_dod" ]; then
+      scope="$(jq -r '
+        [
+          (if ((.retires // []) | length) > 0 then
+            "- Retired symbols (MUST be completely purged from code and tests; keeping parallel legacy fields or renaming to legacy* is a blocker): " + ((.retires // []) | join(", "))
+           else empty end),
+          (if ((.requiredTouches // []) | length) > 0 then
+            "- Required consumer files (every listed file MUST be genuinely migrated in this sprint diff): " + ((.requiredTouches // []) | join(", "))
+           else empty end)
+        ] | join("\n")
+      ' "$sprint_dod" 2>/dev/null || true)"
+    fi
+    if [ -n "$scope" ]; then
+      printf '\n## Sprint Scope & Retire Contract (enforced by dod.sh receipt)\n\n%s\n' "$scope"
+    fi
     if [ "$(yaml_nested_scalar "$profile" codebaseMemory enabled)" != false ]; then
       printf '\n'; cat "$BUILD_DIR/generated/prompt-clause.md"
     fi

@@ -3,6 +3,7 @@
 Report, in this order of priority:
 - **Needless complexity** — abstraction with a single implementation, indirection that adds a hop
   without removing a decision, configuration nobody sets, a layer that only forwards
+- **Parallel legacy paths** — keeping a deprecated prop, DTO field, or duplicate UI card alive beside its replacement instead of migrating all callers
 - **Structure and layering** violations that will force a bad change later
 - **Duplication** — only when the same *decision* is repeated at **3 or more sites**, not merely
   the same shape. Code that looks alike but serves different purposes stays separate.

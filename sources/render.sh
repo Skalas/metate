@@ -111,6 +111,8 @@ render_reviewer_agent() {
   {
     printf "%s\n\n" "$codex_line"
     cat "$SRC/reviewers/materiality.md"
+    echo ""
+    cat "$SRC/reviewers/$lens.md"
   } > "$OUT_GEN/lens-prompts/$lens.txt"
 }
 

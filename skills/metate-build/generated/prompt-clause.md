@@ -3,11 +3,13 @@ structural reach when the repo is graph-rich (typical codebases). On doc/shell r
 (mostly markdown/shell prompt-docs) the graph payoff is low — grep/Read is the expected
 primary tool even when codebaseMemory.enabled is true.
 
-Before editing, trace the IMPACT of each change:
-  - search_graph — find the symbol you're about to touch by name/label/pattern;
-  - trace_path — who calls it / what it calls, so a changed signature doesn't break an
-    off-diff caller;
-  - get_code_snippet — exact symbol source by qualified name.
+When writing or reviewing a change, trace its full IMPACT across both AST and markup:
+  - search_graph — find the symbol by name/label/pattern;
+  - trace_path — who calls it / what it calls, so a changed contract or replaced metric
+    never leaves an off-diff caller orphaned;
+  - get_code_snippet — exact symbol source by qualified name;
+  - grep / search_files — always pair graph queries with text search across UI templates
+    (e.g. `.vue` `<template>`), route tables, and `.spec.*` files that AST edges do not index.
 
 RESULT TAXONOMY (do not confuse usage errors with outages):
   (1) Connection refused / server not registered = graph genuinely DOWN → fall back to

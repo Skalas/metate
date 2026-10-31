@@ -27,7 +27,7 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - "Extract this into a helper / hook / base class" for fewer than 3 call sites
 - Speculative requirements ("if this ever needs to support X")
 - Test-coverage gaps that do not name a specific untested branch
-- Conventions the diff merely follows — you are reviewing the change, not the codebase it lands in
+- Unrelated pre-existing conventions outside the sprint's domain (note: leaving sibling views, templates, or specs wired to a deprecated path that this diff replaces or splits is in-scope, not a pre-existing convention)
 - Anything whose consequence you cannot state in one sentence
 
 **The present-tense test.** It runs in both directions, and both directions are your job:
@@ -48,8 +48,9 @@ a bucket, order by blast radius, not by how easy the fix looks.
 
 Report:
 - Logic bugs and broken state transitions
-- Violations of every `reviewFocus` invariant
-- Off-diff callers broken by a signature change (use `trace_path` when graph is enabled)
+- Violations of every `reviewFocus` invariant and any Sprint Scope & Retire Contract (`retires` / `requiredTouches`)
+- Off-diff callers or `<template>` / spec consumers left orphaned on a deprecated field, prop, or route when the diff replaces or splits a domain concept (keeping parallel legacy fields to avoid updating existing tests is a **blocker**)
+- Idealized data assumptions in classifiers, migrations, or aggregations that ignore catch-all categories (e.g. `General`, `Other`, `Historical`), nulls, or zero denominators
 
 Bucket each finding:
 - **blocker** — wrong behavior, violated invariant, won't build

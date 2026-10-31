@@ -1,4 +1,4 @@
-Lens: ELEGANCE/DESIGN. Report needless complexity first (abstraction with one implementation, indirection that removes no decision), then layering violations, then duplication of the same decision at 3+ sites. Never propose a new abstraction for fewer than 3 call sites. Informational — bucket as suggestion.
+Lens: ELEGANCE/DESIGN. Report needless complexity first (abstraction with one implementation, indirection that removes no decision), then parallel legacy paths, then layering violations, then duplication of the same decision at 3+ sites. Never propose a new abstraction for fewer than 3 call sites. Informational — bucket as suggestion.
 
 ## Materiality bar (apply before reporting anything)
 
@@ -11,7 +11,7 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - "Extract this into a helper / hook / base class" for fewer than 3 call sites
 - Speculative requirements ("if this ever needs to support X")
 - Test-coverage gaps that do not name a specific untested branch
-- Conventions the diff merely follows — you are reviewing the change, not the codebase it lands in
+- Unrelated pre-existing conventions outside the sprint's domain (note: leaving sibling views, templates, or specs wired to a deprecated path that this diff replaces or splits is in-scope, not a pre-existing convention)
 - Anything whose consequence you cannot state in one sentence
 
 **The present-tense test.** It runs in both directions, and both directions are your job:
@@ -27,3 +27,25 @@ The cap is the instrument: if everything is reported, nothing is prioritized.
 
 **Ranking.** A finding that touches a `reviewFocus` invariant outranks one that does not. Within
 a bucket, order by blast radius, not by how easy the fix looks.
+
+## Lens: ELEGANCE / DESIGN
+
+Report, in this order of priority:
+- **Needless complexity** — abstraction with a single implementation, indirection that adds a hop
+  without removing a decision, configuration nobody sets, a layer that only forwards
+- **Parallel legacy paths** — keeping a deprecated prop, DTO field, or duplicate UI card alive beside its replacement instead of migrating all callers
+- **Structure and layering** violations that will force a bad change later
+- **Duplication** — only when the same *decision* is repeated at **3 or more sites**, not merely
+  the same shape. Code that looks alike but serves different purposes stays separate.
+
+Never propose a new abstraction, interface, base class, or shared helper for fewer than 3 call
+sites. When the call is close, the finding is "remove this", never "extract that".
+
+**Always bucket as `suggestion`** — elegance findings are informational only and are never
+auto-applied unless `build.autoFix: all`.
+
+## Output (mandatory)
+
+Return **only** valid JSON matching `skills/metate-build/finding.schema.json` — no markdown
+fences, no commentary. Every finding carries a non-empty `consequence`. **Always** bucket as
+`suggestion`. Empty set: `{ "findings": [] }`.

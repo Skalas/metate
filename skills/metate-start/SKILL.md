@@ -33,6 +33,16 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
 1. **Read the handoff** — every doc in `start.readingOrder`, in order. If a plan exists
    (`$STATE/plan.md`, or `$SPRINT/plan.md` on a re-run), read it first; if `readingOrder` is empty, ask. Summarize the goal, **`kind`**
    (`sprint` default), DoD / completion condition, T-matrix, and any H-matrix.
+   When a sprint replaces, splits, or migrates a domain concept, metric, route, or data
+   calculation, spawn an **Unbiased Pre-Flight Subagent Council** (parallel read-only discovery
+   subagents **without anchoring them to a pre-selected file list**):
+   - **Blind Blast-Radius Hunter:** given only the domain concept/symbols, queries the graph +
+     `<template>`/spec grep to enumerate 100% of consumers (`requiredTouches`) and deprecated symbols (`retires`).
+   - **Tenant Data Reality Probe:** inspects real tenant data shapes/snapshots (catch-all categories,
+     nulls, edge distributions) before drafting the task spec.
+   - **Adversarial Spec Critic:** verifies no legacy dual-path is kept merely to avoid updating existing tests.
+   Fold findings autonomously into the spec and `$SPRINT/dod.json` (`retires`, `requiredTouches`);
+   pause for human input only at milestone start or when a business rule is genuinely ambiguous.
 2. **Triage debt** — open `start.techDebtFile`; surface items whose **trigger** the upcoming
    work would hit. Recommend fold vs defer. Don't fix anything.
 3. **Fix the sprint mode** — REDUCE / HOLD / EXPAND, justified by *failure surface and value*,
@@ -59,7 +69,10 @@ metate-ship Step 0), `techDebtFile`, `baseBranch`, `issues` (`create`, `tracker`
    `command` or `gate`. A proposed gate phrased *walk A → B → C, expect D* is a `command`
    row, not a gate. A gate that recurs sprint after sprint is a `command` row. `cut` rows
    need `reason` and neither field. `id` may span (`T1-T3`). Fill `tracker` (`#N`) from
-   step 4. Run `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json
+   step 4. Optional top-level `"retires"` (deprecated symbols `dod.sh receipt` verifies are 100%
+   purged from the code tree) and `"requiredTouches"` (consumer file paths `dod.sh receipt`
+   verifies were modified in the sprint diff) lock blast-radius scope. Run
+   `bash <metate-skill>/lib/dod.sh dod "$SPRINT/dod.json"` (🛑 **dod.json
    validates** — blocking set). Overwrite; never append a prior sprint.
 
    **Gates** (when `verify.humanGates` is set) — always write this sprint's batch, even if
