@@ -9,7 +9,7 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - "Extract this into a helper / hook / base class" for fewer than 3 call sites
 - Speculative requirements ("if this ever needs to support X")
 - Test-coverage gaps that do not name a specific untested branch
-- Conventions the diff merely follows — you are reviewing the change, not the codebase it lands in
+- Unrelated pre-existing conventions outside the sprint's domain (note: leaving sibling views, templates, or specs wired to a deprecated path that this diff replaces or splits is in-scope, not a pre-existing convention)
 - Anything whose consequence you cannot state in one sentence
 
 **The present-tense test.** It runs in both directions, and both directions are your job:

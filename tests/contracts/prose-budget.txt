@@ -22,7 +22,7 @@
 # the chainSprints exception to "never auto-select" and the last-mile caller check. start +2:
 # --milestone / chained filing and the linked-worktree branch cut. The mechanics live in ship.sh
 # (tested in validate.sh); the prose only routes to it.
-skills/metate-start/SKILL.md 77
+skills/metate-start/SKILL.md 90
 skills/metate-verify/SKILL.md 74
 # Issue #125: +4 lines to specify the enforced Doc-as-Code invariant and base-ref command.
 skills/metate-ship/SKILL.md 110

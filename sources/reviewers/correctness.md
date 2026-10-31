@@ -2,8 +2,9 @@
 
 Report:
 - Logic bugs and broken state transitions
-- Violations of every `reviewFocus` invariant
-- Off-diff callers broken by a signature change (use `trace_path` when graph is enabled)
+- Violations of every `reviewFocus` invariant and any Sprint Scope & Retire Contract (`retires` / `requiredTouches`)
+- Off-diff callers or `<template>` / spec consumers left orphaned on a deprecated field, prop, or route when the diff replaces or splits a domain concept (keeping parallel legacy fields to avoid updating existing tests is a **blocker**)
+- Idealized data assumptions in classifiers, migrations, or aggregations that ignore catch-all categories (e.g. `General`, `Other`, `Historical`), nulls, or zero denominators
 
 Bucket each finding:
 - **blocker** — wrong behavior, violated invariant, won't build

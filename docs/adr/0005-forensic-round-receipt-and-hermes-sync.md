@@ -118,6 +118,21 @@ A triple audit found four gaps:
 - **pre-push deletions**: the hook now marks a ref line as seen before skipping a deletion, so
   `git push origin --delete <branch>` no longer falls through to the no-ref-lines fallback (which
   certified, and could block on, an unrelated current branch).
+- **Sprint Scope & Retire Contract (`retires` and `requiredTouches` in `dod.json`):**
+  - `dod.json` accepts optional top-level `"retires"` (array of non-empty strings naming deprecated
+    symbols/props) and `"requiredTouches"` (array of non-empty strings naming consumer file paths
+    that must be migrated).
+  - `round.sh prompt` automatically injects `.retires` and `.requiredTouches` from `$SPRINT/dod.json`
+    into both `maker` and `reviewer` prompts so neither role can overlook off-diff consumers or keep
+    parallel legacy fields.
+  - `dod.sh receipt` enforces both arrays mechanically against the certified code tree (`$now_tree`
+    vs `$now_base`): any occurrence of a `retires` symbol in the code tree (`git grep -F`, excluding
+    `docs/`, `README.md`, `CHANGELOG.md`) or any file in `requiredTouches` absent from
+    `git diff --name-only "$now_base" "$now_tree"` aborts the receipt with exit code 1.
+- **Full Reviewer Lens Rendering (`sources/render.sh`):**
+  - `generated/lens-prompts/<lens>.txt` renders the full per-lens specification
+    (`sources/reviewers/<lens>.md`) alongside `materiality.md`, and reviewer rules explicitly treat
+    lazy dual-path backwards-compatibility and orphaned sibling consumers as blockers.
 
 ## Consequences
 

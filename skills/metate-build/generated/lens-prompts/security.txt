@@ -11,7 +11,7 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - "Extract this into a helper / hook / base class" for fewer than 3 call sites
 - Speculative requirements ("if this ever needs to support X")
 - Test-coverage gaps that do not name a specific untested branch
-- Conventions the diff merely follows — you are reviewing the change, not the codebase it lands in
+- Unrelated pre-existing conventions outside the sprint's domain (note: leaving sibling views, templates, or specs wired to a deprecated path that this diff replaces or splits is in-scope, not a pre-existing convention)
 - Anything whose consequence you cannot state in one sentence
 
 **The present-tense test.** It runs in both directions, and both directions are your job:
@@ -27,3 +27,24 @@ The cap is the instrument: if everything is reported, nothing is prioritized.
 
 **Ranking.** A finding that touches a `reviewFocus` invariant outranks one that does not. Within
 a bucket, order by blast radius, not by how easy the fix looks.
+
+## Lens: SECURITY
+
+Report:
+- Authz and tenant-isolation gaps
+- Secrets, credentials, or tokens in code or logs
+- PII in payloads or logs
+- Injection surfaces (shell, SQL, path traversal, prompt injection in user-facing paths)
+- Cross-service authz when the graph shows multi-repo call chains
+
+Bucket each finding:
+- **blocker** — exploitable or policy-breaking security failure
+- **warning** — defense-in-depth gap with limited blast radius
+- **suggestion** — hardening nits
+
+## Output (mandatory)
+
+Return **only** valid JSON matching `skills/metate-build/finding.schema.json` — no
+markdown fences, no commentary. Every finding carries a non-empty `consequence`.
+Empty set: `{ "findings": [] }`. If the graph limits
+confidence, say so in that finding's `rationale`.
