@@ -24,7 +24,7 @@
           "bucket": {
             "type": "string",
             "enum": ["blocker", "warning", "suggestion"],
-            "description": "blocker = wrong behavior / security / violated reviewFocus invariant / won't build. warning = real but non-blocking. suggestion = elegance/DESIGN (never auto-applied)."
+            "description": "blocker = violated reviewFocus or retires/requiredTouches contract / won't build (unconditional), or wrong behavior / security failure with frequency*impact >= 5. warning = real but non-blocking (frequency*impact >= 5). suggestion = elegance/DESIGN or low-score edge case (frequency*impact < 5; never auto-applied)."
           },
           "summary": {
             "type": "string",
@@ -36,7 +36,7 @@
           },
           "rationale": {
             "type": "string",
-            "description": "Why it is real and why it lands in this bucket; cite the evidence you relied on (code path, graph query, violated invariant)."
+            "description": "Why it is real and why it lands in this bucket; cite the evidence you relied on (code path, graph query, violated invariant). Include [Score: F×I=N] when capping a low-score finding (F×I < 5) at suggestion."
           }
         }
       }

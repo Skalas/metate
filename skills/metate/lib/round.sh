@@ -130,8 +130,8 @@ tree_json() {
 
 role_preamble() {
   case "$1" in
-    maker)    echo "Your change must hold every invariant below; violating one is a blocker." ;;
-    reviewer) echo "Scrutinize the diff against every invariant below; a violation is a blocker." ;;
+    maker)    echo "Your change must hold every invariant below; violating one is a blocker. Do not design for rare or future cases nobody asked about — solve only the concrete requirements of this sprint." ;;
+    reviewer) echo "Scrutinize the diff against every invariant below; violating a reviewFocus invariant or Sprint Scope & Retire Contract (retires / requiredTouches) is an unconditional blocker regardless of frequency. For all other candidate bugs, rate 1-10 on frequency and 1-10 on impact; if frequency * impact < 5, drop it or cap it at suggestion — never escalate low-score edge cases to blocker or warning." ;;
     *) die "role must be maker|reviewer, got '$1'" ;;
   esac
 }
