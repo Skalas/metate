@@ -185,9 +185,9 @@ Merge reviewer JSON, dedupe with `unique_by([.file,.line,.summary])`, then clust
 
 Bucket each finding (and each systemic rollup):
 
-- **blocker** — wrong behavior, security/isolation failure, violated `reviewFocus`, won't build.
-- **warning** — real but non-blocking.
-- **suggestion / DESIGN** — elegance; never the sole reason to loop.
+- **blocker** — violated `reviewFocus` or `retires`/`requiredTouches` contract, won't build (unconditional); or wrong behavior / security failure with `frequency * impact >= 5`.
+- **warning** — real but non-blocking defect (`frequency * impact >= 5`).
+- **suggestion / DESIGN** — elegance, or low-score edge cases (`frequency * impact < 5` with `[Score: F×I=N]` in `rationale`); never the sole reason to loop.
 
 Which buckets get auto-fixed is governed by `build.autoFix`:
 

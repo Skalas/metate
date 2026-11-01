@@ -129,10 +129,14 @@ A triple audit found four gaps:
     vs `$now_base`): any occurrence of a `retires` symbol in the code tree (`git grep -F`, excluding
     `docs/`, `README.md`, `CHANGELOG.md`) or any file in `requiredTouches` absent from
     `git diff --name-only "$now_base" "$now_tree"` aborts the receipt with exit code 1.
-- **Full Reviewer Lens Rendering (`sources/render.sh`):**
+- **Full Reviewer Lens Rendering & Materiality Threshold (`sources/render.sh`, `sources/reviewers/materiality.md`):**
   - `generated/lens-prompts/<lens>.txt` renders the full per-lens specification
     (`sources/reviewers/<lens>.md`) alongside `materiality.md`, and reviewer rules explicitly treat
     lazy dual-path backwards-compatibility and orphaned sibling consumers as blockers.
+  - `round.sh prompt` instructs makers not to design for rare or future cases nobody asked about,
+    and `materiality.md` enforces a quantitative `Frequency (1-10) × Impact (1-10) >= 5` threshold
+    so low-score hypotheticals (`F×I < 5`) are dropped or capped at `suggestion` rather than
+    holding review rounds open as `blocker` or `warning`.
 
 ## Consequences
 

@@ -468,6 +468,8 @@ ok "round.sh tree (code-only codeTreeSha + patchId + baseSha; docs and untracked
 # shellcheck disable=SC2016
 printf 'Task: $(touch %s/pwned) and `touch %s/pwned`\n' "$ST_TMP" "$ST_TMP" > "$ST_TMP/task.md"
 in_rt bash "$ROUND" prompt maker "$ST_TMP/maker.md" "$ST_TMP/task.md" || die "prompt maker failed"
+grep -qF 'Do not design for rare or future cases' "$ST_TMP/maker.md" \
+  || die "prompt: maker anti-overengineering preamble missing"
 # shellcheck disable=SC2016
 grep -qF -- '- Never run `rm -rf $HOME` from a hook; "$(quoted)" stays literal.' "$ST_TMP/maker.md" \
   || die "prompt: reviewFocus must be copied verbatim"
@@ -477,6 +479,7 @@ grep -qF 'Task: $(touch' "$ST_TMP/maker.md" || die "prompt: task file missing"
 [ -e "$ST_TMP/pwned" ] && die "prompt: task content must never be evaluated" || true
 in_rt bash "$ROUND" prompt reviewer "$ST_TMP/reviewer.md" || die "prompt reviewer failed"
 grep -qF 'Scrutinize the diff' "$ST_TMP/reviewer.md" || die "prompt: reviewer preamble missing"
+grep -qF 'frequency * impact < 5' "$ST_TMP/reviewer.md" || die "prompt: reviewer materiality threshold missing"
 must_fail in_rt bash "$ROUND" prompt critic "$ST_TMP/x.md" || die "prompt: unknown role should fail"
 must_fail in_rt bash "$ROUND" prompt maker "$ST_TMP/x.md" "$ST_TMP/missing.md" \
   || die "prompt: a missing task file should fail"

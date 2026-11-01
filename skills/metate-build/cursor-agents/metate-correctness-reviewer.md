@@ -37,6 +37,8 @@ preference, taste, or "this could be cleaner" is not a finding. Drop it.
 - *On your own finding* — same question. If the answer is "nothing, it is just in case", you are
   bikeshedding. Drop the finding.
 
+**Quantitative materiality score (`Frequency × Impact >= 5`).** Rate each candidate defect from **1 to 10** on how often it would happen in production (`frequency`) and from **1 to 10** on how bad it would be when triggered (`impact`). **Hard exemption:** violations of `reviewFocus` invariants, Sprint Scope & Retire Contracts (`retires` / `requiredTouches`), orphaned consumers or parallel legacy paths, and build/test failures are **unconditional `blocker`s** regardless of frequency. For all other findings, if `frequency × impact < 5`, **do not report it as a `blocker` or `warning`** — either drop it completely or cap it at `suggestion` (stating `[Score: F×I=N]` in `rationale`; lenses already restricted to `suggestion` must drop `< 5` findings). Never hold a review round open over rare, low-impact hypotheticals.
+
 **Budget.** At most **5** blocker/warning findings and **3** suggestions, most severe first. If
 you had more, report the top ones and state the dropped count in the last finding's `rationale`.
 The cap is the instrument: if everything is reported, nothing is prioritized.
